@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/channel_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/channel.dart';
-import '../../utils/logger.dart';
+import '../../providers/channel_provider.dart';
 import '../../utils/constants.dart';
+import '../../utils/logger.dart';
 
 class ChannelManagementScreen extends StatefulWidget {
   const ChannelManagementScreen({super.key});
@@ -191,22 +192,6 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
       shadowColor: Colors.black.withValues(alpha: 0.1),
       title: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.video_library,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
           const SizedBox(width: 12),
           const Text(
             'Channel Management',
@@ -644,9 +629,126 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     );
   }
 
-  void _openChannelLink(String link) {
-    // TODO: Implement link opening
+  void _openChannelLink(String link) async {
+    if (link.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No link available for this channel'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+      return;
+    }
+
     AppLogger.info('Opening channel link: $link');
+
+    try {
+      // Parse the URL
+      final Uri uri = Uri.parse(link);
+
+      // Check if URL has a valid scheme
+      if (!uri.hasScheme) {
+        // Try to add https scheme if missing
+        final Uri httpsUri = Uri.parse('https://$link');
+        if (mounted) {
+          final shouldOpen = await showDialog<bool>(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: const Text('Open Link'),
+              content: Text('Open this link in browser?\n$httpsUri'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(true),
+                  child: const Text('Open'),
+                ),
+              ],
+            ),
+          );
+
+          if (shouldOpen == true) {
+            await _launchUrl(httpsUri);
+          }
+        }
+        return;
+      }
+
+      // Show confirmation dialog for external links
+      if (mounted) {
+        final shouldOpen = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Open External Link'),
+            content: Text(
+              'This will open the following link in your browser:\n$uri',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Open in Browser'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldOpen == true) {
+          await _launchUrl(uri);
+        }
+      }
+    } catch (e) {
+      AppLogger.error('Error parsing channel link: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Invalid URL format: $link'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _launchUrl(Uri uri) async {
+    try {
+      final bool launched = await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        throw Exception('Failed to launch URL');
+      }
+
+      AppLogger.info('Successfully opened URL: $uri');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Opening link in browser...'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Error launching URL: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to open link: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _saveChannel() async {

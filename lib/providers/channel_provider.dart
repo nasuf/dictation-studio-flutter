@@ -41,7 +41,7 @@ class ChannelProvider extends ChangeNotifier {
       final visFilter =
           visibility ??
           AppConstants
-              .visibilityAll; // Changed from visibilityPublic to visibilityAll
+              .visibilityPublic; // Changed from visibilityPublic to visibilityAll
 
       AppLogger.info(
         'Fetching channels with language filter: $langFilter, visibility: $visFilter',
