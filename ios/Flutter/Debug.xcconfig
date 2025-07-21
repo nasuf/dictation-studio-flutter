@@ -1,0 +1,5 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
+#include "Generated.xcconfig"
+
+// Force iOS 17.5 SDK for compatibility
+IPHONEOS_DEPLOYMENT_TARGET = 12.0

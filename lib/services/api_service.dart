@@ -1,0 +1,390 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../models/channel.dart';
+import '../models/video.dart';
+import '../models/progress.dart';
+import '../services/token_manager.dart';
+import '../utils/logger.dart';
+import '../utils/constants.dart';
+
+class ApiException implements Exception {
+  final String message;
+  final int? statusCode;
+
+  ApiException(this.message, [this.statusCode]);
+
+  @override
+  String toString() => 'ApiException: $message (${statusCode ?? 'unknown'})';
+}
+
+class ApiService {
+  // Use hardcoded production URL to avoid config issues
+  static const String _baseUrl = 'https://www.dictationstudio.com/ds';
+
+  final http.Client _client = http.Client();
+
+  // Make HTTP request with automatic token handling
+  Future<T> _makeRequest<T>(
+    String endpoint,
+    T Function(dynamic) fromJson, {
+    String method = 'GET',
+    Map<String, dynamic>? body,
+    Map<String, String>? queryParams,
+    bool requiresAuth = false,
+  }) async {
+    try {
+      var uri = Uri.parse('$_baseUrl$endpoint');
+      if (queryParams != null) {
+        uri = uri.replace(queryParameters: queryParams);
+      }
+
+      AppLogger.info('Making ${method.toUpperCase()} request to: $uri');
+
+      // Always start with basic headers
+      Map<String, String> headers = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      };
+
+      // Auto-add Authorization header for ALL requests if token is available (like UI project)
+      String? accessToken = await TokenManager.getAccessToken();
+
+      if (accessToken != null) {
+        // Check if token is expiring soon and refresh if needed
+        if (await TokenManager.isTokenExpiringSoon()) {
+          AppLogger.info('🔄 Token expiring soon, attempting refresh...');
+          accessToken = await TokenManager.refreshAccessToken();
+        }
+
+        if (accessToken != null) {
+          headers['Authorization'] = 'Bearer $accessToken';
+          AppLogger.info('✅ Added Authorization header with token (auto)');
+        } else {
+          AppLogger.warning('⚠️ Token refresh failed, proceeding without auth');
+        }
+      } else {
+        AppLogger.info('ℹ️ No access token available');
+      }
+
+      late http.Response response;
+
+      // Apply timeout to all requests
+      const timeout = Duration(minutes: 2);
+
+      switch (method.toUpperCase()) {
+        case 'GET':
+          response = await _client.get(uri, headers: headers).timeout(timeout);
+          break;
+        case 'POST':
+          response = await _client
+              .post(
+                uri,
+                headers: headers,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(timeout);
+          break;
+        case 'PUT':
+          response = await _client
+              .put(
+                uri,
+                headers: headers,
+                body: body != null ? jsonEncode(body) : null,
+              )
+              .timeout(timeout);
+          break;
+        case 'DELETE':
+          response = await _client
+              .delete(uri, headers: headers)
+              .timeout(timeout);
+          break;
+        default:
+          throw UnsupportedError('HTTP method $method not supported');
+      }
+
+      AppLogger.info('Response status: ${response.statusCode}');
+      AppLogger.info('Response headers: ${response.headers}');
+
+      // Handle tokens from response headers (matching UI project logic)
+      await TokenManager.handleTokensFromResponse(response);
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final responseData = jsonDecode(response.body);
+        AppLogger.info('Response data type: ${responseData.runtimeType}');
+        return fromJson(responseData);
+      } else if (response.statusCode == 401) {
+        // Unauthorized - clear tokens and throw exception
+        AppLogger.warning('❌ Unauthorized (401) - clearing tokens');
+        await TokenManager.clearTokens();
+        throw ApiException(
+          'Authentication failed - please login again',
+          response.statusCode,
+        );
+      } else {
+        AppLogger.error(
+          '❌ HTTP Error: ${response.statusCode} - ${response.body}',
+        );
+        throw ApiException(
+          'HTTP ${response.statusCode}: ${response.reasonPhrase}',
+          response.statusCode,
+        );
+      }
+    } catch (e) {
+      AppLogger.error('❌ Request error: $e');
+      if (e is ApiException) {
+        rethrow;
+      }
+      throw ApiException('Network error: $e', null);
+    }
+  }
+
+  // Get channels list - expecting direct array from API
+  Future<List<Channel>> getChannels({
+    String visibility = AppConstants.visibilityPublic,
+    String language = AppConstants.languageAll,
+  }) async {
+    try {
+      return await _makeRequest<List<Channel>>(
+        '/service/channel',
+        (dynamic responseData) {
+          AppLogger.info('Processing channels response...');
+          if (responseData is List) {
+            AppLogger.info(
+              'Response is List with ${responseData.length} items',
+            );
+            return responseData
+                .map((item) => Channel.fromJson(item as Map<String, dynamic>))
+                .toList();
+          } else if (responseData is Map && responseData['data'] is List) {
+            AppLogger.info('Response is wrapped object with data array');
+            final data = responseData['data'] as List;
+            return data
+                .map((item) => Channel.fromJson(item as Map<String, dynamic>))
+                .toList();
+          } else {
+            throw ApiException(
+              'Invalid response format: expected array or object with data array',
+            );
+          }
+        },
+        queryParams: {'visibility': visibility, 'language': language},
+      );
+    } catch (e) {
+      AppLogger.error('Error fetching channels: $e');
+      AppLogger.info(
+        'URL: $_baseUrl/service/channel?visibility=$visibility&language=$language',
+      );
+      rethrow;
+    }
+  }
+
+  // Get video list for a channel
+  Future<VideoListResponse> getVideoList(
+    String channelId, {
+    String visibility = AppConstants.visibilityPublic,
+    String? language,
+  }) async {
+    final queryParams = {
+      'visibility': visibility,
+      if (language != null) 'language': language,
+    };
+
+    return await _makeRequest<VideoListResponse>(
+      '/service/video-list/$channelId',
+      (dynamic responseData) {
+        AppLogger.info('Processing video list response...');
+        AppLogger.info('Response data type: ${responseData.runtimeType}');
+
+        if (responseData is Map<String, dynamic>) {
+          // If response has a 'data' field, use that
+          if (responseData.containsKey('data')) {
+            AppLogger.info('Response has data field, using that');
+            return VideoListResponse.fromJson(responseData['data']);
+          }
+          // If response has a 'videos' field, use that
+          if (responseData.containsKey('videos')) {
+            AppLogger.info('Response has videos field, using that');
+            return VideoListResponse.fromJson(responseData);
+          }
+          // If response is a direct array, wrap it
+          if (responseData.containsKey('0') || responseData is List) {
+            AppLogger.info('Response appears to be a list, wrapping it');
+            return VideoListResponse(videos: []);
+          }
+        }
+
+        // Default case: try to parse as VideoListResponse
+        AppLogger.info('Using default parsing');
+        return VideoListResponse.fromJson(responseData);
+      },
+      queryParams: queryParams,
+    );
+  }
+
+  // Get channel progress
+  Future<ChannelProgress> getChannelProgress(String channelId) async {
+    try {
+      return await _makeRequest<ChannelProgress>(
+        '/user/progress/channel',
+        (data) {
+          // Handle different response formats
+          if (data is Map<String, dynamic>) {
+            if (data.containsKey('data')) {
+              return ChannelProgress.fromJson(data['data']);
+            }
+            return ChannelProgress.fromJson(data);
+          }
+          return ChannelProgress.fromJson(data);
+        },
+        method: 'GET',
+        queryParams: {'channelId': channelId},
+        requiresAuth: true, // Channel progress requires authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get channel progress API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get user progress for specific video
+  Future<Map<String, dynamic>> getUserProgress(
+    String channelId,
+    String videoId,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/progress',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        queryParams: {'channelId': channelId, 'videoId': videoId},
+        requiresAuth: true, // User progress requires authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get user progress API error: $e');
+      rethrow;
+    }
+  }
+
+  // Save user progress
+  Future<Map<String, dynamic>> saveUserProgress(
+    ProgressData progressData,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/progress',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: progressData.toJson(),
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Save user progress API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get user duration data
+  Future<Map<String, dynamic>> getUserDuration() async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/duration',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Get user duration API error: $e');
+      rethrow;
+    }
+  }
+
+  // Check dictation quota
+  Future<bool> checkDictationQuota(String channelId, String videoId) async {
+    try {
+      final result = await _makeRequest<Map<String, dynamic>>(
+        '/user/dictation_quota',
+        (dynamic responseData) => responseData as Map<String, dynamic>,
+        queryParams: {'channelId': channelId, 'videoId': videoId},
+      );
+      return result['hasQuota'] ?? false;
+    } catch (e) {
+      // If there's an error, assume no quota
+      return false;
+    }
+  }
+
+  // Register dictation video
+  Future<void> registerDictationVideo(String channelId, String videoId) async {
+    await _makeRequest<Map<String, dynamic>>(
+      '/user/register_dictation',
+      (dynamic responseData) => responseData as Map<String, dynamic>,
+      method: 'POST',
+      body: {'channelId': channelId, 'videoId': videoId},
+    );
+  }
+
+  // Login API call to match backend /auth/login endpoint
+  Future<Map<String, dynamic>> login(
+    String email,
+    String username,
+    String avatar,
+  ) async {
+    try {
+      final response = await _makeRequest<Map<String, dynamic>>(
+        '/auth/login',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'email': email, 'username': username, 'avatar': avatar},
+        requiresAuth: false, // Login doesn't require existing auth
+      );
+
+      AppLogger.info('Login response: $response');
+      return response;
+    } catch (e) {
+      AppLogger.error('Login API error: $e');
+      rethrow;
+    }
+  }
+
+  // Logout API call
+  Future<Map<String, dynamic>> logout() async {
+    try {
+      final response = await _makeRequest<Map<String, dynamic>>(
+        '/auth/logout',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        requiresAuth: true, // Logout requires authentication
+      );
+
+      // Clear tokens after successful logout
+      await TokenManager.clearTokens();
+      return response;
+    } catch (e) {
+      AppLogger.error('Logout API error: $e');
+      // Clear tokens even if logout fails
+      await TokenManager.clearTokens();
+      rethrow;
+    }
+  }
+
+  // Save user config API call
+  Future<Map<String, dynamic>> saveUserConfig(
+    Map<String, dynamic> config,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/config',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: config,
+        requiresAuth: true, // User config requires authentication
+      );
+    } catch (e) {
+      AppLogger.error('Save user config API error: $e');
+      rethrow;
+    }
+  }
+}
+
+// Singleton instance
+final ApiService apiService = ApiService();
