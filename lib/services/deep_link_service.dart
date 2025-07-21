@@ -9,9 +9,15 @@ class DeepLinkService {
 
   final AppLinks _appLinks = AppLinks();
   StreamSubscription<Uri>? _linkSubscription;
+  bool _isInitialized = false;
 
   // Initialize deep link handling
   Future<void> initialize() async {
+    if (_isInitialized) {
+      AppLogger.info('🔗 Deep link service already initialized, skipping...');
+      return;
+    }
+
     try {
       AppLogger.info('🔗 Initializing deep link service...');
 
@@ -27,15 +33,22 @@ class DeepLinkService {
       );
 
       // Handle the initial link if app was opened via deep link
-      final initialUri = await _appLinks.getInitialLink();
-      if (initialUri != null) {
-        AppLogger.info('🚀 App opened with deep link: $initialUri');
-        _handleDeepLink(initialUri);
+      try {
+        final initialUri = await _appLinks.getInitialLink();
+        if (initialUri != null) {
+          AppLogger.info('🚀 App opened with deep link: $initialUri');
+          _handleDeepLink(initialUri);
+        }
+      } catch (e) {
+        AppLogger.warning('⚠️ Failed to get initial link: $e');
+        // Don't fail initialization if getting initial link fails
       }
 
+      _isInitialized = true;
       AppLogger.success('✅ Deep link service initialized');
     } catch (e) {
       AppLogger.error('❌ Failed to initialize deep link service: $e');
+      rethrow;
     }
   }
 

@@ -26,13 +26,16 @@ class AuthProvider extends ChangeNotifier {
   Future<void> initialize() async {
     _setLoading(true);
     try {
+      AppLogger.info('🔄 Starting AuthProvider initialization...');
+      
       // Check if user is already logged in
       final session = _supabase.auth.currentSession;
       if (session?.user != null) {
-        AppLogger.info('👤 Found existing session, loading user...');
+        AppLogger.info('👤 Found existing Supabase session, loading user...');
         await _loadUserFromSession(session!.user);
       } else {
-        AppLogger.info('🚫 No existing session found');
+        // Try to load cached user data
+        await _loadCachedUserData();
       }
 
       // Listen to auth state changes
@@ -55,11 +58,29 @@ class AuthProvider extends ChangeNotifier {
             break;
         }
       });
+      
+      AppLogger.info('✅ AuthProvider initialization completed');
     } catch (e) {
-      AppLogger.error('❌ Initialize error: $e');
+      AppLogger.error('❌ AuthProvider initialize error: $e');
       _setError('Failed to initialize authentication: ${e.toString()}');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Load cached user data as fallback
+  Future<void> _loadCachedUserData() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJsonString = prefs.getString('current_user');
+      if (userJsonString != null) {
+        final userJson = jsonDecode(userJsonString) as Map<String, dynamic>;
+        _currentUser = models.User.fromJson(userJson);
+        notifyListeners();
+        AppLogger.info('✅ Loaded cached user data: ${_currentUser!.username}');
+      }
+    } catch (e) {
+      AppLogger.error('❌ Failed to load cached user data: $e');
     }
   }
 
@@ -118,6 +139,7 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      
       bool loginSuccess = false;
       AuthResponse? authResponse;
 
@@ -262,8 +284,9 @@ class AuthProvider extends ChangeNotifier {
       AppLogger.info('Username from metadata: $username');
       AppLogger.info('Avatar from metadata: $avatar');
 
-      // Call backend API to login/register user
-      final apiResponse = await _apiService.login(email, username, avatar);
+      // Call backend API to login/register user with timeout
+      final apiResponse = await _apiService.login(email, username, avatar)
+          .timeout(const Duration(seconds: 10));
 
       if (apiResponse.containsKey('user')) {
         // Create user object from backend response
