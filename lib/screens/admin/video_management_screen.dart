@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../../providers/channel_provider.dart';
-import '../../providers/video_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../models/video.dart';
+import '../../models/channel.dart';
+import '../../models/transcript_item.dart';
+import '../../services/api_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/constants.dart';
+import 'dart:async';
 
 class VideoManagementScreen extends StatefulWidget {
   const VideoManagementScreen({super.key});
@@ -13,105 +15,349 @@ class VideoManagementScreen extends StatefulWidget {
   State<VideoManagementScreen> createState() => _VideoManagementScreenState();
 }
 
-class _VideoManagementScreenState extends State<VideoManagementScreen> {
+class _VideoManagementScreenState extends State<VideoManagementScreen>
+    with TickerProviderStateMixin {
+  // Core state
   String? _selectedChannelId;
   String _selectedLanguage = AppConstants.languageAll;
   String _searchQuery = '';
-  final _searchController = TextEditingController();
+  bool _isLoading = false;
+  String? _error;
+
+  // Controllers
+  final TextEditingController _searchController = TextEditingController();
+  late TabController _tabController;
+
+  // Data
+  List<Channel> _channels = [];
+  List<Video> _videos = [];
+  List<TranscriptItem> _currentTranscript = [];
+
+  // Services
+  final ApiService _apiService = ApiService();
+
+  // Modal states
+  bool _isAddVideoModalOpen = false;
+  bool _isEditVideoModalOpen = false;
+  bool _isTranscriptModalOpen = false;
+  Video? _editingVideo;
+  Video? _transcriptVideo;
+
+  // Debounce timer
+  Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+
+    // Load initial data without triggering widget rebuild during initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadChannels();
+      _loadInitialData();
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _tabController.dispose();
+    _debounceTimer?.cancel();
     super.dispose();
   }
 
-  Future<void> _loadChannels() async {
+  // Load initial data
+  Future<void> _loadInitialData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      await context.read<ChannelProvider>().fetchChannels(
-        language: AppConstants.languageAll,
-        visibility: AppConstants.visibilityAll,
-      );
+      await _loadChannels();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load channels: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _error = 'Failed to load initial data: $e';
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
   }
 
+  // Load channels
+  Future<void> _loadChannels() async {
+    try {
+      final channels = await _apiService.getChannels(
+        visibility: AppConstants.visibilityAll,
+        language: _selectedLanguage == AppConstants.languageAll
+            ? AppConstants.languageAll
+            : _selectedLanguage,
+      );
+
+      if (mounted) {
+        setState(() {
+          _channels = channels;
+          // Auto-select first channel if none selected
+          if (_selectedChannelId == null && channels.isNotEmpty) {
+            _selectedChannelId = channels.first.id;
+            // Load videos for the selected channel
+            Future.microtask(() => _loadVideos());
+          }
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading channels: $e');
+      rethrow;
+    }
+  }
+
+  // Load videos for selected channel
   Future<void> _loadVideos() async {
     if (_selectedChannelId == null) return;
 
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
     try {
-      await context.read<VideoProvider>().fetchVideos(
+      final response = await _apiService.getVideoList(
         _selectedChannelId!,
-        language: _selectedLanguage,
+        visibility: AppConstants.visibilityAll,
+        language: _selectedLanguage == AppConstants.languageAll
+            ? null
+            : _selectedLanguage,
       );
-    } catch (e) {
+
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to load videos: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        setState(() {
+          _videos = response.videos;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading videos: $e');
+      if (mounted) {
+        setState(() {
+          _error = 'Failed to load videos: $e';
+          _isLoading = false;
+        });
       }
     }
   }
 
-  List<Video> _getFilteredVideos(List<Video> videos) {
-    if (_searchQuery.isEmpty) return videos;
+  // Debounced search
+  void _onSearchChanged(String query) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = query;
+        });
+      }
+    });
+  }
 
-    return videos.where((video) {
+  // Filter videos based on search query
+  List<Video> get _filteredVideos {
+    if (_searchQuery.isEmpty) return _videos;
+
+    return _videos.where((video) {
       return video.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           video.videoId.toLowerCase().contains(_searchQuery.toLowerCase());
     }).toList();
   }
 
-  void _showVideoDetails(Video video) {
-    showDialog(
-      context: context,
-      builder: (context) => _VideoDetailsDialog(
-        video: video,
-        onVideoUpdated: () {
-          _loadVideos();
-        },
-      ),
-    );
+  // Handle channel selection
+  void _onChannelChanged(String? channelId) {
+    if (channelId != null && channelId != _selectedChannelId) {
+      setState(() {
+        _selectedChannelId = channelId;
+        _videos = []; // Clear videos while loading new ones
+      });
+      _loadVideos();
+    }
   }
 
+  // Handle language filter change
+  void _onLanguageChanged(String? language) {
+    if (language != null && language != _selectedLanguage) {
+      setState(() {
+        _selectedLanguage = language;
+        _channels = []; // Clear channels while loading new ones
+        _videos = [];
+        _selectedChannelId = null;
+      });
+      _loadChannels();
+    }
+  }
+
+  // Show add video modal
   void _showAddVideoModal() {
     if (_selectedChannelId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a channel first'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      _showErrorSnackBar('Please select a channel first');
       return;
     }
+    setState(() {
+      _isAddVideoModalOpen = true;
+    });
+  }
 
-    showDialog(
+  // Show edit video modal
+  void _showEditVideoModal(Video video) {
+    setState(() {
+      _editingVideo = video;
+      _isEditVideoModalOpen = true;
+    });
+  }
+
+  // Show transcript modal
+  void _showTranscriptModal(Video video) {
+    setState(() {
+      _transcriptVideo = video;
+      _isTranscriptModalOpen = true;
+    });
+    _loadTranscript(video);
+  }
+
+  // Load transcript for video
+  Future<void> _loadTranscript(Video video) async {
+    if (_selectedChannelId == null) return;
+
+    try {
+      // TODO: Implement transcript loading when API is available
+      AppLogger.info('Loading transcript for video: ${video.videoId}');
+
+      // Placeholder - simulate loading transcript
+      await Future.delayed(const Duration(seconds: 1));
+      if (mounted) {
+        setState(() {
+          _currentTranscript = [
+            TranscriptItem(
+              start: 0.0,
+              end: 5.0,
+              transcript: 'Transcript loading feature coming soon...',
+            ),
+          ];
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading transcript: $e');
+      _showErrorSnackBar('Failed to load transcript: $e');
+    }
+  }
+
+  // Delete video
+  Future<void> _deleteVideo(Video video) async {
+    if (_selectedChannelId == null) return;
+
+    final confirmed = await _showConfirmDialog(
+      'Delete Video',
+      'Are you sure you want to delete "${video.title}"? This action cannot be undone.',
+    );
+
+    if (!confirmed) return;
+
+    try {
+      // TODO: Implement video deletion when API is available
+      AppLogger.info('Deleting video: ${video.videoId}');
+
+      // Placeholder - simulate deletion
+      await Future.delayed(const Duration(seconds: 1));
+      _showSuccessSnackBar('Delete functionality coming soon');
+      // await _loadVideos(); // Refresh video list when API is available
+    } catch (e) {
+      AppLogger.error('Error deleting video: $e');
+      _showErrorSnackBar('Failed to delete video: $e');
+    }
+  }
+
+  // Update video visibility
+  Future<void> _updateVideoVisibility(Video video, String newVisibility) async {
+    if (_selectedChannelId == null) return;
+
+    try {
+      // TODO: Implement video visibility update when API is available
+      AppLogger.info(
+        'Updating video ${video.videoId} visibility to $newVisibility',
+      );
+
+      // Placeholder - simulate update
+      await Future.delayed(const Duration(seconds: 1));
+      _showSuccessSnackBar('Visibility update functionality coming soon');
+      // await _loadVideos(); // Refresh video list when API is available
+    } catch (e) {
+      AppLogger.error('Error updating video visibility: $e');
+      _showErrorSnackBar('Failed to update video visibility: $e');
+    }
+  }
+
+  // Launch video URL
+  Future<void> _launchVideoUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      AppLogger.error('Error launching URL: $e');
+      _showErrorSnackBar('Failed to open video link');
+    }
+  }
+
+  // Show success snackbar
+  void _showSuccessSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.green,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  // Show error snackbar
+  void _showErrorSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
+  }
+
+  // Show confirmation dialog
+  Future<bool> _showConfirmDialog(String title, String content) async {
+    final result = await showDialog<bool>(
       context: context,
-      builder: (context) => _AddVideoDialog(
-        channelId: _selectedChannelId!,
-        onVideoAdded: () {
-          _loadVideos();
-        },
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: Text(content),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
       ),
     );
+    return result ?? false;
   }
 
   @override
@@ -119,223 +365,34 @@ class _VideoManagementScreenState extends State<VideoManagementScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Video Management'),
-        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: Colors.blue,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: Colors.blue,
+          tabs: const [
+            Tab(text: 'Videos', icon: Icon(Icons.video_library)),
+            Tab(text: 'Analytics', icon: Icon(Icons.analytics)),
+            Tab(text: 'Settings', icon: Icon(Icons.settings)),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadVideos,
-            tooltip: 'Refresh Videos',
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: Column(
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          // Filters Section
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Channel Selection
-                Consumer<ChannelProvider>(
-                  builder: (context, channelProvider, child) {
-                    final channels = channelProvider.channels;
-
-                    return DropdownButtonFormField<String>(
-                      value: _selectedChannelId,
-                      decoration: const InputDecoration(
-                        labelText: 'Select Channel',
-                        border: OutlineInputBorder(),
-                      ),
-                      hint: const Text('Choose a channel'),
-                      items: channels
-                          .map(
-                            (channel) => DropdownMenuItem(
-                              value: channel.id,
-                              child: Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 12,
-                                    backgroundImage: NetworkImage(
-                                      channel.imageUrl,
-                                    ),
-                                    onBackgroundImageError: (_, __) {},
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      channel.name,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  Text(
-                                    '(${channel.videos.length})',
-                                    style: Theme.of(
-                                      context,
-                                    ).textTheme.bodySmall,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _selectedChannelId = value;
-                        });
-                        if (value != null) {
-                          _loadVideos();
-                        }
-                      },
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Search and Language Filter Row
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'Search videos...',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                    });
-                                  },
-                                )
-                              : null,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                        },
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedLanguage,
-                        decoration: const InputDecoration(
-                          labelText: 'Language',
-                          border: OutlineInputBorder(),
-                        ),
-                        items: AppConstants.languageOptions.entries
-                            .map(
-                              (entry) => DropdownMenuItem(
-                                value: entry.value,
-                                child: Text(entry.key),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedLanguage = value!;
-                          });
-                          _loadVideos();
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-
-          // Videos List
-          Expanded(
-            child: _selectedChannelId == null
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.video_library_outlined,
-                          size: 64,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'Select a channel to view videos',
-                          style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(color: Colors.grey.shade600),
-                        ),
-                      ],
-                    ),
-                  )
-                : Consumer<VideoProvider>(
-                    builder: (context, videoProvider, child) {
-                      if (videoProvider.isLoading) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final videos = videoProvider.videos;
-                      final filteredVideos = _getFilteredVideos(videos);
-
-                      if (filteredVideos.isEmpty) {
-                        return Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.video_library_outlined,
-                                size: 64,
-                                color: Colors.grey.shade400,
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                videos.isEmpty
-                                    ? 'No videos found'
-                                    : 'No matching videos',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(color: Colors.grey.shade600),
-                              ),
-                              if (videos.isEmpty) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Upload your first video',
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(color: Colors.grey.shade500),
-                                ),
-                              ],
-                            ],
-                          ),
-                        );
-                      }
-
-                      return ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filteredVideos.length,
-                        itemBuilder: (context, index) {
-                          final video = filteredVideos[index];
-                          return _buildVideoCard(video);
-                        },
-                      );
-                    },
-                  ),
-          ),
+          _buildVideosTab(),
+          _buildAnalyticsTab(),
+          _buildSettingsTab(),
         ],
       ),
       floatingActionButton: _selectedChannelId != null
@@ -348,54 +405,363 @@ class _VideoManagementScreenState extends State<VideoManagementScreen> {
     );
   }
 
+  // Build videos tab
+  Widget _buildVideosTab() {
+    return Column(
+      children: [
+        // Filters section
+        _buildFiltersSection(),
+
+        // Content area
+        Expanded(child: _buildVideoContent()),
+      ],
+    );
+  }
+
+  // Build filters section
+  Widget _buildFiltersSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Channel and language selection row
+          Row(
+            children: [
+              // Language dropdown
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedLanguage,
+                  decoration: const InputDecoration(
+                    labelText: 'Language',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: AppConstants.languageOptions.entries
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.value,
+                          child: Text(
+                            entry.key,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _onLanguageChanged,
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Channel dropdown
+              Expanded(
+                flex: 3,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedChannelId,
+                  decoration: const InputDecoration(
+                    labelText: 'Channel',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: _channels
+                      .map(
+                        (channel) => DropdownMenuItem(
+                          value: channel.id,
+                          child: SizedBox(
+                            width: double.infinity,
+                            child: Text(
+                              channel.name,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 14),
+                              maxLines: 1,
+                            ),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _onChannelChanged,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Search bar
+          SizedBox(
+            width: double.infinity,
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                labelText: 'Search videos...',
+                hintText: 'Enter video title or ID',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 14),
+              onChanged: _onSearchChanged,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build video content area
+  Widget _buildVideoContent() {
+    if (_isLoading) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading videos...'),
+          ],
+        ),
+      );
+    }
+
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error, size: 48, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(_error!, textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(onPressed: _loadVideos, child: const Text('Retry')),
+          ],
+        ),
+      );
+    }
+
+    if (_selectedChannelId == null) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.video_library_outlined, size: 48, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('Select a channel to manage videos'),
+          ],
+        ),
+      );
+    }
+
+    final filteredVideos = _filteredVideos;
+
+    if (filteredVideos.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.video_library_outlined,
+              size: 48,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(_videos.isEmpty ? 'No videos found' : 'No matching videos'),
+            const SizedBox(height: 8),
+            Text(
+              _videos.isEmpty
+                  ? 'Add your first video to get started'
+                  : 'Try adjusting your search terms',
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return _buildVideoList(filteredVideos);
+  }
+
+  // Build video list
+  Widget _buildVideoList(List<Video> videos) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: videos.length,
+      itemBuilder: (context, index) {
+        final video = videos[index];
+        return _buildVideoCard(video);
+      },
+    );
+  }
+
+  // Build video card
   Widget _buildVideoCard(Video video) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        leading: Container(
-          width: 80,
-          height: 60,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: video.link.isNotEmpty
-              ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    'https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg',
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.video_library, size: 32);
-                    },
-                  ),
-                )
-              : const Icon(Icons.video_library, size: 32),
-        ),
-        title: Text(
-          video.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        subtitle: Column(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('ID: ${video.videoId}'),
-            if (video.link.isNotEmpty) Text('Link: ${video.link}'),
+            // Video title and actions
             Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        video.title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'ID: ${video.videoId}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                PopupMenuButton<String>(
+                  onSelected: (value) => _handleVideoAction(video, value),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'view_transcript',
+                      child: Row(
+                        children: [
+                          Icon(Icons.description),
+                          SizedBox(width: 8),
+                          Text('View Transcript'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit),
+                          SizedBox(width: 8),
+                          Text('Edit Video'),
+                        ],
+                      ),
+                    ),
+                    if (video.link.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'open_link',
+                        child: Row(
+                          children: [
+                            Icon(Icons.open_in_new),
+                            SizedBox(width: 8),
+                            Text('Open Link'),
+                          ],
+                        ),
+                      ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem(
+                      value: 'visibility_public',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.public,
+                            color: video.visibility == 'public'
+                                ? Colors.green
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Set Public'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'visibility_private',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.lock,
+                            color: video.visibility == 'private'
+                                ? Colors.orange
+                                : null,
+                          ),
+                          const SizedBox(width: 8),
+                          const Text('Set Private'),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    const PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Video metadata
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 Chip(
                   label: Text(
                     video.visibility.toUpperCase(),
                     style: const TextStyle(fontSize: 10),
                   ),
-                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   backgroundColor: video.visibility == 'public'
-                      ? Colors.green.withOpacity(0.2)
-                      : Colors.orange.withOpacity(0.2),
+                      ? Colors.green.withValues(alpha: 0.2)
+                      : Colors.orange.withValues(alpha: 0.2),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                const SizedBox(width: 8),
                 Chip(
                   label: Text(
                     _formatDate(video.createdDate),
@@ -403,376 +769,79 @@ class _VideoManagementScreenState extends State<VideoManagementScreen> {
                   ),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
+                if (video.link.isNotEmpty)
+                  Chip(
+                    label: const Text(
+                      'HAS LINK',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                    backgroundColor: Colors.blue.withValues(alpha: 0.2),
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
               ],
             ),
           ],
         ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.info_outline),
-              onPressed: () => _showVideoDetails(video),
-              tooltip: 'View Details',
-            ),
-            if (video.link.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.open_in_new),
-                onPressed: () {
-                  // TODO: Launch URL
-                  AppLogger.info('Opening video link: ${video.link}');
-                },
-                tooltip: 'Open Video Link',
-              ),
-          ],
-        ),
-        isThreeLine: true,
       ),
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
-  }
-}
-
-class _VideoDetailsDialog extends StatefulWidget {
-  final Video video;
-  final VoidCallback onVideoUpdated;
-
-  const _VideoDetailsDialog({
-    required this.video,
-    required this.onVideoUpdated,
-  });
-
-  @override
-  State<_VideoDetailsDialog> createState() => _VideoDetailsDialogState();
-}
-
-class _VideoDetailsDialogState extends State<_VideoDetailsDialog> {
-  late TextEditingController _titleController;
-  late String _visibility;
-
-  @override
-  void initState() {
-    super.initState();
-    _titleController = TextEditingController(text: widget.video.title);
-    _visibility = widget.video.visibility;
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Video Details'),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Video Preview
-              if (widget.video.link.isNotEmpty) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    'https://img.youtube.com/vi/${widget.video.videoId}/mqdefault.jpg',
-                    width: double.infinity,
-                    height: 200,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        width: double.infinity,
-                        height: 200,
-                        color: Colors.grey.shade200,
-                        child: const Icon(Icons.video_library, size: 64),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Title Field
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 16),
-
-              // Video ID (Read-only)
-              TextFormField(
-                initialValue: widget.video.videoId,
-                decoration: const InputDecoration(
-                  labelText: 'Video ID',
-                  border: OutlineInputBorder(),
-                ),
-                enabled: false,
-              ),
-              const SizedBox(height: 16),
-
-              // Link (Read-only)
-              if (widget.video.link.isNotEmpty) ...[
-                TextFormField(
-                  initialValue: widget.video.link,
-                  decoration: const InputDecoration(
-                    labelText: 'Link',
-                    border: OutlineInputBorder(),
-                  ),
-                  enabled: false,
-                ),
-                const SizedBox(height: 16),
-              ],
-
-              // Visibility Dropdown
-              DropdownButtonFormField<String>(
-                value: _visibility,
-                decoration: const InputDecoration(
-                  labelText: 'Visibility',
-                  border: OutlineInputBorder(),
-                ),
-                items: AppConstants.visibilityOptions.entries
-                    .where((entry) => entry.value != AppConstants.visibilityAll)
-                    .map(
-                      (entry) => DropdownMenuItem(
-                        value: entry.value,
-                        child: Text(entry.key),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _visibility = value!;
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Metadata
-              Text(
-                'Created: ${widget.video.createdDate}',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _saveChanges,
-          child: const Text('Save Changes'),
-        ),
-      ],
-    );
-  }
-
-  void _saveChanges() {
-    // TODO: Implement video update functionality
-    AppLogger.info('Updating video: ${widget.video.videoId}');
-    AppLogger.info('New title: ${_titleController.text}');
-    AppLogger.info('New visibility: $_visibility');
-
-    // For now, just close the dialog
-    Navigator.of(context).pop();
-    widget.onVideoUpdated();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Video updated successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
-  }
-}
-
-class _AddVideoDialog extends StatefulWidget {
-  final String channelId;
-  final VoidCallback onVideoAdded;
-
-  const _AddVideoDialog({required this.channelId, required this.onVideoAdded});
-
-  @override
-  State<_AddVideoDialog> createState() => _AddVideoDialogState();
-}
-
-class _AddVideoDialogState extends State<_AddVideoDialog> {
-  final _formKey = GlobalKey<FormState>();
-  final _linkController = TextEditingController();
-  final _titleController = TextEditingController();
-  String _visibility = 'public';
-  bool _isLoading = false;
-
-  @override
-  void dispose() {
-    _linkController.dispose();
-    _titleController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Add Video'),
-      content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.8,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: _linkController,
-                decoration: const InputDecoration(
-                  labelText: 'YouTube Video URL *',
-                  hintText: 'https://www.youtube.com/watch?v=...',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Video URL is required';
-                  }
-                  if (!value.contains('youtube.com') &&
-                      !value.contains('youtu.be')) {
-                    return 'Please enter a valid YouTube URL';
-                  }
-                  return null;
-                },
-                onChanged: _extractVideoTitle,
-              ),
-              const SizedBox(height: 16),
-
-              TextFormField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Video Title *',
-                  hintText: 'Enter video title',
-                  border: OutlineInputBorder(),
-                ),
-                maxLines: 2,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Video title is required';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              DropdownButtonFormField<String>(
-                value: _visibility,
-                decoration: const InputDecoration(
-                  labelText: 'Visibility',
-                  border: OutlineInputBorder(),
-                ),
-                items: AppConstants.visibilityOptions.entries
-                    .where((entry) => entry.value != AppConstants.visibilityAll)
-                    .map(
-                      (entry) => DropdownMenuItem(
-                        value: entry.value,
-                        child: Text(entry.key),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _visibility = value!;
-                  });
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: _isLoading
-              ? null
-              : () {
-                  Navigator.of(context).pop();
-                },
-          child: const Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: _isLoading ? null : _addVideo,
-          child: _isLoading
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Text('Add Video'),
-        ),
-      ],
-    );
-  }
-
-  void _extractVideoTitle(String url) {
-    // TODO: Extract video title from YouTube URL
-    // For now, just log the URL
-    AppLogger.info('YouTube URL entered: $url');
-  }
-
-  void _addVideo() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      // TODO: Implement video upload functionality
-      AppLogger.info('Adding video to channel: ${widget.channelId}');
-      AppLogger.info('Video URL: ${_linkController.text}');
-      AppLogger.info('Video title: ${_titleController.text}');
-      AppLogger.info('Visibility: $_visibility');
-
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
-      if (mounted) {
-        Navigator.of(context).pop();
-        widget.onVideoAdded();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Video added successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    } catch (e) {
-      AppLogger.error('Error adding video: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to add video: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+  // Handle video actions
+  void _handleVideoAction(Video video, String action) {
+    switch (action) {
+      case 'view_transcript':
+        _showTranscriptModal(video);
+        break;
+      case 'edit':
+        _showEditVideoModal(video);
+        break;
+      case 'open_link':
+        if (video.link.isNotEmpty) {
+          _launchVideoUrl(video.link);
+        }
+        break;
+      case 'visibility_public':
+        _updateVideoVisibility(video, 'public');
+        break;
+      case 'visibility_private':
+        _updateVideoVisibility(video, 'private');
+        break;
+      case 'delete':
+        _deleteVideo(video);
+        break;
     }
+  }
+
+  // Build analytics tab (placeholder)
+  Widget _buildAnalyticsTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.analytics, size: 48, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('Analytics feature coming soon'),
+        ],
+      ),
+    );
+  }
+
+  // Build settings tab (placeholder)
+  Widget _buildSettingsTab() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.settings, size: 48, color: Colors.grey),
+          SizedBox(height: 16),
+          Text('Settings feature coming soon'),
+        ],
+      ),
+    );
+  }
+
+  // Format date
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
