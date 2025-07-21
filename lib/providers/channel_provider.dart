@@ -41,8 +41,8 @@ class ChannelProvider extends ChangeNotifier {
         'Fetching channels with language filter: $_languageFilter',
       );
       final channelData = await _apiService.getChannels(
-        language: _languageFilter,
         visibility: AppConstants.visibilityPublic,
+        language: _languageFilter,
       );
       _channels = channelData;
       AppLogger.info('Successfully fetched ${_channels.length} channels');

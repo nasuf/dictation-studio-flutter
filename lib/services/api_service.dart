@@ -384,6 +384,79 @@ class ApiService {
       rethrow;
     }
   }
+
+  // Admin-related API methods
+
+  // Get all users for admin
+  Future<Map<String, dynamic>> getAllUsers() async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/all',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get all users API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get all channels for admin (raw response)
+  Future<dynamic> getChannelsRaw(String visibility, String language) async {
+    try {
+      return await _makeRequest<dynamic>(
+        '/service/channel',
+        (data) => data, // Return data as-is without casting
+        method: 'GET',
+        queryParams: {'visibility': visibility, 'language': language},
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get channels raw API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get video list for a specific channel (raw response)
+  Future<dynamic> getVideoListRaw(
+    String channelId,
+    String visibility, [
+    String? language,
+  ]) async {
+    try {
+      Map<String, String> queryParams = {'visibility': visibility};
+      if (language != null) {
+        queryParams['language'] = language;
+      }
+
+      return await _makeRequest<dynamic>(
+        '/service/video-list/$channelId',
+        (data) => data, // Return data as-is without casting
+        method: 'GET',
+        queryParams: queryParams,
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get video list raw API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get admin statistics (channels and videos count)
+  Future<Map<String, dynamic>> getAdminStats() async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/admin/stats',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get admin stats API error: $e');
+      rethrow;
+    }
+  }
 }
 
 // Singleton instance

@@ -15,11 +15,17 @@ class ProfileScreen extends StatefulWidget {
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends State<ProfileScreen>
+    with AutomaticKeepAliveClientMixin {
   int? _totalDuration;
   List<CalendarHeatmapData> _dailyDurations = [];
   bool _loadingDuration = true;
   bool _previousLoginState = false;
+  bool _hasLoadedData = false; // Track if data has been loaded before
+
+  // Keep the state alive when switching tabs
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -27,8 +33,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     // Don't load data here - wait for user to be logged in
   }
 
-  Future<void> _loadUserDuration() async {
+  Future<void> _loadUserDuration({bool forceRefresh = false}) async {
+    // Only load if we haven't loaded before or if it's a forced refresh
+    if (!forceRefresh && _hasLoadedData) {
+      AppLogger.info('📊 Data already loaded, skipping...');
+      return;
+    }
+
     AppLogger.info('📊 Starting to load user duration data...');
+
+    setState(() {
+      _loadingDuration = true;
+    });
 
     // Check token status first
     final accessToken = await TokenManager.getAccessToken();
@@ -59,6 +75,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           AppLogger.info('📈 Total duration: $_totalDuration seconds');
 
           _loadingDuration = false;
+          _hasLoadedData = true; // Mark as loaded
 
           // Convert duration data to calendar format
           final dailyDurations =
@@ -91,9 +108,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _loadingDuration = false;
           _totalDuration = 0; // Set to 0 instead of null for display
           _dailyDurations = [];
+          // Don't set _hasLoadedData = true on error, allow retry
         });
       }
     }
+  }
+
+  // Manual refresh function for the refresh button
+  Future<void> _refreshData() async {
+    AppLogger.info('🔄 Manual refresh triggered');
+    await _loadUserDuration(forceRefresh: true);
   }
 
   String _formatDuration(int seconds) {
@@ -105,6 +129,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
     AppLogger.info('ProfileScreen build called');
     return Scaffold(
       body: Consumer<AuthProvider>(
@@ -117,7 +142,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           if (authProvider.isLoggedIn && !_previousLoginState) {
             AppLogger.info('User just logged in, loading duration data...');
             _previousLoginState = true;
-            // Load data when user logs in
+            // Load data when user logs in (only if not already loaded)
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _loadUserDuration();
             });
@@ -128,6 +153,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             _totalDuration = null;
             _dailyDurations = [];
             _loadingDuration = true;
+            _hasLoadedData = false; // Reset loaded state
           }
 
           if (authProvider.isLoading) {
@@ -437,7 +463,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 const SizedBox(height: 24),
 
-                // Calendar Heatmap
+                // Calendar Heatmap with Refresh Button
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
@@ -462,10 +488,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: Colors.blue.shade600,
                             ),
                             const SizedBox(width: 8),
-                            Text(
-                              'Dictation Activities',
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            Expanded(
+                              child: Text(
+                                'Dictation Activities',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            // Refresh Button
+                            IconButton(
+                              onPressed: _loadingDuration ? null : _refreshData,
+                              icon: _loadingDuration
+                                  ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.blue.shade600,
+                                            ),
+                                      ),
+                                    )
+                                  : Icon(
+                                      Icons.refresh,
+                                      color: Colors.blue.shade600,
+                                    ),
+                              tooltip: 'Refresh heatmap data',
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.blue.shade50,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
                             ),
                           ],
                         ),

@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/channel_provider.dart';
 import 'providers/video_provider.dart';
 import 'providers/auth_provider.dart';
+import 'providers/admin_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/video_list_screen.dart';
 import 'services/deep_link_service.dart';
@@ -110,6 +111,12 @@ class DictationStudioApp extends StatelessWidget {
           create: (_) {
             AppLogger.info('🎬 Creating VideoProvider...');
             return VideoProvider();
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            AppLogger.info('⚙️ Creating AdminProvider...');
+            return AdminProvider();
           },
         ),
       ],
