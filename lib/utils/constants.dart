@@ -2,12 +2,12 @@ class AppConstants {
   // API Configuration is now handled by AppEnvironment
   // This class only contains UI and other constants
 
-  // Visibility Options
+  // Visibility Options - Match React UI values
   static const String visibilityPublic = 'public';
   static const String visibilityPrivate = 'private';
   static const String visibilityAll = 'all';
 
-  // Languages
+  // Languages - Match React UI values
   static const String languageEnglish = 'en';
   static const String languageChinese = 'zh';
   static const String languageJapanese = 'ja';
@@ -34,6 +34,22 @@ class AppConstants {
   // Image aspect ratios
   static const double channelImageAspectRatio = 16 / 9;
   static const double videoThumbnailAspectRatio = 16 / 9;
+
+  // Language Options Map - Match React UI structure
+  static const Map<String, String> languageOptions = {
+    'All': languageAll,
+    'English': languageEnglish,
+    'Chinese': languageChinese,
+    'Japanese': languageJapanese,
+    'Korean': languageKorean,
+  };
+
+  // Visibility Options Map - Match React UI structure
+  static const Map<String, String> visibilityOptions = {
+    'All': visibilityAll,
+    'Public': visibilityPublic,
+    'Private': visibilityPrivate,
+  };
 }
 
 class LanguageHelper {

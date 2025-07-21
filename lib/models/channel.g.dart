@@ -13,7 +13,9 @@ Channel _$ChannelFromJson(Map<String, dynamic> json) => Channel(
   visibility: json['visibility'] as String,
   language: json['language'] as String,
   link: json['link'] as String,
-  videos: (json['videos'] as List<dynamic>).map((e) => e as String).toList(),
+  videos:
+      (json['videos'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      [],
 );
 
 Map<String, dynamic> _$ChannelToJson(Channel instance) => <String, dynamic>{

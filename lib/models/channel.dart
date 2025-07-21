@@ -11,6 +11,7 @@ class Channel {
   final String visibility;
   final String language;
   final String link;
+  @JsonKey(defaultValue: <String>[])
   final List<String> videos;
 
   const Channel({
@@ -23,8 +24,23 @@ class Channel {
     required this.videos,
   });
 
-  factory Channel.fromJson(Map<String, dynamic> json) =>
-      _$ChannelFromJson(json);
+  factory Channel.fromJson(Map<String, dynamic> json) {
+    // Handle null values with defaults
+    return Channel(
+      name: json['name'] as String? ?? '',
+      id: json['id'] as String? ?? '',
+      imageUrl: json['image_url'] as String? ?? '',
+      visibility: json['visibility'] as String? ?? 'public',
+      language: json['language'] as String? ?? 'en',
+      link: json['link'] as String? ?? '',
+      videos:
+          (json['videos'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          <String>[],
+    );
+  }
+
   Map<String, dynamic> toJson() => _$ChannelToJson(this);
 
   // Get display language name
@@ -48,4 +64,25 @@ class Channel {
 
   // Get video count
   int get videoCount => videos.length;
+
+  // Copy with method for updating properties
+  Channel copyWith({
+    String? name,
+    String? id,
+    String? imageUrl,
+    String? visibility,
+    String? language,
+    String? link,
+    List<String>? videos,
+  }) {
+    return Channel(
+      name: name ?? this.name,
+      id: id ?? this.id,
+      imageUrl: imageUrl ?? this.imageUrl,
+      visibility: visibility ?? this.visibility,
+      language: language ?? this.language,
+      link: link ?? this.link,
+      videos: videos ?? this.videos,
+    );
+  }
 }

@@ -109,9 +109,24 @@ class ApiService {
       await TokenManager.handleTokensFromResponse(response);
 
       if (response.statusCode >= 200 && response.statusCode < 300) {
-        final responseData = jsonDecode(response.body);
-        AppLogger.info('Response data type: ${responseData.runtimeType}');
-        return fromJson(responseData);
+        // Check for null or empty response body
+        if (response.body.isEmpty) {
+          AppLogger.error('❌ Empty response body received');
+          throw ApiException('Empty response from server', response.statusCode);
+        }
+
+        try {
+          final responseData = jsonDecode(response.body);
+          AppLogger.info('Response data type: ${responseData.runtimeType}');
+          return fromJson(responseData);
+        } catch (jsonError) {
+          AppLogger.error('❌ JSON decode error: $jsonError');
+          AppLogger.error('❌ Response body: ${response.body}');
+          throw ApiException(
+            'Invalid JSON response: $jsonError',
+            response.statusCode,
+          );
+        }
       } else if (response.statusCode == 401) {
         // Unauthorized - clear tokens and throw exception
         AppLogger.warning('❌ Unauthorized (401) - clearing tokens');
@@ -148,22 +163,47 @@ class ApiService {
         '/service/channel',
         (dynamic responseData) {
           AppLogger.info('Processing channels response...');
+          AppLogger.info('Response data type: ${responseData.runtimeType}');
+          AppLogger.info('Response data: $responseData');
+
+          if (responseData == null) {
+            AppLogger.error('❌ Response data is null');
+            throw ApiException('Null response data received');
+          }
+
           if (responseData is List) {
             AppLogger.info(
               'Response is List with ${responseData.length} items',
             );
             return responseData
-                .map((item) => Channel.fromJson(item as Map<String, dynamic>))
+                .map((item) {
+                  if (item == null) {
+                    AppLogger.warning('⚠️ Skipping null item in channel list');
+                    return null;
+                  }
+                  return Channel.fromJson(item as Map<String, dynamic>);
+                })
+                .where((channel) => channel != null)
+                .cast<Channel>()
                 .toList();
           } else if (responseData is Map && responseData['data'] is List) {
             AppLogger.info('Response is wrapped object with data array');
             final data = responseData['data'] as List;
             return data
-                .map((item) => Channel.fromJson(item as Map<String, dynamic>))
+                .map((item) {
+                  if (item == null) {
+                    AppLogger.warning('⚠️ Skipping null item in channel list');
+                    return null;
+                  }
+                  return Channel.fromJson(item as Map<String, dynamic>);
+                })
+                .where((channel) => channel != null)
+                .cast<Channel>()
                 .toList();
           } else {
+            AppLogger.error('❌ Invalid response format: $responseData');
             throw ApiException(
-              'Invalid response format: expected array or object with data array',
+              'Invalid response format: expected array or object with data array, got ${responseData.runtimeType}',
             );
           }
         },
@@ -454,6 +494,58 @@ class ApiService {
       );
     } catch (e) {
       AppLogger.error('Get admin stats API error: $e');
+      rethrow;
+    }
+  }
+
+  // Add channels (admin operation)
+  Future<Map<String, dynamic>> addChannels(List<Channel> channels) async {
+    try {
+      final channelsData = channels.map((channel) => channel.toJson()).toList();
+
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/channel',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'channels': channelsData},
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Add channels API error: $e');
+      rethrow;
+    }
+  }
+
+  // Update channel (admin operation)
+  Future<Map<String, dynamic>> updateChannel(
+    String channelId,
+    Map<String, dynamic> updateData,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/channel/$channelId',
+        (data) => data as Map<String, dynamic>,
+        method: 'PUT',
+        body: updateData,
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Update channel API error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete channel (admin operation)
+  Future<Map<String, dynamic>> deleteChannel(String channelId) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/channel/$channelId',
+        (data) => data as Map<String, dynamic>,
+        method: 'DELETE',
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Delete channel API error: $e');
       rethrow;
     }
   }

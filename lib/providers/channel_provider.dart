@@ -29,7 +29,7 @@ class ChannelProvider extends ChangeNotifier {
   }
 
   // Fetch channels from API
-  Future<void> fetchChannels() async {
+  Future<void> fetchChannels({String? language, String? visibility}) async {
     // Prevent duplicate requests
     if (_isLoading) return;
 
@@ -37,12 +37,18 @@ class ChannelProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      final langFilter = language ?? _languageFilter;
+      final visFilter =
+          visibility ??
+          AppConstants
+              .visibilityAll; // Changed from visibilityPublic to visibilityAll
+
       AppLogger.info(
-        'Fetching channels with language filter: $_languageFilter',
+        'Fetching channels with language filter: $langFilter, visibility: $visFilter',
       );
       final channelData = await _apiService.getChannels(
-        visibility: AppConstants.visibilityPublic,
-        language: _languageFilter,
+        visibility: visFilter,
+        language: langFilter,
       );
       _channels = channelData;
       AppLogger.info('Successfully fetched ${_channels.length} channels');
@@ -51,6 +57,65 @@ class ChannelProvider extends ChangeNotifier {
       _setError('Failed to load channels: ${e.toString()}');
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Add new channel
+  Future<void> addChannel(Channel channel) async {
+    try {
+      AppLogger.info('Adding new channel: ${channel.name}');
+      await _apiService.addChannels([channel]);
+
+      // Add to local list
+      _channels.add(channel);
+      notifyListeners();
+
+      AppLogger.info('Successfully added channel: ${channel.name}');
+    } catch (e) {
+      AppLogger.error('Error adding channel: $e');
+      rethrow;
+    }
+  }
+
+  // Update existing channel
+  Future<void> updateChannel(
+    String channelId, {
+    String? name,
+    String? imageUrl,
+    String? link,
+    String? language,
+    String? visibility,
+  }) async {
+    try {
+      AppLogger.info('Updating channel: $channelId');
+
+      final updateData = <String, dynamic>{};
+      if (name != null) updateData['name'] = name;
+      if (imageUrl != null) updateData['image_url'] = imageUrl;
+      if (link != null) updateData['link'] = link;
+      if (language != null) updateData['language'] = language;
+      if (visibility != null) updateData['visibility'] = visibility;
+
+      await _apiService.updateChannel(channelId, updateData);
+
+      // Update local list
+      final index = _channels.indexWhere((c) => c.id == channelId);
+      if (index != -1) {
+        final updatedChannel = _channels[index].copyWith(
+          name: name,
+          imageUrl: imageUrl,
+          link: link,
+          language: language,
+          visibility: visibility,
+        );
+        _channels[index] = updatedChannel;
+        notifyListeners();
+      }
+
+      AppLogger.info('Successfully updated channel: $channelId');
+    } catch (e) {
+      AppLogger.error('Error updating channel: $e');
+      rethrow;
     }
   }
 

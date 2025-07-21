@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/admin_provider.dart';
 import '../providers/auth_provider.dart';
 import '../utils/logger.dart';
@@ -307,7 +308,7 @@ class _AdminScreenState extends State<AdminScreen>
             'Add, edit, or remove channels',
             () {
               AppLogger.info('📺 Manage Channels tapped');
-              // TODO: Navigate to channel management
+              context.push('/admin/channels');
             },
           ),
           _buildManagementItem(
@@ -317,7 +318,7 @@ class _AdminScreenState extends State<AdminScreen>
             'Upload and organize videos',
             () {
               AppLogger.info('🎬 Manage Videos tapped');
-              // TODO: Navigate to video management
+              context.push('/admin/videos');
             },
           ),
           _buildManagementItem(
@@ -327,7 +328,7 @@ class _AdminScreenState extends State<AdminScreen>
             'View and manage user accounts',
             () {
               AppLogger.info('👥 User Management tapped');
-              // TODO: Navigate to user management
+              context.push('/admin/users');
             },
           ),
           _buildManagementItem(
@@ -337,7 +338,7 @@ class _AdminScreenState extends State<AdminScreen>
             'View usage statistics and reports',
             () {
               AppLogger.info('📊 Analytics tapped');
-              // TODO: Navigate to analytics
+              context.push('/admin/analytics');
             },
           ),
         ],

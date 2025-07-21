@@ -8,6 +8,10 @@ import 'providers/auth_provider.dart';
 import 'providers/admin_provider.dart';
 import 'screens/main_screen.dart';
 import 'screens/video_list_screen.dart';
+import 'screens/admin/channel_management_screen.dart';
+import 'screens/admin/video_management_screen.dart';
+import 'screens/admin/user_management_screen.dart';
+import 'screens/admin/analytics_screen.dart';
 import 'services/deep_link_service.dart';
 import 'utils/logger.dart';
 
@@ -242,6 +246,40 @@ class DictationStudioApp extends StatelessWidget {
                 channelName: channelName,
               ),
             );
+          },
+        ),
+
+        // Admin Management Routes
+        GoRoute(
+          path: '/admin/channels',
+          name: 'admin-channels',
+          pageBuilder: (context, state) {
+            AppLogger.info('📺 Navigating to channel management');
+            return const MaterialPage(child: ChannelManagementScreen());
+          },
+        ),
+        GoRoute(
+          path: '/admin/videos',
+          name: 'admin-videos',
+          pageBuilder: (context, state) {
+            AppLogger.info('🎬 Navigating to video management');
+            return const MaterialPage(child: VideoManagementScreen());
+          },
+        ),
+        GoRoute(
+          path: '/admin/users',
+          name: 'admin-users',
+          pageBuilder: (context, state) {
+            AppLogger.info('👥 Navigating to user management');
+            return const MaterialPage(child: UserManagementScreen());
+          },
+        ),
+        GoRoute(
+          path: '/admin/analytics',
+          name: 'admin-analytics',
+          pageBuilder: (context, state) {
+            AppLogger.info('📊 Navigating to analytics');
+            return const MaterialPage(child: AnalyticsScreen());
           },
         ),
       ],
