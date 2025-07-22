@@ -628,6 +628,53 @@ class ApiService {
       rethrow;
     }
   }
+
+  // User Management API methods
+
+  // Update user role (admin operation)
+  Future<Map<String, dynamic>> updateUserRole(List<String> emails, String role) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/auth/user/role',
+        (data) => data as Map<String, dynamic>,
+        method: 'PUT',
+        body: {'emails': emails, 'role': role},
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Update user role API error: $e');
+      rethrow;
+    }
+  }
+
+  // Update user plan (admin operation)  
+  Future<Map<String, dynamic>> updateUserPlan(
+    List<String> emails, 
+    String plan, {
+    int? duration,
+  }) async {
+    try {
+      final body = {
+        'emails': emails,
+        'plan': plan,
+      };
+      
+      if (duration != null) {
+        body['duration'] = duration;
+      }
+
+      return await _makeRequest<Map<String, dynamic>>(
+        '/auth/user/plan',
+        (data) => data as Map<String, dynamic>,
+        method: 'PUT',
+        body: body,
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Update user plan API error: $e');
+      rethrow;
+    }
+  }
 }
 
 // Singleton instance

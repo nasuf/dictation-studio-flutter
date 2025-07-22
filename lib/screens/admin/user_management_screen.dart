@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../models/user.dart';
 import '../../utils/logger.dart';
+import '../../services/api_service.dart';
 
 class UserManagementScreen extends StatefulWidget {
   const UserManagementScreen({super.key});
@@ -37,56 +38,46 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     });
 
     try {
-      // TODO: Implement actual API call to get all users
-      AppLogger.info('Loading users...');
+      AppLogger.info('Loading users from API...');
+      
+      final response = await apiService.getAllUsers();
+      
+      // Handle different response formats
+      List<dynamic> usersData;
+      try {
+        // Check if response is a Map containing user data
+        final responseMap = response as Map<String, dynamic>?;
+        if (responseMap != null) {
+          // If response has a 'data' field or 'users' field
+          if (responseMap.containsKey('data')) {
+            final data = responseMap['data'];
+            usersData = data is List ? data : [data];
+          } else if (responseMap.containsKey('users')) {
+            final users = responseMap['users'];
+            usersData = users is List ? users : [users];
+          } else {
+            // If response is direct user data
+            usersData = [responseMap];
+          }
+        } else {
+          // Assume it's already a list
+          usersData = response as List<dynamic>;
+        }
+      } catch (e) {
+        AppLogger.error('Failed to parse API response: $e');
+        throw Exception('Invalid API response format');
+      }
+      
+      _users = usersData.map((userData) {
+        try {
+          return User.fromJson(userData as Map<String, dynamic>);
+        } catch (e) {
+          AppLogger.warning('Failed to parse user data: $userData, error: $e');
+          return null;
+        }
+      }).where((user) => user != null).cast<User>().toList();
 
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-
-      // Mock user data for demonstration
-      _users = [
-        User(
-          id: 'user1',
-          email: 'admin@dictationstudio.com',
-          username: 'Admin User',
-          role: 'Admin',
-          avatar: 'https://via.placeholder.com/150',
-          language: 'en',
-          plan: Plan(name: 'Premium', status: 'active'),
-          dictationConfig: DictationConfig(shortcuts: ShortcutKeys()),
-          createdAt: DateTime.now()
-              .subtract(const Duration(days: 30))
-              .millisecondsSinceEpoch,
-        ),
-        User(
-          id: 'user2',
-          email: 'user1@example.com',
-          username: 'Regular User',
-          role: 'User',
-          avatar: 'https://via.placeholder.com/150',
-          language: 'en',
-          plan: Plan(name: 'Free', status: 'active'),
-          dictationConfig: DictationConfig(shortcuts: ShortcutKeys()),
-          createdAt: DateTime.now()
-              .subtract(const Duration(days: 15))
-              .millisecondsSinceEpoch,
-        ),
-        User(
-          id: 'user3',
-          email: 'premium@example.com',
-          username: 'Premium User',
-          role: 'User',
-          avatar: 'https://via.placeholder.com/150',
-          language: 'en',
-          plan: Plan(name: 'Premium', status: 'active'),
-          dictationConfig: DictationConfig(shortcuts: ShortcutKeys()),
-          createdAt: DateTime.now()
-              .subtract(const Duration(days: 7))
-              .millisecondsSinceEpoch,
-        ),
-      ];
-
-      AppLogger.info('Loaded ${_users.length} users');
+      AppLogger.info('Loaded ${_users.length} users from API');
     } catch (e) {
       AppLogger.error('Failed to load users: $e');
       if (mounted) {
@@ -167,15 +158,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
+              color: Theme.of(context).colorScheme.primaryContainer,
+              border: Border(
+                bottom: BorderSide(
+                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  width: 1,
                 ),
-              ],
+              ),
             ),
             child: Column(
               children: [
@@ -274,13 +263,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         Icon(
                           Icons.people_outline,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: Theme.of(context).colorScheme.outline,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No users found',
                           style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(color: Colors.grey.shade600),
+                              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
                         ),
                         if (_searchQuery.isNotEmpty ||
                             _selectedRole != 'All' ||
@@ -289,7 +278,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           Text(
                             'Try adjusting your filters',
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Colors.grey.shade500),
+                                ?.copyWith(color: Theme.of(context).colorScheme.outline),
                           ),
                         ],
                       ],
@@ -340,8 +329,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   label: Text(user.role, style: const TextStyle(fontSize: 10)),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   backgroundColor: user.role == 'Admin'
-                      ? Colors.red.withOpacity(0.2)
-                      : Colors.blue.withOpacity(0.2),
+                      ? Theme.of(context).colorScheme.errorContainer
+                      : Theme.of(context).colorScheme.secondaryContainer,
                 ),
                 const SizedBox(width: 8),
                 Chip(
@@ -350,7 +339,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     style: const TextStyle(fontSize: 10),
                   ),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  backgroundColor: _getMembershipColor(user.plan.name),
+                  backgroundColor: _getMembershipColor(user.plan.name, context),
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -371,15 +360,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Color _getMembershipColor(String membership) {
+  Color _getMembershipColor(String membership, BuildContext context) {
+    final theme = Theme.of(context);
     switch (membership) {
       case 'Premium':
-        return Colors.orange.withOpacity(0.2);
+        return theme.colorScheme.tertiaryContainer;
       case 'Pro':
-        return Colors.purple.withOpacity(0.2);
+        return theme.colorScheme.primaryContainer;
       case 'Free':
       default:
-        return Colors.grey.withOpacity(0.2);
+        return theme.colorScheme.surfaceContainerHighest;
     }
   }
 
@@ -574,21 +564,47 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  void _saveChanges() {
-    // TODO: Implement actual API call to update user
-    AppLogger.info('Updating user: ${widget.user.id}');
-    AppLogger.info('New role: $_role');
-    AppLogger.info('New membership: $_membership');
-
-    Navigator.of(context).pop();
-    widget.onUserUpdated();
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('User updated successfully'),
-        backgroundColor: Colors.green,
-      ),
-    );
+  void _saveChanges() async {
+    try {
+      AppLogger.info('Updating user: ${widget.user.email}');
+      AppLogger.info('New role: $_role');
+      AppLogger.info('New membership: $_membership');
+      
+      // Update role if changed
+      if (_role != widget.user.role) {
+        await apiService.updateUserRole([widget.user.email], _role);
+        AppLogger.info('User role updated successfully');
+      }
+      
+      // Update membership if changed
+      if (_membership != widget.user.plan.name) {
+        await apiService.updateUserPlan([widget.user.email], _membership);
+        AppLogger.info('User plan updated successfully');
+      }
+      
+      if (mounted) {
+        Navigator.of(context).pop();
+        widget.onUserUpdated();
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('User updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.error('Failed to update user: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update user: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
 
