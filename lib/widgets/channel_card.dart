@@ -87,14 +87,14 @@ class ChannelCard extends StatelessWidget {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
+                          color: const Color(0xFFE8F5E8), // Light green background
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
                           '${channel.videoCount} videos',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: Colors.blue.shade700,
+                                color: const Color(0xFF2E7D32), // Dark green text
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -139,21 +139,21 @@ class ChannelCard extends StatelessWidget {
   Color _getLanguageColor() {
     switch (channel.language.toLowerCase()) {
       case 'en':
-        return Colors.blue;
+        return const Color(0xFF4CAF50); // Green for English
       case 'zh':
-        return Colors.red;
+        return const Color(0xFF66BB6A); // Light green for Chinese
       case 'es':
-        return Colors.orange;
+        return const Color(0xFF8BC34A); // Lime green for Spanish
       case 'fr':
-        return Colors.green;
+        return const Color(0xFF2E7D32); // Dark green for French
       case 'de':
-        return Colors.purple;
+        return const Color(0xFF388E3C); // Medium green for German
       case 'ja':
-        return Colors.pink;
+        return const Color(0xFF81C784); // Soft green for Japanese
       case 'ko':
-        return Colors.teal;
+        return const Color(0xFF009688); // Teal (compatible with green theme)
       default:
-        return Colors.grey;
+        return const Color(0xFF9E9E9E); // Grey for unknown
     }
   }
 }

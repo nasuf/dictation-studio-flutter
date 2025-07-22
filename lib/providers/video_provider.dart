@@ -76,6 +76,14 @@ class VideoProvider with ChangeNotifier {
     }
     _setError(null);
     _setUnauthorized(false);
+    
+    // If switching to a different channel, clear previous data immediately
+    if (_currentChannelId != channelId) {
+      _videos = [];
+      _progress = {};
+      notifyListeners();
+    }
+    
     _currentChannelId = channelId;
 
     try {

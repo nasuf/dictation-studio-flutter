@@ -35,13 +35,17 @@ class ChannelProvider extends ChangeNotifier {
 
     _setLoading(true);
     _clearError();
+    
+    // Clear previous channels immediately to prevent showing wrong data
+    _channels = [];
+    notifyListeners();
 
     try {
       final langFilter = language ?? _languageFilter;
       final visFilter =
           visibility ??
           AppConstants
-              .visibilityPublic; // Changed from visibilityPublic to visibilityAll
+              .visibilityPublic; // Ensure only public channels are fetched for regular users
 
       AppLogger.info(
         'Fetching channels with language filter: $langFilter, visibility: $visFilter',

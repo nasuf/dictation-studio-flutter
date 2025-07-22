@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/video.dart';
 import '../../models/channel.dart';
-import '../../models/transcript_item.dart';
 import '../../services/api_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/constants.dart';
@@ -31,17 +30,17 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   // Data
   List<Channel> _channels = [];
   List<Video> _videos = [];
-  List<TranscriptItem> _currentTranscript = [];
+  // List<TranscriptItem> _currentTranscript = []; // Removed unused field
 
   // Services
   final ApiService _apiService = ApiService();
 
-  // Modal states
-  bool _isAddVideoModalOpen = false;
-  bool _isEditVideoModalOpen = false;
-  bool _isTranscriptModalOpen = false;
-  Video? _editingVideo;
-  Video? _transcriptVideo;
+  // Modal states - removed unused fields
+  // bool _isAddVideoModalOpen = false;
+  // bool _isEditVideoModalOpen = false;
+  // bool _isTranscriptModalOpen = false;
+  // Video? _editingVideo;
+  // Video? _transcriptVideo;
 
   // Debounce timer
   Timer? _debounceTimer;
@@ -204,23 +203,21 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
       return;
     }
     setState(() {
-      _isAddVideoModalOpen = true;
+      // _isAddVideoModalOpen = true; // Removed unused field
     });
   }
 
   // Show edit video modal
   void _showEditVideoModal(Video video) {
     setState(() {
-      _editingVideo = video;
-      _isEditVideoModalOpen = true;
+      // _editingVideo = video; // Removed unused field
     });
   }
 
   // Show transcript modal
   void _showTranscriptModal(Video video) {
     setState(() {
-      _transcriptVideo = video;
-      _isTranscriptModalOpen = true;
+      // _transcriptVideo = video; // Removed unused field
     });
     _loadTranscript(video);
   }
@@ -237,13 +234,13 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
       await Future.delayed(const Duration(seconds: 1));
       if (mounted) {
         setState(() {
-          _currentTranscript = [
-            TranscriptItem(
-              start: 0.0,
-              end: 5.0,
-              transcript: 'Transcript loading feature coming soon...',
-            ),
-          ];
+          // _currentTranscript = [ // Removed unused field
+          //   TranscriptItem(
+          //     start: 0.0,
+          //     end: 5.0,
+          //     transcript: 'Transcript loading feature coming soon...',
+          //   ),
+          // ];
         });
       }
     } catch (e) {

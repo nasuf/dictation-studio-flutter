@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:go_router/go_router.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/channel_provider.dart';
-import '../widgets/channel_card.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 
@@ -15,183 +16,616 @@ class ChannelListScreen extends StatefulWidget {
   State<ChannelListScreen> createState() => _ChannelListScreenState();
 }
 
-class _ChannelListScreenState extends State<ChannelListScreen> {
+class _ChannelListScreenState extends State<ChannelListScreen>
+    with TickerProviderStateMixin {
   String _selectedLanguage = AppConstants.languageAll;
   bool _hasInitialized = false;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  late AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
-    // Only fetch once during initialization
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
         _hasInitialized = true;
         context.read<ChannelProvider>().fetchChannels();
+        _animationController.forward();
       }
     });
   }
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     AppLogger.info('ChannelListScreen build called');
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dictation Channels'),
-        centerTitle: false,
-        automaticallyImplyLeading: false,
-        actions: [
-          // Language filter button
-          IconButton(
-            icon: const Icon(Icons.language),
-            onPressed: () => _showLanguageFilter(context),
-            tooltip: 'Filter by Language',
+      backgroundColor: theme.colorScheme.surface,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header section - ultra compact
+            Container(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.colorScheme.primary.withValues(alpha: 0.08),
+                    theme.colorScheme.surface,
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Title and Actions Row - more compact
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Dictation Studio',
+                              style: theme.textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            Consumer<ChannelProvider>(
+                              builder: (context, provider, child) {
+                                final totalChannels = provider.channels.length;
+                                return Text(
+                                  '$totalChannels channels',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  ),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildActionButtons(theme),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 8),
+                  
+                  // Search Bar
+                  _buildSearchBar(theme),
+                  
+                  // Language Filter (only show if selected)
+                  if (_selectedLanguage != AppConstants.languageAll) ...[
+                    const SizedBox(height: 6),
+                    _buildLanguageFilter(theme),
+                  ],
+                ],
+              ),
+            ),
+            
+            // Main Content - takes remaining space
+            Expanded(
+              child: _buildChannelContent(theme),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(ThemeData theme) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(12),
           ),
-          // Refresh button
-          IconButton(
-            icon: const Icon(Icons.refresh),
+          child: IconButton(
+            icon: Icon(
+              Icons.language_outlined,
+              color: theme.colorScheme.primary,
+              size: 20,
+            ),
+            onPressed: () => _showLanguageFilter(context),
+            tooltip: 'Language Filter',
+          ),
+        ),
+        const SizedBox(width: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(
+              Icons.refresh_outlined,
+              color: theme.colorScheme.primary,
+              size: 20,
+            ),
             onPressed: () {
               context.read<ChannelProvider>().fetchChannels();
+              HapticFeedback.lightImpact();
             },
             tooltip: 'Refresh',
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar(ThemeData theme) {
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
-      body: Consumer<ChannelProvider>(
-        builder: (context, channelProvider, child) {
-          if (channelProvider.isLoading && channelProvider.channels.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  SpinKitFadingCircle(color: Colors.blue, size: 50.0),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading channels...',
-                    style: TextStyle(fontSize: 16, color: Colors.grey),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Search channels...',
+          hintStyle: TextStyle(
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            fontSize: 14,
+          ),
+          prefixIcon: Icon(
+            Icons.search_outlined,
+            color: theme.colorScheme.primary.withValues(alpha: 0.7),
+            size: 18,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: Icon(
+                    Icons.clear,
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    size: 16,
                   ),
-                ],
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {
+                      _searchQuery = '';
+                    });
+                  },
+                )
+              : null,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        ),
+        style: TextStyle(
+          color: theme.colorScheme.onSurface,
+          fontSize: 14,
+        ),
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+      ),
+    );
+  }
+
+  Widget _buildLanguageFilter(ThemeData theme) {
+    return SizedBox(
+      height: 24,
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.3),
               ),
-            );
-          }
-
-          if (channelProvider.error != null) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Error loading channels',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    channelProvider.error!,
-                    style: Theme.of(context).textTheme.bodyMedium,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => channelProvider.fetchChannels(),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (channelProvider.channels.isEmpty) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.video_library_outlined,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No channels available',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          // Filter channels by selected language
-          final filteredChannels = _selectedLanguage == AppConstants.languageAll
-              ? channelProvider.channels
-              : channelProvider.channels
-                    .where((channel) => channel.language == _selectedLanguage)
-                    .toList();
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              await channelProvider.fetchChannels();
-            },
-            child: CustomScrollView(
-              slivers: [
-                // Language filter section
-                SliverToBoxAdapter(
-                  child: Container(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Icon(Icons.filter_list, color: Colors.grey[600]),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Language: ${LanguageHelper.getLanguageName(_selectedLanguage)}',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: Colors.grey[600]),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${filteredChannels.length} ${filteredChannels.length == 1 ? 'channel' : 'channels'}',
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w500,
-                              ),
-                        ),
-                      ],
-                    ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  LanguageHelper.getLanguageName(_selectedLanguage),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
                   ),
                 ),
-
-                // Channels grid
-                SliverPadding(
-                  padding: const EdgeInsets.all(16.0),
-                  sliver: SliverMasonryGrid.count(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 16,
-                    crossAxisSpacing: 16,
-                    itemBuilder: (context, index) {
-                      final channel = filteredChannels[index];
-                      return ChannelCard(
-                        channel: channel,
-                        onTap: () {
-                          // Navigate to video list without auth requirement
-                          context.push(
-                            '/videos/${channel.id}',
-                            extra: {'channelName': channel.name},
-                          );
-                        },
-                      );
-                    },
-                    childCount: filteredChannels.length,
+                const SizedBox(width: 4),
+                GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedLanguage = AppConstants.languageAll;
+                    });
+                    context.read<ChannelProvider>().setLanguageFilter(AppConstants.languageAll);
+                  },
+                  child: Icon(
+                    Icons.close,
+                    size: 12,
+                    color: theme.colorScheme.primary,
                   ),
                 ),
-
-                // Add some bottom padding
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
               ],
             ),
-          );
-        },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChannelContent(ThemeData theme) {
+    return Consumer<ChannelProvider>(
+      builder: (context, channelProvider, child) {
+        if (channelProvider.isLoading && channelProvider.channels.isEmpty) {
+          return _buildLoadingState(theme);
+        }
+
+        if (channelProvider.error != null) {
+          return _buildErrorState(theme, channelProvider.error!);
+        }
+
+        if (channelProvider.channels.isEmpty) {
+          return _buildEmptyState(theme);
+        }
+
+        // Filter channels by selected language and search query
+        // Also ensure only public channels are shown (additional safety layer)
+        final filteredChannels = channelProvider.channels.where((channel) {
+          final isPublic = channel.visibility == AppConstants.visibilityPublic;
+          final matchesLanguage = _selectedLanguage == AppConstants.languageAll ||
+              channel.language == _selectedLanguage;
+          final matchesSearch = _searchQuery.isEmpty ||
+              channel.name.toLowerCase().contains(_searchQuery.toLowerCase());
+          return isPublic && matchesLanguage && matchesSearch;
+        }).toList();
+
+        if (filteredChannels.isEmpty) {
+          // If only search query is active, show "No results found"
+          // If only language filter or both are active, show "No channels available"
+          if (_searchQuery.isNotEmpty && _selectedLanguage == AppConstants.languageAll) {
+            return _buildNoResultsState(theme);
+          } else {
+            return _buildEmptyState(theme);
+          }
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: MasonryGridView.count(
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            itemCount: filteredChannels.length,
+            itemBuilder: (context, index) {
+              final channel = filteredChannels[index];
+              return _buildChannelCard(channel, index, theme);
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildChannelCard(dynamic channel, int index, ThemeData theme) {
+    return AnimatedBuilder(
+      animation: _animationController,
+      builder: (context, child) {
+        final animationValue = Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Interval(
+              (index * 0.05).clamp(0.0, 0.8),
+              ((index * 0.05) + 0.2).clamp(0.2, 1.0),
+              curve: Curves.easeOut,
+            ),
+          ),
+        ).value.clamp(0.0, 1.0);
+
+        return Transform.scale(
+          scale: (animationValue * 0.2 + 0.8).clamp(0.8, 1.0),
+          child: Opacity(
+            opacity: animationValue.clamp(0.0, 1.0),
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.push(
+                  '/videos/${channel.id}',
+                  extra: {'channelName': channel.name},
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Channel Image
+                    Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            _getLanguageColor(channel.language).withValues(alpha: 0.8),
+                            _getLanguageColor(channel.language).withValues(alpha: 0.6),
+                          ],
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        child: Stack(
+                          children: [
+                            // Channel Image
+                            if (channel.imageUrl?.isNotEmpty == true)
+                              CachedNetworkImage(
+                                imageUrl: channel.imageUrl!,
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                                placeholder: (context, url) => Container(
+                                  color: _getLanguageColor(channel.language).withValues(alpha: 0.3),
+                                ),
+                                errorWidget: (context, error, stackTrace) => Container(
+                                  color: _getLanguageColor(channel.language).withValues(alpha: 0.3),
+                                ),
+                              ),
+                            
+                            // Gradient Overlay
+                            Container(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [
+                                    Colors.transparent,
+                                    Colors.black.withValues(alpha: 0.3),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            
+                            // Video Count Badge
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '${channel.videoCount}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            
+                            // Language Badge
+                            Positioned(
+                              bottom: 8,
+                              left: 8,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: _getLanguageColor(channel.language),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  channel.displayLanguage,
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    
+                    // Channel Info
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(
+                        channel.name,
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SpinKitPulse(
+            color: theme.colorScheme.primary,
+            size: 50,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Loading channels...',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorState(ThemeData theme, String error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: theme.colorScheme.error,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Unable to load channels',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              error,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: () => context.read<ChannelProvider>().fetchChannels(),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Try Again'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.video_library_outlined,
+              size: 64,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No channels available',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Check back later for new content',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResultsState(ThemeData theme) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.search_off_outlined,
+              size: 64,
+              color: theme.colorScheme.outline,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No results found',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Try adjusting your search or filter',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: () {
+                _searchController.clear();
+                setState(() {
+                  _searchQuery = '';
+                  _selectedLanguage = AppConstants.languageAll;
+                });
+                context.read<ChannelProvider>().setLanguageFilter(AppConstants.languageAll);
+              },
+              child: const Text('Clear filters'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -199,56 +633,64 @@ class _ChannelListScreenState extends State<ChannelListScreen> {
   void _showLanguageFilter(BuildContext context) {
     showModalBottomSheet(
       context: context,
+      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
+        final theme = Theme.of(context);
         return Container(
-          padding: const EdgeInsets.all(16.0),
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Filter by Language',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(height: 16),
-              ListTile(
-                leading: const Icon(Icons.all_inclusive),
-                title: const Text('All Languages'),
-                trailing: _selectedLanguage == AppConstants.languageAll
-                    ? const Icon(Icons.check, color: Colors.blue)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedLanguage = AppConstants.languageAll;
-                  });
-                  context.read<ChannelProvider>().setLanguageFilter(
-                    _selectedLanguage,
-                  );
-                  Navigator.pop(context);
-                },
-              ),
-              const Divider(),
-              ...LanguageHelper.getSupportedLanguages().map(
-                (language) => ListTile(
-                  leading: CircleAvatar(
-                    radius: 12,
-                    backgroundColor: _getLanguageColor(language),
-                  ),
-                  title: Text(LanguageHelper.getLanguageName(language)),
-                  trailing: _selectedLanguage == language
-                      ? const Icon(Icons.check, color: Colors.blue)
-                      : null,
-                  onTap: () {
-                    setState(() {
-                      _selectedLanguage = language;
-                    });
-                    context.read<ChannelProvider>().setLanguageFilter(
-                      _selectedLanguage,
-                    );
-                    Navigator.pop(context);
-                  },
+              
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Filter by Language',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    // All Languages option
+                    _buildLanguageOption(
+                      context,
+                      theme,
+                      'All Languages',
+                      AppConstants.languageAll,
+                      Icons.all_inclusive,
+                      theme.colorScheme.primary,
+                    ),
+                    
+                    // Language options
+                    ...LanguageHelper.getSupportedLanguages().map(
+                      (language) => _buildLanguageOption(
+                        context,
+                        theme,
+                        LanguageHelper.getLanguageName(language),
+                        language,
+                        Icons.language,
+                        _getLanguageColor(language),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -258,19 +700,110 @@ class _ChannelListScreenState extends State<ChannelListScreen> {
     );
   }
 
-  // Get language color for visual distinction
+  Widget _buildLanguageOption(
+    BuildContext context,
+    ThemeData theme,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final isSelected = _selectedLanguage == value;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedLanguage = value;
+          });
+          context.read<ChannelProvider>().setLanguageFilter(value);
+          Navigator.pop(context);
+          HapticFeedback.lightImpact();
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? theme.colorScheme.primary : color,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected 
+                        ? theme.colorScheme.primary 
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Get language color for visual distinction with green theme
   Color _getLanguageColor(String language) {
     switch (language) {
       case AppConstants.languageEnglish:
-        return Colors.blue;
+        return const Color(0xFF4CAF50); // Green for English
       case AppConstants.languageChinese:
-        return Colors.red;
+        return const Color(0xFF66BB6A); // Light green for Chinese
       case AppConstants.languageJapanese:
-        return Colors.pink;
+        return const Color(0xFF81C784); // Soft green for Japanese
       case AppConstants.languageKorean:
-        return Colors.purple;
+        return const Color(0xFF009688); // Teal for Korean
       default:
-        return Colors.grey;
+        return const Color(0xFF8BC34A); // Lime green for others
     }
+  }
+}
+
+// Helper class for language display
+class LanguageHelper {
+  static String getLanguageName(String languageCode) {
+    switch (languageCode) {
+      case AppConstants.languageAll:
+        return 'All Languages';
+      case AppConstants.languageEnglish:
+        return 'English';
+      case AppConstants.languageChinese:
+        return 'Chinese';
+      case AppConstants.languageJapanese:
+        return 'Japanese';
+      case AppConstants.languageKorean:
+        return 'Korean';
+      default:
+        return languageCode.toUpperCase();
+    }
+  }
+
+  static List<String> getSupportedLanguages() {
+    return [
+      AppConstants.languageEnglish,
+      AppConstants.languageChinese,
+      AppConstants.languageJapanese,
+      AppConstants.languageKorean,
+    ];
   }
 }

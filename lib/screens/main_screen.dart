@@ -47,22 +47,22 @@ class _MainScreenState extends State<MainScreen> {
           if (isAdmin) const AdminScreen(),
         ];
 
-        // Build bottom nav items based on user role
-        final List<BottomNavigationBarItem> bottomNavItems = [
-          const BottomNavigationBarItem(
-            icon: Icon(Icons.video_library),
-            activeIcon: Icon(Icons.video_library),
+        // Build navigation destinations based on user role (Material Design 3)
+        final List<NavigationDestination> navDestinations = [
+          const NavigationDestination(
+            icon: Icon(Icons.video_library_outlined),
+            selectedIcon: Icon(Icons.video_library),
             label: 'Channels',
           ),
-          const BottomNavigationBarItem(
+          const NavigationDestination(
             icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
+            selectedIcon: Icon(Icons.person),
             label: 'Profile',
           ),
           if (isAdmin)
-            const BottomNavigationBarItem(
+            const NavigationDestination(
               icon: Icon(Icons.admin_panel_settings_outlined),
-              activeIcon: Icon(Icons.admin_panel_settings),
+              selectedIcon: Icon(Icons.admin_panel_settings),
               label: 'Admin',
             ),
         ];
@@ -91,9 +91,9 @@ class _MainScreenState extends State<MainScreen> {
             },
             children: screens,
           ),
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) {
+          bottomNavigationBar: NavigationBar(
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) {
               setState(() {
                 _currentIndex = index;
               });
@@ -104,14 +104,10 @@ class _MainScreenState extends State<MainScreen> {
                 curve: Curves.easeInOut,
               );
             },
-            type: BottomNavigationBarType.fixed,
-            items: bottomNavItems,
-            selectedItemColor: Theme.of(context).colorScheme.primary,
-            unselectedItemColor: Colors.grey,
-            backgroundColor: Colors.white,
-            elevation: 8,
-            selectedFontSize: 12,
-            unselectedFontSize: 12,
+            destinations: navDestinations,
+            elevation: 2,
+            shadowColor: Theme.of(context).colorScheme.shadow,
+            surfaceTintColor: Theme.of(context).colorScheme.surfaceContainerHighest,
           ),
         );
       },

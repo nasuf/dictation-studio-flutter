@@ -183,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.blue.shade900, Colors.purple.shade800],
+          colors: [const Color(0xFF2E7D32), const Color(0xFF388E3C)], // Dark green gradient
         ),
       ),
       child: Center(
@@ -235,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 label: const Text('Sign In'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.white,
-                  foregroundColor: Colors.blue.shade900,
+                  foregroundColor: const Color(0xFF2E7D32),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 32,
                     vertical: 16,
@@ -268,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Colors.blue.shade600, Colors.purple.shade600],
+                colors: [const Color(0xFF4CAF50), const Color(0xFF66BB6A)], // Light green gradient
               ),
             ),
             child: SafeArea(
@@ -379,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                               'Email',
                               user.email,
                               Icons.email_outlined,
-                              Colors.blue,
+                              const Color(0xFF4CAF50),
                             ),
                           ),
                           Container(
@@ -485,7 +485,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           children: [
                             Icon(
                               Icons.calendar_today,
-                              color: Colors.blue.shade600,
+                              color: const Color(0xFF4CAF50),
                             ),
                             const SizedBox(width: 8),
                             Expanded(
@@ -506,17 +506,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              Colors.blue.shade600,
+                                              const Color(0xFF4CAF50),
                                             ),
                                       ),
                                     )
                                   : Icon(
                                       Icons.refresh,
-                                      color: Colors.blue.shade600,
+                                      color: const Color(0xFF4CAF50),
                                     ),
                               tooltip: 'Refresh heatmap data',
                               style: IconButton.styleFrom(
-                                backgroundColor: Colors.blue.shade50,
+                                backgroundColor: const Color(0xFFE8F5E8),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
