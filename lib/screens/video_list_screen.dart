@@ -5,6 +5,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/video_provider.dart';
+import '../providers/auth_provider.dart';
 
 class VideoListScreen extends StatefulWidget {
   final String channelId;
@@ -32,7 +33,11 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<VideoProvider>().fetchVideos(widget.channelId);
+      // Only fetch videos if user is logged in
+      final authProvider = context.read<AuthProvider>();
+      if (authProvider.isLoggedIn) {
+        context.read<VideoProvider>().fetchVideos(widget.channelId);
+      }
       _animationController.forward();
     });
   }
@@ -47,108 +52,269 @@ class _VideoListScreenState extends State<VideoListScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header section - ultra compact
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primary.withValues(alpha: 0.08),
-                    theme.colorScheme.surface,
-                  ],
+
+    return Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        // Check if user is logged in
+        if (!authProvider.isLoggedIn) {
+          return _buildLoginRequiredView(context, theme);
+        }
+
+        return Scaffold(
+          backgroundColor: theme.colorScheme.surface,
+          body: Column(
+            children: [
+          // Header section - extends into status bar area
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              MediaQuery.of(context).padding.top + 2,
+              12,
+              8,
+            ),
+            decoration: BoxDecoration(
+              color: theme
+                  .colorScheme
+                  .primaryContainer, // Solid light green matching status bar
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                  width: 1,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Header Row - more compact
-                  Row(
-                    children: [
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(10),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header Row - more compact
+                Row(
+                  children: [
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.7,
                         ),
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.arrow_back_ios_new,
-                            color: theme.colorScheme.primary,
-                            size: 18,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: IconButton(
+                        icon: Icon(
+                          Icons.arrow_back_ios_new,
+                          color: theme.colorScheme.primary,
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          context.pop();
+                        },
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(
+                          minWidth: 32,
+                          minHeight: 32,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.channelName ?? 'Videos',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: theme.colorScheme.onSurface,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            context.pop();
-                          },
-                          padding: const EdgeInsets.all(8),
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              widget.channelName ?? 'Videos',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Consumer<VideoProvider>(
-                              builder: (context, provider, child) {
-                                final videos = _getFilteredAndSortedVideos(provider);
-                                return Text(
-                                  '${videos.length} videos',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                          Consumer<VideoProvider>(
+                            builder: (context, provider, child) {
+                              final videos = _getFilteredAndSortedVideos(
+                                provider,
+                              );
+                              return Text(
+                                '${videos.length} videos',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurface.withValues(
+                                    alpha: 0.7,
                                   ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
                       ),
-                      _buildActionButtons(theme),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Search Bar
-                  _buildSearchBar(theme),
-                ],
-              ),
+                    ),
+                    _buildActionButtons(theme),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Search Bar
+                _buildSearchBar(theme),
+              ],
             ),
-            
-            // Progress Stats (if videos exist)
-            Consumer<VideoProvider>(
-              builder: (context, provider, child) {
-                final videos = _getFilteredAndSortedVideos(provider);
-                if (videos.isNotEmpty) {
-                  return _buildProgressStats(theme, videos, provider);
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-            
-            // Main Content - takes remaining space
-            Expanded(
+          ),
+
+          // Progress Stats (if videos exist)
+          Consumer<VideoProvider>(
+            builder: (context, provider, child) {
+              final videos = _getFilteredAndSortedVideos(provider);
+              if (videos.isNotEmpty) {
+                return _buildProgressStats(theme, videos, provider);
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
+          // Main Content - takes remaining space with SafeArea for bottom only
+          Expanded(
+            child: SafeArea(
+              top:
+                  false, // Don't add safe area at top since we handle it manually
               child: _buildVideoContent(theme),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+      },
+    );
+  }
+
+  Widget _buildLoginRequiredView(BuildContext context, ThemeData theme) {
+    return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
+      body: Column(
+        children: [
+          // Header section - same as normal view
+          Container(
+            padding: EdgeInsets.fromLTRB(
+              12,
+              MediaQuery.of(context).padding.top + 2,
+              12,
+              8,
+            ),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primaryContainer,
+              border: Border(
+                bottom: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: IconButton(
+                    icon: Icon(
+                      Icons.arrow_back_ios_new,
+                      color: theme.colorScheme.primary,
+                      size: 18,
+                    ),
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.pop();
+                    },
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(
+                      minWidth: 32,
+                      minHeight: 32,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.channelName ?? 'Videos',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: theme.colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        'Login required to view content',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Login required content
+          Expanded(
+            child: SafeArea(
+              top: false,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.lock_outline,
+                          size: 80,
+                          color: theme.colorScheme.primary,
+                        ),
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        'Login Required',
+                        style: theme.textTheme.headlineSmall?.copyWith(
+                          color: theme.colorScheme.onSurface,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'You need to sign in to access video content and track your progress',
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 40),
+                      ElevatedButton.icon(
+                        onPressed: () {
+                          // Navigate directly to login screen
+                          context.push('/login');
+                        },
+                        icon: const Icon(Icons.login),
+                        label: const Text('Sign In'),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -237,12 +403,12 @@ class _VideoListScreenState extends State<VideoListScreen>
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
         ),
-        style: TextStyle(
-          color: theme.colorScheme.onSurface,
-          fontSize: 14,
-        ),
+        style: TextStyle(color: theme.colorScheme.onSurface, fontSize: 14),
         onChanged: (value) {
           setState(() {
             _searchQuery = value;
@@ -252,13 +418,17 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
   }
 
-  Widget _buildProgressStats(ThemeData theme, List<dynamic> videos, VideoProvider videoProvider) {
+  Widget _buildProgressStats(
+    ThemeData theme,
+    List<dynamic> videos,
+    VideoProvider videoProvider,
+  ) {
     final completed = _getVideosWithDoneProgress(videos, videoProvider);
     final inProgress = _getVideosWithProgress(videos, videoProvider);
     final notStarted = videos.length - completed - inProgress;
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+      margin: const EdgeInsets.fromLTRB(12, 2, 12, 4),
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
@@ -269,17 +439,37 @@ class _VideoListScreenState extends State<VideoListScreen>
       ),
       child: Row(
         children: [
-          _buildStatChip(theme, '$completed', 'Done', theme.colorScheme.primary),
+          _buildStatChip(
+            theme,
+            '$completed',
+            'Done',
+            theme.colorScheme.primary,
+          ),
           const SizedBox(width: 8),
-          _buildStatChip(theme, '$inProgress', 'Progress', theme.colorScheme.secondary),
+          _buildStatChip(
+            theme,
+            '$inProgress',
+            'In Progress',
+            theme.colorScheme.secondary,
+          ),
           const SizedBox(width: 8),
-          _buildStatChip(theme, '$notStarted', 'New', theme.colorScheme.outline),
+          _buildStatChip(
+            theme,
+            '$notStarted',
+            'Not Started',
+            theme.colorScheme.outline,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildStatChip(ThemeData theme, String count, String label, Color color) {
+  Widget _buildStatChip(
+    ThemeData theme,
+    String count,
+    String label,
+    Color color,
+  ) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
@@ -327,46 +517,49 @@ class _VideoListScreenState extends State<VideoListScreen>
           return _buildEmptyState(theme);
         }
 
-        return Padding(
-          padding: const EdgeInsets.all(12),
-          child: GridView.builder(
-            physics: const BouncingScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.85,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-            ),
-            itemCount: filteredVideos.length,
-            itemBuilder: (context, index) {
-              final video = filteredVideos[index];
-              return _buildVideoCard(video, index, theme, videoProvider);
-            },
+        return GridView.builder(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          physics: const BouncingScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.85,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
           ),
+          itemCount: filteredVideos.length,
+          itemBuilder: (context, index) {
+            final video = filteredVideos[index];
+            return _buildVideoCard(video, index, theme, videoProvider);
+          },
         );
       },
     );
   }
 
-  Widget _buildVideoCard(dynamic video, int index, ThemeData theme, VideoProvider videoProvider) {
+  Widget _buildVideoCard(
+    dynamic video,
+    int index,
+    ThemeData theme,
+    VideoProvider videoProvider,
+  ) {
     final progress = videoProvider.getVideoProgress(video.videoId);
-    
+
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        final animationValue = Tween<double>(
-          begin: 0.0,
-          end: 1.0,
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Interval(
-              (index * 0.05).clamp(0.0, 0.8),
-              ((index * 0.05) + 0.2).clamp(0.2, 1.0),
-              curve: Curves.easeOut,
-            ),
-          ),
-        ).value.clamp(0.0, 1.0);
+        final animationValue = Tween<double>(begin: 0.0, end: 1.0)
+            .animate(
+              CurvedAnimation(
+                parent: _animationController,
+                curve: Interval(
+                  (index * 0.05).clamp(0.0, 0.8),
+                  ((index * 0.05) + 0.2).clamp(0.2, 1.0),
+                  curve: Curves.easeOut,
+                ),
+              ),
+            )
+            .value
+            .clamp(0.0, 1.0);
 
         return Transform.scale(
           scale: (animationValue * 0.2 + 0.8).clamp(0.8, 1.0),
@@ -407,11 +600,16 @@ class _VideoListScreenState extends State<VideoListScreen>
                       child: Container(
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                          color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
+                          color: theme.colorScheme.surfaceContainerHighest
+                              .withValues(alpha: 0.5),
                         ),
                         child: ClipRRect(
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(16),
+                          ),
                           child: Stack(
                             children: [
                               // Thumbnail Image
@@ -421,17 +619,20 @@ class _VideoListScreenState extends State<VideoListScreen>
                                 height: double.infinity,
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) => Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   child: Center(
                                     child: Icon(
                                       Icons.video_library_outlined,
-                                      color: theme.colorScheme.primary.withValues(alpha: 0.5),
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.5),
                                       size: 28,
                                     ),
                                   ),
                                 ),
                                 errorWidget: (context, url, error) => Container(
-                                  color: theme.colorScheme.surfaceContainerHighest,
+                                  color:
+                                      theme.colorScheme.surfaceContainerHighest,
                                   child: Center(
                                     child: Icon(
                                       Icons.broken_image_outlined,
@@ -450,7 +651,9 @@ class _VideoListScreenState extends State<VideoListScreen>
                                   child: Container(
                                     height: 3,
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.3),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.3,
+                                      ),
                                     ),
                                     child: FractionallySizedBox(
                                       alignment: Alignment.centerLeft,
@@ -485,18 +688,22 @@ class _VideoListScreenState extends State<VideoListScreen>
                                   top: 6,
                                   right: 6,
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: _getProgressColor(progress),
                                       borderRadius: BorderRadius.circular(8),
                                     ),
                                     child: Text(
                                       '${progress.toInt()}%',
-                                      style: theme.textTheme.bodySmall?.copyWith(
-                                        color: Colors.white,
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                      ),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.white,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                     ),
                                   ),
                                 ),
@@ -563,10 +770,7 @@ class _VideoListScreenState extends State<VideoListScreen>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SpinKitPulse(
-            color: theme.colorScheme.primary,
-            size: 50,
-          ),
+          SpinKitPulse(color: theme.colorScheme.primary, size: 50),
           const SizedBox(height: 16),
           Text(
             'Loading videos...',
@@ -586,11 +790,7 @@ class _VideoListScreenState extends State<VideoListScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
               'Unable to load videos',
@@ -608,7 +808,8 @@ class _VideoListScreenState extends State<VideoListScreen>
             ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: () => context.read<VideoProvider>().fetchVideos(widget.channelId),
+              onPressed: () =>
+                  context.read<VideoProvider>().fetchVideos(widget.channelId),
               icon: const Icon(Icons.refresh),
               label: const Text('Try Again'),
             ),
@@ -626,20 +827,24 @@ class _VideoListScreenState extends State<VideoListScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _searchQuery.isNotEmpty ? Icons.search_off : Icons.video_library_outlined,
+              _searchQuery.isNotEmpty
+                  ? Icons.search_off
+                  : Icons.video_library_outlined,
               size: 64,
               color: theme.colorScheme.outline,
             ),
             const SizedBox(height: 16),
             Text(
-              _searchQuery.isNotEmpty ? 'No videos found' : 'No videos available',
+              _searchQuery.isNotEmpty
+                  ? 'No videos found'
+                  : 'No videos available',
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              _searchQuery.isNotEmpty 
+              _searchQuery.isNotEmpty
                   ? 'Try adjusting your search terms'
                   : 'This channel doesn\'t have any videos yet',
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -667,12 +872,16 @@ class _VideoListScreenState extends State<VideoListScreen>
 
   List<dynamic> _getFilteredAndSortedVideos(VideoProvider provider) {
     List<dynamic> videos = provider.sortedVideos;
-    
+
     if (_searchQuery.isNotEmpty) {
-      videos = videos.where((video) =>
-          video.title.toLowerCase().contains(_searchQuery.toLowerCase())).toList();
+      videos = videos
+          .where(
+            (video) =>
+                video.title.toLowerCase().contains(_searchQuery.toLowerCase()),
+          )
+          .toList();
     }
-    
+
     switch (_sortBy) {
       case 'alphabetical':
         videos.sort((a, b) => a.title.compareTo(b.title));
@@ -688,7 +897,7 @@ class _VideoListScreenState extends State<VideoListScreen>
       default:
         break;
     }
-    
+
     return videos;
   }
 
@@ -758,9 +967,24 @@ class _VideoListScreenState extends State<VideoListScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    _buildSortOption('Recent', 'recent', Icons.access_time, theme),
-                    _buildSortOption('Alphabetical', 'alphabetical', Icons.sort_by_alpha, theme),
-                    _buildSortOption('Progress', 'progress', Icons.trending_up, theme),
+                    _buildSortOption(
+                      'Recent',
+                      'recent',
+                      Icons.access_time,
+                      theme,
+                    ),
+                    _buildSortOption(
+                      'Alphabetical',
+                      'alphabetical',
+                      Icons.sort_by_alpha,
+                      theme,
+                    ),
+                    _buildSortOption(
+                      'Progress',
+                      'progress',
+                      Icons.trending_up,
+                      theme,
+                    ),
                   ],
                 ),
               ),
@@ -771,9 +995,14 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
   }
 
-  Widget _buildSortOption(String title, String value, IconData icon, ThemeData theme) {
+  Widget _buildSortOption(
+    String title,
+    String value,
+    IconData icon,
+    ThemeData theme,
+  ) {
     final isSelected = _sortBy == value;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -788,7 +1017,7 @@ class _VideoListScreenState extends State<VideoListScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -797,7 +1026,9 @@ class _VideoListScreenState extends State<VideoListScreen>
             children: [
               Icon(
                 icon,
-                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.outline,
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.outline,
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -806,18 +1037,14 @@ class _VideoListScreenState extends State<VideoListScreen>
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected 
-                        ? theme.colorScheme.primary 
+                    color: isSelected
+                        ? theme.colorScheme.primary
                         : theme.colorScheme.onSurface,
                   ),
                 ),
               ),
               if (isSelected)
-                Icon(
-                  Icons.check,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
+                Icon(Icons.check, color: theme.colorScheme.primary, size: 20),
             ],
           ),
         ),
@@ -825,14 +1052,20 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
   }
 
-  int _getVideosWithProgress(List<dynamic> videos, VideoProvider videoProvider) {
+  int _getVideosWithProgress(
+    List<dynamic> videos,
+    VideoProvider videoProvider,
+  ) {
     return videos.where((video) {
       final progress = videoProvider.getVideoProgress(video.videoId);
       return progress > 0 && progress < 100;
     }).length;
   }
 
-  int _getVideosWithDoneProgress(List<dynamic> videos, VideoProvider videoProvider) {
+  int _getVideosWithDoneProgress(
+    List<dynamic> videos,
+    VideoProvider videoProvider,
+  ) {
     return videos.where((video) {
       final progress = videoProvider.getVideoProgress(video.videoId);
       return progress >= 100;

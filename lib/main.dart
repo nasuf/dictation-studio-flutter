@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,12 +13,25 @@ import 'screens/admin/channel_management_screen.dart';
 import 'screens/admin/video_management_screen.dart';
 import 'screens/admin/user_management_screen.dart';
 import 'screens/admin/analytics_screen.dart';
+import 'screens/login_screen.dart';
 import 'services/deep_link_service.dart';
+import 'services/api_service.dart';
 import 'utils/logger.dart';
 
 void main() async {
   try {
     WidgetsFlutterBinding.ensureInitialized();
+
+    // Configure system status bar - transparent to match app content
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent, // Transparent to show app content
+        statusBarBrightness: Brightness.light, // For iOS
+        statusBarIconBrightness: Brightness.dark, // Dark icons on light background
+        systemNavigationBarColor: Colors.white, // Bottom navigation bar
+        systemNavigationBarIconBrightness: Brightness.dark, // Dark icons
+      ),
+    );
 
     // Initialize logging system
     AppLogger.initialize();
@@ -62,7 +76,7 @@ void main() async {
     AppLogger.success('✅ Deep link service initialized');
 
     AppLogger.info('🎯 Running app...');
-    runApp(const DictationStudioApp());
+    runApp(DictationStudioApp());
   } catch (e, stackTrace) {
     AppLogger.error('❌ Error during app initialization: $e', e, stackTrace);
     // Run a minimal error app
@@ -88,11 +102,17 @@ void main() async {
 }
 
 class DictationStudioApp extends StatelessWidget {
-  const DictationStudioApp({super.key});
+  DictationStudioApp({super.key});
+  
+  // Global navigation key for 401 error handling
+  final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   Widget build(BuildContext context) {
     AppLogger.info('🏗️ Building DictationStudioApp...');
+    
+    // Set the navigator key for API service
+    ApiService.setNavigatorKey(_navigatorKey);
 
     return MultiProvider(
       providers: [
@@ -128,7 +148,7 @@ class DictationStudioApp extends StatelessWidget {
         title: 'Dictation Studio',
         debugShowCheckedModeBanner: false,
         theme: _buildTheme(),
-        routerConfig: _buildRouter(),
+        routerConfig: _buildRouter(_navigatorKey),
         builder: (context, child) {
           // Add error boundary
           return child ?? const SizedBox();
@@ -432,8 +452,9 @@ class DictationStudioApp extends StatelessWidget {
   }
 
   // Build app router using GoRouter
-  GoRouter _buildRouter() {
+  GoRouter _buildRouter(GlobalKey<NavigatorState> navigatorKey) {
     return GoRouter(
+      navigatorKey: navigatorKey,
       initialLocation: '/',
       errorBuilder: (context, state) {
         AppLogger.error('🚨 Router error: ${state.error}');
@@ -493,6 +514,16 @@ class DictationStudioApp extends StatelessWidget {
                 channelName: channelName,
               ),
             );
+          },
+        ),
+
+        // Login Route
+        GoRoute(
+          path: '/login',
+          name: 'login',
+          pageBuilder: (context, state) {
+            AppLogger.info('🔐 Navigating to login screen');
+            return const MaterialPage(child: LoginScreen());
           },
         ),
 

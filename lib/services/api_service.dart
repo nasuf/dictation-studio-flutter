@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../models/channel.dart';
 import '../models/video.dart';
 import '../models/progress.dart';
@@ -22,6 +24,79 @@ class ApiService {
   static const String _baseUrl = 'https://www.dictationstudio.com/ds';
 
   final http.Client _client = http.Client();
+  
+  // Global navigation key for 401 error handling
+  static GlobalKey<NavigatorState>? _navigatorKey;
+  
+  static void setNavigatorKey(GlobalKey<NavigatorState> key) {
+    _navigatorKey = key;
+  }
+  
+  static void _handle401Error() {
+    if (_navigatorKey?.currentContext != null) {
+      final context = _navigatorKey!.currentContext!;
+      
+      // Show dialog and navigate to login
+      showDialog(
+        context: context,
+        builder: (BuildContext dialogContext) {
+          final theme = Theme.of(dialogContext);
+          return AlertDialog(
+            title: Row(
+              children: [
+                Icon(
+                  Icons.lock_outline,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Login Required',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            content: Text(
+              'Your session has expired. Please sign in again to continue.',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: theme.colorScheme.outline),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  // Navigate directly to login screen
+                  context.push('/login');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  foregroundColor: theme.colorScheme.onPrimary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Sign In'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
 
   // Make HTTP request with automatic token handling
   Future<T> _makeRequest<T>(
@@ -128,9 +203,13 @@ class ApiService {
           );
         }
       } else if (response.statusCode == 401) {
-        // Unauthorized - clear tokens and throw exception
+        // Unauthorized - clear tokens, show dialog, and throw exception
         AppLogger.warning('❌ Unauthorized (401) - clearing tokens');
         await TokenManager.clearTokens();
+        
+        // Show login dialog
+        _handle401Error();
+        
         throw ApiException(
           'Authentication failed - please login again',
           response.statusCode,

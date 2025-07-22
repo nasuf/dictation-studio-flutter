@@ -55,20 +55,18 @@ class _ChannelListScreenState extends State<ChannelListScreen>
 
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header section - ultra compact
-            Container(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 6),
+      body: Column(
+        children: [
+          // Header section - extends into status bar area
+          Container(
+            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 2, 12, 8),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primary.withValues(alpha: 0.08),
-                    theme.colorScheme.surface,
-                  ],
+                color: theme.colorScheme.primaryContainer, // Solid light green matching status bar
+                border: Border(
+                  bottom: BorderSide(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                    width: 1,
+                  ),
                 ),
               ),
               child: Column(
@@ -121,14 +119,16 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               ),
             ),
             
-            // Main Content - takes remaining space
+            // Main Content - takes remaining space with SafeArea for bottom only
             Expanded(
-              child: _buildChannelContent(theme),
+              child: SafeArea(
+                top: false, // Don't add safe area at top since we handle it manually
+                child: _buildChannelContent(theme),
+              ),
             ),
           ],
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildActionButtons(ThemeData theme) {
@@ -311,18 +311,17 @@ class _ChannelListScreenState extends State<ChannelListScreen>
           }
         }
 
-        return Padding(
-          padding: const EdgeInsets.all(12),
-          child: MasonryGridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            itemCount: filteredChannels.length,
-            itemBuilder: (context, index) {
-              final channel = filteredChannels[index];
-              return _buildChannelCard(channel, index, theme);
-            },
-          ),
+        return MasonryGridView.count(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          physics: const BouncingScrollPhysics(),
+          crossAxisCount: 2,
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          itemCount: filteredChannels.length,
+          itemBuilder: (context, index) {
+            final channel = filteredChannels[index];
+            return _buildChannelCard(channel, index, theme);
+          },
         );
       },
     );

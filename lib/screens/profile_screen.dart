@@ -131,7 +131,10 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     AppLogger.info('ProfileScreen build called');
+    final theme = Theme.of(context);
+    
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           AppLogger.info(
@@ -178,77 +181,109 @@ class _ProfileScreenState extends State<ProfileScreen>
     BuildContext context,
     AuthProvider authProvider,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFF2E7D32), const Color(0xFF388E3C)], // Dark green gradient
-        ),
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+    final theme = Theme.of(context);
+    
+    return Column(
+      children: [
+        // Header section matching channel_list_screen design
+        Container(
+          padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 4, 12, 12),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            border: Border(
+              bottom: BorderSide(
+                color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.2)),
-                ),
-                child: Icon(
-                  Icons.person_outline,
-                  size: 80,
-                  color: Colors.white.withOpacity(0.8),
-                ),
-              ),
-              const SizedBox(height: 32),
-              Text(
-                'Welcome to Dictation Studio',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Sign in to access your personalized learning dashboard',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withOpacity(0.8),
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const LoginScreen(),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Profile',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: theme.colorScheme.onSurface,
+                      ),
                     ),
-                  );
-                },
-                icon: const Icon(Icons.login),
-                label: const Text('Sign In'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF2E7D32),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 16,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                    Text(
+                      'Sign in to access your dashboard',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
         ),
-      ),
+        
+        // Main content
+        Expanded(
+          child: SafeArea(
+            top: false,
+            child: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.person_outline,
+                        size: 80,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    Text(
+                      'Welcome to Dictation Studio',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Sign in to access your personalized learning dashboard',
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 40),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const LoginScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.login),
+                      label: const Text('Sign In'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -258,113 +293,96 @@ class _ProfileScreenState extends State<ProfileScreen>
     AuthProvider authProvider,
   ) {
     AppLogger.info('Building user profile view for user: ${user.username}');
+    final theme = Theme.of(context);
 
-    return SingleChildScrollView(
-      child: Column(
-        children: [
-          // Header with gradient background
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [const Color(0xFF4CAF50), const Color(0xFF66BB6A)], // Light green gradient
-              ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Column(
-                  children: [
-                    // User Avatar
-                    Container(
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
-                          width: 4,
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.purple.withOpacity(0.3),
-                            blurRadius: 20,
-                            spreadRadius: 5,
-                          ),
-                        ],
-                      ),
-                      child: CircleAvatar(
-                        radius: 50,
-                        backgroundImage: user.avatar.isNotEmpty
-                            ? NetworkImage(user.avatar)
-                            : null,
-                        child: user.avatar.isEmpty
-                            ? Icon(
-                                Icons.person,
-                                size: 50,
-                                color: Colors.white.withOpacity(0.8),
-                              )
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-
-                    // User Name and Role
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          user.username,
-                          style: Theme.of(context).textTheme.headlineMedium
-                              ?.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(0.3),
-                            ),
-                          ),
-                          child: Text(
-                            user.role.toUpperCase(),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+    return Column(
+      children: [
+        // Header section matching channel_list_screen design
+        Container(
+          padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 4, 12, 20),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.primaryContainer,
+            border: Border(
+              bottom: BorderSide(
+                color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                width: 1,
               ),
             ),
           ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // User Avatar
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
+                    width: 3,
+                  ),
+                ),
+                child: CircleAvatar(
+                  radius: 32,
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  backgroundImage: user.avatar.isNotEmpty
+                      ? NetworkImage(user.avatar)
+                      : null,
+                  child: user.avatar.isEmpty
+                      ? Icon(
+                          Icons.person,
+                          size: 32,
+                          color: theme.colorScheme.primary,
+                        )
+                      : null,
+                ),
+              ),
+              
+              const SizedBox(width: 12),
+              
+              // User Role Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Text(
+                  user.role.toUpperCase(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
 
-          // Info Cards Grid
-          Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
+        // Main content - scrollable
+        Expanded(
+          child: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                children: [
                 // Info Cards
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
+                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                        blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
                     ],
@@ -372,90 +390,98 @@ class _ProfileScreenState extends State<ProfileScreen>
                   child: Column(
                     children: [
                       // First row - Email and Plan
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSimpleInfoItem(
-                              'Email',
-                              user.email,
-                              Icons.email_outlined,
-                              const Color(0xFF4CAF50),
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildSimpleInfoItem(
+                                'Email',
+                                user.email,
+                                Icons.email_outlined,
+                                theme.colorScheme.primary,
+                                theme,
+                              ),
                             ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 40,
-                            color: Colors.grey.shade200,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                          Expanded(
-                            child: _buildSimpleInfoItem(
-                              'Plan',
-                              user.plan.name,
-                              Icons.workspace_premium_outlined,
-                              Colors.amber,
+                            Container(
+                              width: 1,
+                              color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                             ),
-                          ),
-                        ],
+                            Expanded(
+                              child: _buildSimpleInfoItem(
+                                'Plan',
+                                user.plan.name,
+                                Icons.workspace_premium_outlined,
+                                theme.colorScheme.secondary,
+                                theme,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
 
-                      Divider(height: 32, color: Colors.grey.shade200),
+                      Divider(height: 32, color: theme.colorScheme.outline.withValues(alpha: 0.1)),
 
                       // Second row - Expires and Total Time
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildSimpleInfoItem(
-                              'Expires',
-                              user.plan.expireTime != null
-                                  ? DateFormat('MMM dd, yyyy').format(
-                                      DateTime.fromMillisecondsSinceEpoch(
-                                        user.plan.expireTime!,
-                                      ),
-                                    )
-                                  : 'No Limit',
-                              Icons.schedule_outlined,
-                              Colors.purple,
+                      IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: _buildSimpleInfoItem(
+                                'Expires',
+                                user.plan.expireTime != null
+                                    ? DateFormat('MMM dd, yyyy').format(
+                                        DateTime.fromMillisecondsSinceEpoch(
+                                          user.plan.expireTime!,
+                                        ),
+                                      )
+                                    : 'No Limit',
+                                Icons.schedule_outlined,
+                                theme.colorScheme.tertiary,
+                                theme,
+                              ),
                             ),
-                          ),
-                          Container(
-                            width: 1,
-                            height: 40,
-                            color: Colors.grey.shade200,
-                            margin: const EdgeInsets.symmetric(horizontal: 16),
-                          ),
-                          Expanded(
-                            child: _buildSimpleInfoItem(
-                              'Total Time',
-                              () {
-                                AppLogger.info(
-                                  '🎯 UI Display - _loadingDuration: $_loadingDuration',
-                                );
-                                AppLogger.info(
-                                  '🎯 UI Display - _totalDuration: $_totalDuration',
-                                );
-                                if (_loadingDuration) {
-                                  return 'Loading...';
-                                } else if (_totalDuration != null) {
-                                  final formatted = _formatDuration(
-                                    _totalDuration!,
+                            Container(
+                              width: 1,
+                              color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            ),
+                            Expanded(
+                              child: _buildSimpleInfoItem(
+                                'Total Time',
+                                () {
+                                  AppLogger.info(
+                                    '🎯 UI Display - _loadingDuration: $_loadingDuration',
                                   );
                                   AppLogger.info(
-                                    '🎯 UI Display - formatted duration: $formatted',
+                                    '🎯 UI Display - _totalDuration: $_totalDuration',
                                   );
-                                  return formatted;
-                                } else {
-                                  AppLogger.info(
-                                    '🎯 UI Display - showing default 00:00:00',
-                                  );
-                                  return '00:00:00';
-                                }
-                              }(),
-                              Icons.timer_outlined,
-                              Colors.green,
+                                  if (_loadingDuration) {
+                                    return 'Loading...';
+                                  } else if (_totalDuration != null) {
+                                    final formatted = _formatDuration(
+                                      _totalDuration!,
+                                    );
+                                    AppLogger.info(
+                                      '🎯 UI Display - formatted duration: $formatted',
+                                    );
+                                    return formatted;
+                                  } else {
+                                    AppLogger.info(
+                                      '🎯 UI Display - showing default 00:00:00',
+                                    );
+                                    return '00:00:00';
+                                  }
+                                }(),
+                                Icons.timer_outlined,
+                                theme.colorScheme.primary,
+                                theme,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
@@ -466,13 +492,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                 // Calendar Heatmap with Refresh Button
                 Container(
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: theme.colorScheme.surface,
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
+                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
                       ),
                     ],
                   ),
@@ -485,14 +514,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                           children: [
                             Icon(
                               Icons.calendar_today,
-                              color: const Color(0xFF4CAF50),
+                              color: theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
                                 'Dictation Activities',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.bold),
+                                style: theme.textTheme.titleLarge?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
                               ),
                             ),
                             // Refresh Button
@@ -506,17 +537,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         strokeWidth: 2,
                                         valueColor:
                                             AlwaysStoppedAnimation<Color>(
-                                              const Color(0xFF4CAF50),
+                                              theme.colorScheme.primary,
                                             ),
                                       ),
                                     )
                                   : Icon(
                                       Icons.refresh,
-                                      color: const Color(0xFF4CAF50),
+                                      color: theme.colorScheme.primary,
                                     ),
                               tooltip: 'Refresh heatmap data',
                               style: IconButton.styleFrom(
-                                backgroundColor: const Color(0xFFE8F5E8),
+                                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(8),
                                 ),
@@ -526,14 +557,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                         const SizedBox(height: 16),
                         if (_loadingDuration)
-                          const Center(child: CircularProgressIndicator())
+                          Center(
+                            child: CircularProgressIndicator(
+                              color: theme.colorScheme.primary,
+                            ),
+                          )
                         else
                           CalendarHeatmap.withDefaults(
                             data: _dailyDurations,
                             cellSize: 8,
                             spacing: 2,
-                            baseColor: Colors.green.shade600,
-                            emptyColor: Colors.grey.shade300,
+                            baseColor: theme.colorScheme.primary,
+                            emptyColor: theme.colorScheme.outline.withValues(alpha: 0.3),
                           ),
                       ],
                     ),
@@ -543,47 +578,31 @@ class _ProfileScreenState extends State<ProfileScreen>
                 const SizedBox(height: 24),
 
                 // Logout Button
-                Container(
+                SizedBox(
                   width: double.infinity,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    gradient: LinearGradient(
-                      colors: [Colors.red.shade400, Colors.red.shade600],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withOpacity(0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton.icon(
+                  child: OutlinedButton.icon(
                     onPressed: authProvider.isLoading
                         ? null
-                        : () async {
-                            await authProvider.logout();
-                          },
+                        : () => _showLogoutDialog(context, authProvider, theme),
                     icon: authProvider.isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                Colors.white,
+                                theme.colorScheme.error,
                               ),
                             ),
                           )
-                        : const Icon(Icons.logout),
+                        : Icon(Icons.logout_outlined, color: theme.colorScheme.error),
                     label: Text(
                       authProvider.isLoading ? 'Signing Out...' : 'Sign Out',
+                      style: TextStyle(color: theme.colorScheme.error),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: theme.colorScheme.error),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -594,9 +613,69 @@ class _ProfileScreenState extends State<ProfileScreen>
                 const SizedBox(height: 32),
               ],
             ),
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context, AuthProvider authProvider, ThemeData theme) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(
+                Icons.logout_outlined,
+                color: theme.colorScheme.error,
+                size: 24,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Sign Out',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            'Are you sure you want to sign out?',
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: theme.colorScheme.primary),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await authProvider.logout();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: theme.colorScheme.error,
+                foregroundColor: theme.colorScheme.onError,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('Sign Out'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -605,27 +684,34 @@ class _ProfileScreenState extends State<ProfileScreen>
     String value,
     IconData icon,
     Color color,
+    ThemeData theme,
   ) {
     return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Icon(icon, color: color, size: 24),
         const SizedBox(height: 8),
         Text(
           title,
-          style: TextStyle(
+          style: theme.textTheme.bodySmall?.copyWith(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.grey.shade600,
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: 4),
         Text(
           value,
-          style: TextStyle(
+          style: theme.textTheme.bodyMedium?.copyWith(
             fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: color.withOpacity(0.8),
+            fontWeight: FontWeight.w600,
+            color: theme.colorScheme.onSurface,
           ),
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
       ],
     );
