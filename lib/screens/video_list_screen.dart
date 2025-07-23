@@ -568,12 +568,16 @@ class _VideoListScreenState extends State<VideoListScreen>
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Playing: ${video.title}'),
-                    duration: const Duration(seconds: 2),
-                    backgroundColor: theme.colorScheme.primary,
-                  ),
+                // Navigate to dictation screen
+                context.pushNamed(
+                  'dictation',
+                  pathParameters: {
+                    'channelId': widget.channelId,
+                    'videoId': video.videoId,
+                  },
+                  extra: {
+                    'video': video,
+                  },
                 );
               },
               child: Container(

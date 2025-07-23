@@ -58,6 +58,9 @@ dependencies:
   # Date formatting
   intl: ^0.19.0
 
+  # YouTube player for video playback
+  youtube_player_flutter: ^9.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -69,11 +72,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-
-  # Add assets
-  assets:
-    - assets/images/
-    - assets/icons/
 
   # Add fonts if needed
   # fonts:

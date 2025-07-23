@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import '../models/channel.dart';
 import '../models/video.dart';
 import '../models/progress.dart';
+import '../models/progress_data.dart' as progress_data;
+import '../models/verification_code.dart';
 import '../services/token_manager.dart';
 import '../utils/logger.dart';
 import '../utils/constants.dart';
@@ -24,18 +26,18 @@ class ApiService {
   static const String _baseUrl = 'https://www.dictationstudio.com/ds';
 
   final http.Client _client = http.Client();
-  
+
   // Global navigation key for 401 error handling
   static GlobalKey<NavigatorState>? _navigatorKey;
-  
+
   static void setNavigatorKey(GlobalKey<NavigatorState> key) {
     _navigatorKey = key;
   }
-  
+
   static void _handle401Error() {
     if (_navigatorKey?.currentContext != null) {
       final context = _navigatorKey!.currentContext!;
-      
+
       // Show dialog and navigate to login
       showDialog(
         context: context,
@@ -206,10 +208,10 @@ class ApiService {
         // Unauthorized - clear tokens, show dialog, and throw exception
         AppLogger.warning('❌ Unauthorized (401) - clearing tokens');
         await TokenManager.clearTokens();
-        
+
         // Show login dialog
         _handle401Error();
-        
+
         throw ApiException(
           'Authentication failed - please login again',
           response.statusCode,
@@ -384,6 +386,29 @@ class ApiService {
     }
   }
 
+  // Get video transcript
+  Future<Map<String, dynamic>> getVideoTranscript(
+    String channelId,
+    String videoId,
+  ) async {
+    try {
+      AppLogger.info(
+        'Fetching transcript for channel: $channelId, video: $videoId',
+      );
+      final result = await _makeRequest<Map<String, dynamic>>(
+        '/service/video-transcript/$channelId/$videoId',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        requiresAuth: true,
+      );
+      AppLogger.info('Transcript API response keys: ${result.keys.toList()}');
+      return result;
+    } catch (e) {
+      AppLogger.error('Get video transcript API error: $e');
+      rethrow;
+    }
+  }
+
   // Save user progress
   Future<Map<String, dynamic>> saveUserProgress(
     ProgressData progressData,
@@ -510,7 +535,7 @@ class ApiService {
   Future<Map<String, dynamic>> getAllUsers() async {
     try {
       return await _makeRequest<Map<String, dynamic>>(
-        '/user/all',
+        '/auth/users', // Fixed: Use correct endpoint
         (data) => data as Map<String, dynamic>,
         method: 'GET',
         requiresAuth: true, // Admin operations require authentication
@@ -632,7 +657,10 @@ class ApiService {
   // User Management API methods
 
   // Update user role (admin operation)
-  Future<Map<String, dynamic>> updateUserRole(List<String> emails, String role) async {
+  Future<Map<String, dynamic>> updateUserRole(
+    List<String> emails,
+    String role,
+  ) async {
     try {
       return await _makeRequest<Map<String, dynamic>>(
         '/auth/user/role',
@@ -647,18 +675,15 @@ class ApiService {
     }
   }
 
-  // Update user plan (admin operation)  
+  // Update user plan (admin operation)
   Future<Map<String, dynamic>> updateUserPlan(
-    List<String> emails, 
+    List<String> emails,
     String plan, {
     int? duration,
   }) async {
     try {
-      final body = {
-        'emails': emails,
-        'plan': plan,
-      };
-      
+      final body = {'emails': emails, 'plan': plan};
+
       if (duration != null) {
         body['duration'] = duration;
       }
@@ -672,6 +697,182 @@ class ApiService {
       );
     } catch (e) {
       AppLogger.error('Update user plan API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get user progress by email (admin operation)
+  Future<List<progress_data.ProgressData>> getUserProgressByEmail(
+    String userEmail,
+  ) async {
+    try {
+      AppLogger.info('Fetching user progress for email: $userEmail');
+
+      final response = await _makeRequest<dynamic>(
+        '/user/all-progress',
+        (data) => data,
+        method: 'GET',
+        queryParams: {'userEmail': userEmail},
+        requiresAuth: true,
+      );
+
+      AppLogger.info('User progress response type: ${response.runtimeType}');
+      AppLogger.info('User progress response: $response');
+
+      // Handle different response formats
+      List<dynamic> progressList;
+      if (response is List) {
+        AppLogger.info('Response is direct list with ${response.length} items');
+        progressList = response;
+      } else if (response is Map && response.containsKey('progress')) {
+        AppLogger.info(
+          'Response contains progress field with ${(response['progress'] as List).length} items',
+        );
+        progressList = response['progress'] as List;
+      } else if (response is Map && response.containsKey('data')) {
+        AppLogger.info(
+          'Response contains data field with ${(response['data'] as List).length} items',
+        );
+        progressList = response['data'] as List;
+      } else {
+        AppLogger.warning('Unknown response format, returning empty list');
+        progressList = [];
+      }
+
+      AppLogger.info('Parsed ${progressList.length} progress items');
+      final result = progressList
+          .map(
+            (item) => progress_data.ProgressData.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+      AppLogger.info(
+        'Successfully converted to ${result.length} ProgressData objects',
+      );
+
+      return result;
+    } catch (e) {
+      AppLogger.error('Get user progress by email API error: $e');
+      rethrow;
+    }
+  }
+
+  // Generate verification code (admin operation)
+  Future<Map<String, dynamic>> generateVerificationCode(String duration) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/payment/generate-code',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'duration': duration},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Generate verification code API error: $e');
+      rethrow;
+    }
+  }
+
+  // Generate custom verification code (admin operation)
+  Future<Map<String, dynamic>> generateCustomVerificationCode(int days) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/payment/generate-custom-code',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'days': days},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Generate custom verification code API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get all verification codes (admin operation)
+  Future<List<VerificationCode>> getAllVerificationCodes() async {
+    try {
+      final response = await _makeRequest<dynamic>(
+        '/payment/verification-codes',
+        (data) => data,
+        method: 'GET',
+        requiresAuth: true,
+      );
+
+      // Handle different response formats
+      List<dynamic> codeList;
+      if (response is List) {
+        codeList = response;
+      } else if (response is Map && response.containsKey('codes')) {
+        codeList = response['codes'] as List;
+      } else if (response is Map && response.containsKey('data')) {
+        codeList = response['data'] as List;
+      } else {
+        codeList = [];
+      }
+
+      return codeList
+          .map(
+            (item) => VerificationCode.fromJson(item as Map<String, dynamic>),
+          )
+          .toList();
+    } catch (e) {
+      AppLogger.error('Get all verification codes API error: $e');
+      rethrow;
+    }
+  }
+
+  // Assign verification code to user (admin operation)
+  Future<Map<String, dynamic>> assignVerificationCode(
+    String code,
+    String userEmail,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/payment/assign-code',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'code': code, 'userEmail': userEmail},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Assign verification code API error: $e');
+      rethrow;
+    }
+  }
+
+  // Update user duration (admin operation)
+  Future<Map<String, dynamic>> updateUserDuration(
+    List<String> emails,
+    int duration,
+  ) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/update-duration',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'emails': emails, 'duration': duration},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Update user duration API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get user usage stats (admin operation)
+  Future<Map<String, dynamic>> getUserUsageStats(int days) async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/user/usage-stats',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        queryParams: {'days': days.toString()},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Get user usage stats API error: $e');
       rethrow;
     }
   }

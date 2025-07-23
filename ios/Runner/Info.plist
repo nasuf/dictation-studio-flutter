@@ -76,5 +76,13 @@
 	<!-- iOS 18 compatibility - allow app to exit cleanly on suspend -->
 	<key>UIApplicationExitsOnSuspend</key>
 	<false/>
+	
+	<!-- WebView permissions for YouTube player -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to camera for video features</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app needs access to microphone for video features</string>
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 </dict>
 </plist>

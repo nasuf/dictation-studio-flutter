@@ -71,7 +71,11 @@ class _ProfileScreenState extends State<ProfileScreen>
 
       if (mounted) {
         setState(() {
-          _totalDuration = response['totalDuration'] as int?;
+          // Handle both int and double types from API
+          final totalDurationValue = response['totalDuration'];
+          _totalDuration = totalDurationValue != null 
+              ? (totalDurationValue is int ? totalDurationValue : (totalDurationValue as double).toInt())
+              : null;
           AppLogger.info('📈 Total duration: $_totalDuration seconds');
 
           _loadingDuration = false;
@@ -87,7 +91,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               final date = DateTime.fromMillisecondsSinceEpoch(
                 int.parse(entry.key),
               );
-              final value = entry.value as int;
+              // Handle both int and double types from API
+              final rawValue = entry.value;
+              final value = rawValue is int ? rawValue : (rawValue as double).toInt();
               AppLogger.info('📊 Processing date: $date, value: $value');
               return CalendarHeatmapData(date: date, value: value);
             }).toList();

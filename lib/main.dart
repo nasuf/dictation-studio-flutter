@@ -14,6 +14,7 @@ import 'screens/admin/video_management_screen.dart';
 import 'screens/admin/user_management_screen.dart';
 import 'screens/admin/analytics_screen.dart';
 import 'screens/login_screen.dart';
+import 'screens/dictation_screen.dart';
 import 'services/deep_link_service.dart';
 import 'services/api_service.dart';
 import 'utils/logger.dart';
@@ -512,6 +513,42 @@ class DictationStudioApp extends StatelessWidget {
               child: VideoListScreen(
                 channelId: channelId,
                 channelName: channelName,
+              ),
+            );
+          },
+        ),
+
+        // Dictation Route
+        GoRoute(
+          path: '/dictation/:channelId/:videoId',
+          name: 'dictation',
+          pageBuilder: (context, state) {
+            final channelId = state.pathParameters['channelId']!;
+            final videoId = state.pathParameters['videoId']!;
+            final extra = state.extra as Map<String, dynamic>?;
+            final video = extra?['video'];
+
+            AppLogger.info('🎧 Navigating to dictation: $channelId/$videoId');
+            
+            if (video == null) {
+              // If no video data provided, show error
+              return MaterialPage(
+                key: state.pageKey,
+                child: Scaffold(
+                  appBar: AppBar(title: const Text('Error')),
+                  body: const Center(
+                    child: Text('Video data not found'),
+                  ),
+                ),
+              );
+            }
+
+            return MaterialPage(
+              key: state.pageKey,
+              child: DictationScreen(
+                channelId: channelId,
+                videoId: videoId,
+                video: video,
               ),
             );
           },

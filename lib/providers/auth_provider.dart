@@ -324,7 +324,7 @@ class AuthProvider extends ChangeNotifier {
       avatar: userData['avatar_url'] ?? userData['picture'] ?? '',
       language: 'en',
       plan: models.Plan(name: 'Free', status: 'active'),
-      role: 'user',
+      role: 'User',  // Fixed: Use capitalized 'User' to match backend default
       dictationConfig: models.DictationConfig(shortcuts: models.ShortcutKeys()),
       createdAt: DateTime.now().millisecondsSinceEpoch,
     );
