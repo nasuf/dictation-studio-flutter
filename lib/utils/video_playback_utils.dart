@@ -99,17 +99,14 @@ class VideoPlaybackController {
   /// Play a specific transcript segment with precise timing
   Future<void> playSegment(TranscriptItem segment) async {
     try {
-      // Stop any current playback first
-      if (_isPlaying) {
-        _stopSegmentPlayback();
-        await Future.delayed(const Duration(milliseconds: 100));
-      }
-      
       // Check if player is ready or can be made ready
       if (!_playerController.value.isReady) {
         AppLogger.info('Player not ready, waiting...');
         await _waitForPlayerReady();
       }
+      
+      // Clean up any existing timers without stopping playback
+      _cleanupTimersOnly();
       
       await _playTranscriptSegment(segment);
     } catch (e) {
@@ -129,6 +126,59 @@ class VideoPlaybackController {
     } catch (e) {
       AppLogger.warning('Cannot control player: $e');
       return false;
+    }
+  }
+
+  /// Wait for actual playback to start with enhanced buffering detection
+  Future<void> _waitForPlaybackToStart() async {
+    int attempts = 0;
+    const maxAttempts = 50; // 5 seconds total for first-time loading
+    bool wasBuffering = false;
+    
+    while (attempts < maxAttempts) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+      
+      try {
+        final isPlaying = _playerController.value.isPlaying;
+        final playerState = _playerController.value.playerState;
+        final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+        
+        // Track if we've been buffering
+        if (playerState == PlayerState.buffering) {
+          wasBuffering = true;
+        }
+        
+        // Only confirm playback if:
+        // 1. Player is actually playing
+        // 2. Player state is playing 
+        // 3. Current time is progressing (not stuck at 0)
+        // 4. If we were buffering, make sure we've moved past buffering
+        if (isPlaying && 
+            playerState == PlayerState.playing && 
+            currentTime > 0 &&
+            (!wasBuffering || playerState != PlayerState.buffering)) {
+          AppLogger.info('Video playback confirmed after ${attempts * 100}ms, position: ${currentTime}s');
+          
+          // Wait an additional 200ms to ensure stable playback
+          await Future.delayed(const Duration(milliseconds: 200));
+          return;
+        }
+        
+        if (attempts % 10 == 0) { // Log every 1000ms
+          AppLogger.info('Waiting for playback to start... attempt $attempts, state: $playerState, playing: $isPlaying, time: ${currentTime}s, wasBuffering: $wasBuffering');
+        }
+      } catch (e) {
+        AppLogger.warning('Error checking playback state: $e');
+      }
+    }
+    
+    // Enhanced fallback: try to get current position before proceeding
+    try {
+      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+      AppLogger.warning('Playback start not confirmed after ${maxAttempts * 100}ms, current time: ${currentTime}s, proceeding anyway');
+    } catch (e) {
+      AppLogger.warning('Playback start not confirmed and cannot get position: $e, proceeding anyway');
     }
   }
 
@@ -254,7 +304,11 @@ class VideoPlaybackController {
       // Start playing with error handling
       try {
         _playerController.play();
-        AppLogger.info('Started playback');
+        AppLogger.info('Initiated playback command');
+        
+        // Wait for actual playback to start before setting up timers
+        await _waitForPlaybackToStart();
+        AppLogger.info('Playback confirmed to have started');
       } catch (e) {
         AppLogger.error('Failed to start playback: $e');
         throw Exception('Could not start video playback: $e');
@@ -277,7 +331,7 @@ class VideoPlaybackController {
     }
   }
 
-  /// Start monitoring playback progress
+  /// Start monitoring playback progress with enhanced precision
   void _startProgressMonitoring() {
     _progressTimer = Timer.periodic(const Duration(milliseconds: 50), (timer) {
       if (!_isPlaying) {
@@ -285,26 +339,61 @@ class VideoPlaybackController {
         return;
       }
 
-      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
-      _onProgress?.call(currentTime);
+      try {
+        final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+        final isActuallyPlaying = _playerController.value.isPlaying;
+        
+        // Only call progress callback if video is actually playing
+        if (isActuallyPlaying) {
+          _onProgress?.call(currentTime);
+        }
 
-      // Check if we should stop
-      if (_segmentEndTime != null && currentTime >= _segmentEndTime! - _config.timeAccuracy) {
-        _stopSegmentPlayback();
+        // Enhanced stopping logic with better precision
+        if (_segmentEndTime != null) {
+          final timeRemaining = _segmentEndTime! - currentTime;
+          
+          // Stop if we've reached or passed the end time
+          if (timeRemaining <= _config.timeAccuracy) {
+            if (_config.enableLogging) {
+              AppLogger.info('Stopping playback at ${currentTime}s (target: ${_segmentEndTime}s)');
+            }
+            _stopSegmentPlayback();
+          }
+        }
+      } catch (e) {
+        AppLogger.warning('Error in progress monitoring: $e');
       }
     });
   }
 
-  /// Start timer to force stop at segment end
+  /// Start timer to force stop at segment end with dynamic calculation
   void _startStopTimer(TranscriptItem segment) {
-    final duration = Duration(milliseconds: ((segment.end - segment.start + _config.bufferTolerance) * 1000).round());
-    
-    _stopTimer = Timer(duration, () {
-      if (_isPlaying) {
-        AppLogger.warning('Force stopping segment playback due to timeout');
-        _stopSegmentPlayback();
-      }
-    });
+    // Get current actual position to calculate remaining time more accurately
+    try {
+      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+      final remainingTime = segment.end - currentTime + _config.bufferTolerance;
+      final duration = Duration(milliseconds: (remainingTime * 1000).round().clamp(500, 30000)); // Min 500ms, max 30s
+      
+      AppLogger.info('Setting stop timer for ${remainingTime.toStringAsFixed(1)}s (from ${currentTime}s to ${segment.end}s)');
+      
+      _stopTimer = Timer(duration, () {
+        if (_isPlaying) {
+          AppLogger.warning('Force stopping segment playback due to timeout');
+          _stopSegmentPlayback();
+        }
+      });
+    } catch (e) {
+      // Fallback to original logic if getting position fails
+      AppLogger.warning('Could not get current position for timer, using fallback: $e');
+      final duration = Duration(milliseconds: ((segment.end - segment.start + _config.bufferTolerance) * 1000).round());
+      
+      _stopTimer = Timer(duration, () {
+        if (_isPlaying) {
+          AppLogger.warning('Force stopping segment playback due to timeout (fallback)');
+          _stopSegmentPlayback();
+        }
+      });
+    }
   }
 
   /// Stop segment playback
@@ -327,12 +416,17 @@ class VideoPlaybackController {
     }
   }
 
-  /// Clean up timers and state
-  void _cleanup() {
+  /// Clean up only timers without changing playback state
+  void _cleanupTimersOnly() {
     _progressTimer?.cancel();
     _stopTimer?.cancel();
     _progressTimer = null;
     _stopTimer = null;
+  }
+
+  /// Clean up timers and state
+  void _cleanup() {
+    _cleanupTimersOnly();
     _isPlaying = false;
     _segmentEndTime = null;
   }

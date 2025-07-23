@@ -86,85 +86,49 @@ class _CompactProgressBarState extends State<CompactProgressBar>
             // Compact progress bar - always visible
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Column(
+              child: Row(
                 children: [
-                  // Main progress bar
-                  Container(
-                    height: 8,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(4),
-                      color: theme.colorScheme.surfaceVariant,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: Stack(
+                  // Dual progress bar on the left (replacing "Progress" text)
+                  Expanded(
+                    flex: 3,
+                    child: _buildDualProgressBar(theme, progressColor, accuracyColor),
+                  ),
+                  const SizedBox(width: 16),
+                  // Progress and accuracy percentages on the right
+                  Row(
+                    children: [
+                      Row(
                         children: [
-                          // Completion progress (background)
-                          FractionallySizedBox(
-                            widthFactor: widget.completion / 100,
-                            child: Container(
-                              color: progressColor.withOpacity(0.3),
-                            ),
+                          Icon(
+                            Icons.trending_up,
+                            size: 14,
+                            color: progressColor,
                           ),
-                          // Accuracy progress (foreground)
-                          FractionallySizedBox(
-                            widthFactor: (widget.completion / 100) * (widget.accuracy / 100),
-                            child: Container(
-                              color: accuracyColor,
+                          const SizedBox(width: 4),
+                          Text(
+                            '${widget.completion.toStringAsFixed(0)}%',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: progressColor,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Summary text - focus on progress and accuracy
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Progress',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          color: theme.colorScheme.onSurface.withOpacity(0.7),
-                        ),
-                      ),
+                      const SizedBox(width: 12),
                       Row(
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.trending_up,
-                                size: 14,
-                                color: progressColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${widget.completion.toStringAsFixed(0)}%',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: progressColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          Icon(
+                            Icons.gps_fixed,
+                            size: 14,
+                            color: accuracyColor,
                           ),
-                          const SizedBox(width: 12),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.gps_fixed,
-                                size: 14,
-                                color: accuracyColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${widget.accuracy.toStringAsFixed(0)}%',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: accuracyColor,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
+                          const SizedBox(width: 4),
+                          Text(
+                            '${widget.accuracy.toStringAsFixed(0)}%',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: accuracyColor,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ],
                       ),
@@ -250,6 +214,94 @@ class _CompactProgressBarState extends State<CompactProgressBar>
           ],
         ),
       ),
+    );
+  }
+
+  // Build dual progress bar with clean text labels below
+  Widget _buildDualProgressBar(ThemeData theme, Color progressColor, Color accuracyColor) {
+    // Use different background colors for light and dark modes
+    final backgroundColor = theme.brightness == Brightness.dark 
+        ? const Color(0xFF374151) // Dark gray for dark mode
+        : const Color(0xFFE5E7EB); // Light gray for light mode
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Progress bar without overlay text
+        Container(
+          height: 24, // Similar to React version h-6 (24px)
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(12), // Rounded full
+            border: Border.all(
+              color: theme.colorScheme.outline.withOpacity(0.1),
+              width: 0.5,
+            ),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Stack(
+              children: [
+                // Completion progress bar (blue layer)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  width: double.infinity,
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: widget.completion / 100,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: progressColor, // Blue color for completion
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+                // Accuracy progress bar (green layer with opacity, overlaid)
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 500),
+                  curve: Curves.easeInOut,
+                  width: double.infinity,
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: widget.accuracy / 100,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: accuracyColor.withOpacity(0.7), // Green with opacity
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Text labels positioned below the progress bar for better visibility
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Completion: ${widget.completion.round()}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
+            ),
+            Text(
+              'Accuracy: ${widget.accuracy.round()}%',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface,
+                fontWeight: FontWeight.w500,
+                fontSize: 11,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

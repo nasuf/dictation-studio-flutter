@@ -12,6 +12,7 @@ class VideoPlayerWithControls extends StatefulWidget {
   final bool canGoNext;
   final bool canGoPrevious;
   final bool isPlaying;
+  final bool isLoading;
   final Widget? fallbackWidget;
 
   const VideoPlayerWithControls({
@@ -24,6 +25,7 @@ class VideoPlayerWithControls extends StatefulWidget {
     this.canGoNext = true,
     this.canGoPrevious = true,
     this.isPlaying = false,
+    this.isLoading = false,
     this.fallbackWidget,
   });
 
@@ -143,41 +145,57 @@ class _VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
   }
 
   Widget _buildLargePlayButton() {
+    final isEnabled = widget.onPlayCurrent != null && !widget.isLoading;
+    final buttonColor = isEnabled 
+        ? Theme.of(context).colorScheme.primary
+        : Colors.grey.shade600;
+    final iconColor = isEnabled ? Colors.white : Colors.white60;
+    
     return Container(
       width: 64,
       height: 64,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
+        color: buttonColor,
         shape: BoxShape.circle,
-        boxShadow: [
+        boxShadow: isEnabled ? [
           BoxShadow(
             color: Colors.black.withOpacity(0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
-        ],
+        ] : [],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(32),
-          onTap: widget.onPlayCurrent,
+          onTap: isEnabled ? widget.onPlayCurrent : null,
           child: Center(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
-              child: widget.isPlaying
-                  ? const Icon(
-                      Icons.pause,
-                      color: Colors.white,
-                      size: 32,
-                      key: ValueKey('pause'),
+              child: widget.isLoading
+                  ? SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.5,
+                        valueColor: AlwaysStoppedAnimation<Color>(iconColor),
+                        key: const ValueKey('loading'),
+                      ),
                     )
-                  : const Icon(
-                      Icons.play_arrow,
-                      color: Colors.white,
-                      size: 32,
-                      key: ValueKey('play'),
-                    ),
+                  : widget.isPlaying
+                      ? Icon(
+                          Icons.pause,
+                          color: iconColor,
+                          size: 32,
+                          key: const ValueKey('pause'),
+                        )
+                      : Icon(
+                          Icons.play_arrow,
+                          color: iconColor,
+                          size: 32,
+                          key: const ValueKey('play'),
+                        ),
             ),
           ),
         ),

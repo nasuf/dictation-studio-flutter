@@ -52,6 +52,11 @@ class _DictationScreenState extends State<DictationScreen>
   bool _isCompleted = false;
   bool _hasUnsavedChanges = false;
   bool _isTimerRunning = false;
+  
+  // Video player state management
+  bool _isVideoReady = false;
+  bool _isVideoPlaying = false;
+  bool _isVideoLoading = false;
 
   // Progress tracking
   double _overallCompletion = 0.0;
@@ -147,14 +152,31 @@ class _DictationScreenState extends State<DictationScreen>
   void _onYouTubePlayerStateChange() {
     final playerState = _youtubeController.value.playerState;
     final isReady = _youtubeController.value.isReady;
+    final isPlaying = _youtubeController.value.isPlaying;
 
     AppLogger.info(
-      'YouTube player state changed: $playerState, ready: $isReady',
+      'YouTube player state changed: $playerState, ready: $isReady, playing: $isPlaying',
     );
 
+    setState(() {
+      // Update video ready state - if isReady is true, consider it ready regardless of playerState
+      _isVideoReady = isReady;
+      
+      // More accurate playing state sync - use the isPlaying property directly
+      _isVideoPlaying = isPlaying;
+      
+      // Clear loading state when actually playing
+      if (isPlaying && _isVideoLoading) {
+        _isVideoLoading = false;
+        AppLogger.info('Video loading state cleared - now playing');
+      }
+    });
+
     // Handle player ready state
-    if (isReady && playerState != PlayerState.unknown) {
-      AppLogger.info('YouTube player is ready and functional');
+    if (_isVideoReady) {
+      AppLogger.info('YouTube player is ready and functional - buttons should be enabled now');
+    } else {
+      AppLogger.info('YouTube player not ready - buttons are disabled');
     }
   }
 
@@ -333,6 +355,19 @@ class _DictationScreenState extends State<DictationScreen>
 
     setState(() {
       _isTimerRunning = state == VideoPlaybackState.playing;
+      
+      // Clear loading state when playback starts
+      if (state == VideoPlaybackState.playing) {
+        _isVideoLoading = false;
+      }
+      
+      // Don't modify _isVideoReady here - let YouTube player state listener handle it
+      // Don't override _isVideoPlaying here - let YouTube player state listener handle it
+      // Only update if we're transitioning to a definitive non-playing state
+      if (state == VideoPlaybackState.paused || state == VideoPlaybackState.ended) {
+        _isVideoPlaying = false;
+        _isVideoLoading = false; // Clear loading state when stopped
+      }
     });
   }
 
@@ -397,7 +432,10 @@ class _DictationScreenState extends State<DictationScreen>
   void _updateOverallProgress() {
     int totalSentences = _transcript.length;
     int completedSentences = 0;
-    double totalAccuracy = 0.0;
+    
+    // New accuracy calculation: total correct words / total covered original words
+    int totalCorrectWords = 0;
+    int totalCoveredWords = 0;
 
     for (int i = 0; i < totalSentences; i++) {
       final input = _userInput[i];
@@ -405,7 +443,15 @@ class _DictationScreenState extends State<DictationScreen>
         completedSentences++;
         final result = _comparisonResults[i];
         if (result != null) {
-          totalAccuracy += result.accuracy;
+          // Count correct words in this sentence
+          final correctWordsInSentence = result.userInputResult
+              .where((word) => word.isCorrect)
+              .length;
+          totalCorrectWords += correctWordsInSentence;
+          
+          // Count total words in the original transcript for this sentence
+          final originalWordsInSentence = result.transcriptResult.length;
+          totalCoveredWords += originalWordsInSentence;
         }
       }
     }
@@ -414,8 +460,8 @@ class _DictationScreenState extends State<DictationScreen>
       _overallCompletion = totalSentences > 0
           ? (completedSentences / totalSentences * 100).clamp(0.0, 100.0)
           : 0.0;
-      _overallAccuracy = completedSentences > 0
-          ? (totalAccuracy / completedSentences).clamp(0.0, 100.0)
+      _overallAccuracy = totalCoveredWords > 0
+          ? (totalCorrectWords / totalCoveredWords * 100).clamp(0.0, 100.0)
           : 0.0;
     });
 
@@ -467,12 +513,25 @@ class _DictationScreenState extends State<DictationScreen>
   // Playback control methods
   Future<void> _playCurrentSentence() async {
     if (_currentSentenceIndex >= _transcript.length) return;
+    
+    // Check if video is ready before attempting to play
+    if (!_isVideoReady) {
+      AppLogger.warning('Video not ready, cannot play current sentence');
+      _showPlaybackErrorSnackBar();
+      return;
+    }
 
     try {
       final segment = _transcript[_currentSentenceIndex];
       AppLogger.info(
         'Playing sentence ${_currentSentenceIndex + 1}: "${segment.transcript}"',
       );
+
+      // Set loading state when starting playback
+      setState(() {
+        _isVideoLoading = true;
+      });
+      AppLogger.info('Video loading state set to true');
 
       await _playbackController.playSegment(segment);
 
@@ -485,6 +544,10 @@ class _DictationScreenState extends State<DictationScreen>
       }
     } catch (e) {
       AppLogger.error('Error playing current sentence: $e');
+      // Reset loading state on error
+      setState(() {
+        _isVideoLoading = false;
+      });
       _showPlaybackErrorSnackBar();
     }
   }
@@ -664,7 +727,10 @@ class _DictationScreenState extends State<DictationScreen>
               controller: _youtubeController,
               showVideoProgressIndicator: false,
               onReady: () {
-                AppLogger.info('YouTube player ready');
+                AppLogger.info('YouTube player ready - updating video ready state');
+                setState(() {
+                  _isVideoReady = true;
+                });
               },
               onEnded: (metaData) {
                 AppLogger.info('YouTube video ended');
@@ -674,12 +740,16 @@ class _DictationScreenState extends State<DictationScreen>
               return VideoPlayerWithControls(
                 youtubeController: _youtubeController,
                 playbackController: _playbackController,
-                onPlayCurrent: _playCurrentSentence,
-                onPlayNext: _playNextSentence,
-                onPlayPrevious: _playPreviousSentence,
+                onPlayCurrent: _isVideoReady ? () {
+                  AppLogger.info('Play current button clicked - video ready: $_isVideoReady');
+                  _playCurrentSentence();
+                } : null,
+                onPlayNext: _isVideoReady && !_isVideoLoading && _currentSentenceIndex < _transcript.length - 1 ? _playNextSentence : null,
+                onPlayPrevious: _isVideoReady && !_isVideoLoading && _currentSentenceIndex > 0 ? _playPreviousSentence : null,
                 canGoNext: _currentSentenceIndex < _transcript.length - 1,
                 canGoPrevious: _currentSentenceIndex > 0,
-                isPlaying: _playbackController.isPlayingSegment,
+                isPlaying: _isVideoPlaying,
+                isLoading: _isVideoLoading,
                 fallbackWidget: player,
               );
             },

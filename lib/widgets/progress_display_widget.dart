@@ -20,7 +20,7 @@ class DictationProgressBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       padding: const EdgeInsets.all(16.0),
@@ -67,9 +67,9 @@ class DictationProgressBar extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 12),
-          
+
           // Combined progress bar - all elements on one line
           Row(
             children: [
@@ -108,9 +108,9 @@ class DictationProgressBar extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const SizedBox(width: 16),
-              
+
               // Accuracy indicator with percentage
               Expanded(
                 flex: 2,
@@ -148,9 +148,9 @@ class DictationProgressBar extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Bottom info
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -183,14 +183,10 @@ class DictationProgressBar extends StatelessWidget {
     IconData icon,
   ) {
     final theme = Theme.of(context);
-    
+
     return Column(
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: color,
-        ),
+        Icon(icon, size: 20, color: color),
         const SizedBox(height: 4),
         Text(
           value,
@@ -216,7 +212,7 @@ class DictationProgressBar extends StatelessWidget {
     Color color,
   ) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -276,7 +272,7 @@ class DictationProgressBar extends StatelessWidget {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
     final secs = seconds % 60;
-    
+
     if (hours > 0) {
       return '${hours}h ${minutes}m';
     } else {
@@ -312,14 +308,12 @@ class ProgressDisplayWidget extends StatelessWidget {
         children: [
           // Circular progress indicator
           _buildCircularProgress(context),
-          
+
           const SizedBox(width: 16),
-          
+
           // Progress stats
-          Expanded(
-            child: _buildProgressStats(context),
-          ),
-          
+          Expanded(child: _buildProgressStats(context)),
+
           // Time display
           _buildTimeDisplay(context),
         ],
@@ -329,7 +323,7 @@ class ProgressDisplayWidget extends StatelessWidget {
 
   Widget _buildCircularProgress(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return SizedBox(
       width: 60,
       height: 60,
@@ -343,7 +337,7 @@ class ProgressDisplayWidget extends StatelessWidget {
               theme.colorScheme.surfaceContainerHighest,
             ),
           ),
-          
+
           // Progress circle
           CircularProgressIndicator(
             value: completion / 100,
@@ -352,7 +346,7 @@ class ProgressDisplayWidget extends StatelessWidget {
               _getProgressColor(completion),
             ),
           ),
-          
+
           // Center text
           Center(
             child: Text(
@@ -369,7 +363,7 @@ class ProgressDisplayWidget extends StatelessWidget {
 
   Widget _buildProgressStats(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -390,9 +384,9 @@ class ProgressDisplayWidget extends StatelessWidget {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 4),
-        
+
         // Accuracy
         Row(
           children: [
@@ -411,9 +405,9 @@ class ProgressDisplayWidget extends StatelessWidget {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 4),
-        
+
         // Sentence progress
         Row(
           children: [
@@ -436,15 +430,11 @@ class ProgressDisplayWidget extends StatelessWidget {
   Widget _buildTimeDisplay(BuildContext context) {
     final theme = Theme.of(context);
     final timeText = _formatTime(timeSpent);
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Icon(
-          Icons.schedule,
-          size: 20,
-          color: theme.colorScheme.primary,
-        ),
+        Icon(Icons.schedule, size: 20, color: theme.colorScheme.primary),
         const SizedBox(height: 4),
         Text(
           timeText,
@@ -473,7 +463,7 @@ class ProgressDisplayWidget extends StatelessWidget {
     final hours = seconds ~/ 3600;
     final minutes = (seconds % 3600) ~/ 60;
     final secs = seconds % 60;
-    
+
     if (hours > 0) {
       return '${hours}h ${minutes}m';
     } else {
@@ -515,13 +505,13 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
           children: [
             Text(
               'Progress Statistics',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Main progress display
             ProgressDisplayWidget(
               completion: completion,
@@ -530,9 +520,9 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
               totalSentences: totalSentences,
               timeSpent: timeSpent,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Detailed stats
             _buildDetailedStats(context),
           ],
@@ -543,7 +533,7 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
 
   Widget _buildDetailedStats(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Column(
       children: [
         _StatRow(
@@ -552,7 +542,7 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
           value: '$correctWords / $totalWords',
           color: _getAccuracyColor(accuracy),
         ),
-        
+
         if (averageWordsPerMinute > 0)
           _StatRow(
             icon: Icons.speed,
@@ -560,11 +550,12 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
             value: '${averageWordsPerMinute.toStringAsFixed(1)} WPM',
             color: theme.colorScheme.primary,
           ),
-        
+
         _StatRow(
           icon: Icons.timeline,
           label: 'Completion Rate',
-          value: '${(completion / (timeSpent / 60)).toStringAsFixed(1)}% per min',
+          value:
+              '${(completion / (timeSpent / 60)).toStringAsFixed(1)}% per min',
           color: theme.colorScheme.secondary,
         ),
       ],
@@ -595,23 +586,14 @@ class _StatRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Row(
         children: [
-          Icon(
-            icon,
-            size: 16,
-            color: color,
-          ),
+          Icon(icon, size: 16, color: color),
           const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: theme.textTheme.bodyMedium,
-            ),
-          ),
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
           Text(
             value,
             style: theme.textTheme.bodyMedium?.copyWith(
@@ -641,7 +623,7 @@ class CompactProgressWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -672,9 +654,9 @@ class CompactProgressWidget extends StatelessWidget {
             ],
           ),
         ),
-        
+
         const SizedBox(width: 8),
-        
+
         // Accuracy chip
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
