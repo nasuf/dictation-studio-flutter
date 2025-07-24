@@ -39,7 +39,7 @@ class _VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       height: 200,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovering = true),

@@ -195,7 +195,6 @@ class _ShortcutInfo extends StatelessWidget {
   final String action;
 
   const _ShortcutInfo({
-    super.key,
     required this.shortcutKey,
     required this.action,
   });

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Enhanced progress bar widget inspired by React VideoMain.tsx
+/// Simple progress bar widget with clean design
 class DictationProgressBar extends StatelessWidget {
   final double completion; // 0-100
   final double accuracy; // 0-100
@@ -40,28 +40,31 @@ class DictationProgressBar extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // Top row with statistics
+          // Single row with key metrics
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStatItem(
+              // Progress
+              _buildMetricItem(
                 context,
+                '${completion.toStringAsFixed(0)}%',
                 'Progress',
-                '${completion.toStringAsFixed(1)}%',
                 _getProgressColor(completion),
-                Icons.timeline,
+                Icons.trending_up,
               ),
-              _buildStatItem(
+              // Accuracy
+              _buildMetricItem(
                 context,
+                '${accuracy.toStringAsFixed(0)}%',
                 'Accuracy',
-                '${accuracy.toStringAsFixed(1)}%',
                 _getAccuracyColor(accuracy),
-                Icons.track_changes,
+                Icons.check_circle_outline,
               ),
-              _buildStatItem(
+              // Time
+              _buildMetricItem(
                 context,
-                'Time',
                 _formatTime(timeSpent),
+                'Time',
                 theme.colorScheme.primary,
                 Icons.schedule,
               ),
@@ -70,115 +73,43 @@ class DictationProgressBar extends StatelessWidget {
 
           const SizedBox(height: 12),
 
-          // Combined progress bar - all elements on one line
-          Row(
-            children: [
-              // Progress indicator with percentage
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: (completion / 100).clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _getProgressColor(completion),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${completion.toStringAsFixed(0)}%',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: _getProgressColor(completion),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
+          // Single progress indicator
+          Container(
+            height: 6,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest,
+              borderRadius: BorderRadius.circular(3),
+            ),
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: (completion / 100).clamp(0.0, 1.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: _getProgressColor(completion),
+                  borderRadius: BorderRadius.circular(3),
                 ),
               ),
-
-              const SizedBox(width: 16),
-
-              // Accuracy indicator with percentage
-              Expanded(
-                flex: 2,
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: (accuracy / 100).clamp(0.0, 1.0),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _getAccuracyColor(accuracy),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '${accuracy.toStringAsFixed(0)}%',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: _getAccuracyColor(accuracy),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
 
           const SizedBox(height: 8),
 
-          // Bottom info
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Sentence ${currentIndex + 1} of $totalSentences',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                ),
-              ),
-              Text(
-                '${(currentIndex / totalSentences * 100).toStringAsFixed(0)}% completed',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
+          // Sentence info
+          Text(
+            'Sentence ${currentIndex + 1} of $totalSentences',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildStatItem(
+  Widget _buildMetricItem(
     BuildContext context,
-    String label,
     String value,
+    String label,
     Color color,
     IconData icon,
   ) {
@@ -205,56 +136,6 @@ class DictationProgressBar extends StatelessWidget {
     );
   }
 
-  Widget _buildProgressBar(
-    BuildContext context,
-    String label,
-    double progress,
-    Color color,
-  ) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${progress.toStringAsFixed(1)}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Container(
-          height: 8,
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft,
-            widthFactor: (progress / 100).clamp(0.0, 1.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(4),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 
   Color _getProgressColor(double progress) {
     if (progress >= 90) return Colors.green;
@@ -281,14 +162,13 @@ class DictationProgressBar extends StatelessWidget {
   }
 }
 
-/// Widget to display dictation progress information
+/// Compact progress widget for dictation
 class ProgressDisplayWidget extends StatelessWidget {
   final double completion; // 0-100
   final double accuracy; // 0-100
   final int currentIndex;
   final int totalSentences;
   final int timeSpent; // in seconds
-  final bool showDetailedStats;
 
   const ProgressDisplayWidget({
     super.key,
@@ -297,153 +177,98 @@ class ProgressDisplayWidget extends StatelessWidget {
     required this.currentIndex,
     required this.totalSentences,
     required this.timeSpent,
-    this.showDetailedStats = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
+        ),
+      ),
       child: Row(
         children: [
-          // Circular progress indicator
-          _buildCircularProgress(context),
+          // Circular progress
+          SizedBox(
+            width: 40,
+            height: 40,
+            child: Stack(
+              children: [
+                CircularProgressIndicator(
+                  value: 1.0,
+                  strokeWidth: 4.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    theme.colorScheme.surfaceContainerHighest,
+                  ),
+                ),
+                CircularProgressIndicator(
+                  value: completion / 100,
+                  strokeWidth: 4.0,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    _getProgressColor(completion),
+                  ),
+                ),
+                Center(
+                  child: Text(
+                    '${completion.toStringAsFixed(0)}%',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: 12),
 
-          // Progress stats
-          Expanded(child: _buildProgressStats(context)),
+          // Stats
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Accuracy: ${accuracy.toStringAsFixed(0)}%',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: _getAccuracyColor(accuracy),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Sentence ${currentIndex + 1}/$totalSentences',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  ),
+                ),
+              ],
+            ),
+          ),
 
-          // Time display
-          _buildTimeDisplay(context),
+          // Time
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Icon(Icons.schedule, size: 16, color: theme.colorScheme.primary),
+              const SizedBox(height: 2),
+              Text(
+                _formatTime(timeSpent),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildCircularProgress(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: 60,
-      height: 60,
-      child: Stack(
-        children: [
-          // Background circle
-          CircularProgressIndicator(
-            value: 1.0,
-            strokeWidth: 6.0,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              theme.colorScheme.surfaceContainerHighest,
-            ),
-          ),
-
-          // Progress circle
-          CircularProgressIndicator(
-            value: completion / 100,
-            strokeWidth: 6.0,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              _getProgressColor(completion),
-            ),
-          ),
-
-          // Center text
-          Center(
-            child: Text(
-              '${completion.toStringAsFixed(0)}%',
-              style: theme.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressStats(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Completion
-        Row(
-          children: [
-            Icon(
-              Icons.check_circle_outline,
-              size: 16,
-              color: _getProgressColor(completion),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Progress: ${completion.toStringAsFixed(1)}%',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        // Accuracy
-        Row(
-          children: [
-            Icon(
-              Icons.track_changes,
-              size: 16,
-              color: _getAccuracyColor(accuracy),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Accuracy: ${accuracy.toStringAsFixed(1)}%',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: _getAccuracyColor(accuracy),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 4),
-
-        // Sentence progress
-        Row(
-          children: [
-            Icon(
-              Icons.format_list_numbered,
-              size: 16,
-              color: theme.colorScheme.onSurface.withOpacity(0.6),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Sentence: ${currentIndex + 1}/$totalSentences',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTimeDisplay(BuildContext context) {
-    final theme = Theme.of(context);
-    final timeText = _formatTime(timeSpent);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Icon(Icons.schedule, size: 20, color: theme.colorScheme.primary),
-        const SizedBox(height: 4),
-        Text(
-          timeText,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: theme.colorScheme.primary,
-          ),
-        ),
-      ],
     );
   }
 
@@ -472,7 +297,7 @@ class ProgressDisplayWidget extends StatelessWidget {
   }
 }
 
-/// Enhanced progress display with detailed statistics
+/// Enhanced progress display with additional statistics only
 class DetailedProgressDisplayWidget extends StatelessWidget {
   final double completion;
   final double accuracy;
@@ -497,6 +322,8 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -504,61 +331,38 @@ class DetailedProgressDisplayWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Progress Statistics',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              'Additional Statistics',
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
 
-            // Main progress display
-            ProgressDisplayWidget(
-              completion: completion,
-              accuracy: accuracy,
-              currentIndex: currentIndex,
-              totalSentences: totalSentences,
-              timeSpent: timeSpent,
+            // Only show additional stats, no duplicate progress info
+            _StatRow(
+              icon: Icons.spellcheck,
+              label: 'Words Correct',
+              value: '$correctWords / $totalWords',
+              color: _getAccuracyColor(accuracy),
             ),
 
-            const SizedBox(height: 16),
+            if (averageWordsPerMinute > 0)
+              _StatRow(
+                icon: Icons.speed,
+                label: 'Typing Speed',
+                value: '${averageWordsPerMinute.toStringAsFixed(1)} WPM',
+                color: theme.colorScheme.primary,
+              ),
 
-            // Detailed stats
-            _buildDetailedStats(context),
+            if (timeSpent > 0)
+              _StatRow(
+                icon: Icons.timeline,
+                label: 'Completion Rate',
+                value: '${(completion / (timeSpent / 60)).toStringAsFixed(1)}% per min',
+                color: theme.colorScheme.secondary,
+              ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildDetailedStats(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Column(
-      children: [
-        _StatRow(
-          icon: Icons.spellcheck,
-          label: 'Words Correct',
-          value: '$correctWords / $totalWords',
-          color: _getAccuracyColor(accuracy),
-        ),
-
-        if (averageWordsPerMinute > 0)
-          _StatRow(
-            icon: Icons.speed,
-            label: 'Typing Speed',
-            value: '${averageWordsPerMinute.toStringAsFixed(1)} WPM',
-            color: theme.colorScheme.primary,
-          ),
-
-        _StatRow(
-          icon: Icons.timeline,
-          label: 'Completion Rate',
-          value:
-              '${(completion / (timeSpent / 60)).toStringAsFixed(1)}% per min',
-          color: theme.colorScheme.secondary,
-        ),
-      ],
     );
   }
 

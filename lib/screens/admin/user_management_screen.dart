@@ -1002,9 +1002,9 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
   String _selectedCode = '';
   bool _isGenerating = false;
   bool _isAssigning = false;
-  bool _showCustomInput = false;
-  String _userSearchQuery = '';
-  List<String> _filteredUsers = [];
+  final bool _showCustomInput = false;
+  final String _userSearchQuery = '';
+  final List<String> _filteredUsers = [];
   
   final _customDaysController = TextEditingController();
   final _userSearchController = TextEditingController();

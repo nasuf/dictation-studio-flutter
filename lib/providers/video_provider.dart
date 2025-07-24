@@ -57,7 +57,7 @@ class VideoProvider with ChangeNotifier {
       for (int i = 0; i < sorted.length && i < 3; i++) {
         final video = sorted[i];
         final progress = _progress[video.videoId] ?? 0.0;
-        AppLogger.debug('    ${i + 1}. ${video.title} - ${progress}%');
+        AppLogger.debug('    ${i + 1}. ${video.title} - $progress%');
       }
     }
 

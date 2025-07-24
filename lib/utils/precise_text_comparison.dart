@@ -214,12 +214,12 @@ class PreciseTextComparison {
 
     // Map used indices to original indices
     final usedOriginalIndices = <int>{};
-    usedTranscriptIndices.forEach((cleanedIdx) {
+    for (var cleanedIdx in usedTranscriptIndices) {
       final originalIdx = cleanedToOriginalMap[cleanedIdx];
       if (originalIdx != null) {
         usedOriginalIndices.add(originalIdx);
       }
-    });
+    }
 
     return _MatchingResult(
       inputResult: inputResult,

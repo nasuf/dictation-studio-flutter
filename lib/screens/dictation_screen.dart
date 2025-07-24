@@ -46,6 +46,8 @@ class _DictationScreenState extends State<DictationScreen>
 
   int _currentSentenceIndex = 0;
   final Set<int> _revealedSentences = {};
+  final Set<int> _playedSentences = {}; // 跟踪已经播放过的句子
+  final Set<int> _completedSentences = {}; // 跟踪已经完成输入的句子
   bool _isProgressExpanded = false;
 
   bool _isLoadingTranscript = true;
@@ -272,13 +274,46 @@ class _DictationScreenState extends State<DictationScreen>
         _isLoadingTranscript = false;
       });
 
-      // Restore user progress if exists
-      if (progressResponse['data'] != null) {
-        final progressData = progressResponse['data'] as Map<String, dynamic>;
-        if (progressData['userInput'] != null &&
-            (progressData['userInput'] as Map).isNotEmpty) {
-          await _restoreUserProgress(progressData);
+      // Restore user progress if exists - API returns data directly without 'data' wrapper
+      AppLogger.info('=== PROGRESS RESTORATION DEBUG ===');
+      AppLogger.info('Progress response type: ${progressResponse.runtimeType}');
+      AppLogger.info('Progress response keys: ${progressResponse.keys.toList()}');
+      AppLogger.info('Progress response: ${progressResponse.toString()}');
+      
+      // Check for valid progress data - API returns data directly
+      bool hasValidProgress = false;
+      try {
+        // Backend API returns progress data directly: {channelId, videoId, userInput, currentTime, overallCompletion}
+        if (progressResponse.containsKey('userInput') && 
+            progressResponse['userInput'] != null) {
+          final userInput = progressResponse['userInput'];
+          AppLogger.info('UserInput type: ${userInput.runtimeType}');
+          AppLogger.info('UserInput content: $userInput');
+          
+          if (userInput is Map && userInput.isNotEmpty) {
+            hasValidProgress = true;
+            AppLogger.info('✓ Valid progress found with ${userInput.length} inputs');
+            AppLogger.info('UserInput keys: ${userInput.keys.toList()}');
+          } else {
+            AppLogger.info('✗ UserInput is empty or not a Map');
+          }
+        } else {
+          AppLogger.info('✗ No userInput key or userInput is null');
         }
+      } catch (e) {
+        AppLogger.warning('Error checking progress data: $e');
+      }
+      
+      AppLogger.info('Final hasValidProgress: $hasValidProgress');
+      
+      if (hasValidProgress) {
+        AppLogger.info('Found existing progress, restoring...');
+        await _restoreUserProgress(progressResponse);
+      } else {
+        AppLogger.info('No existing progress found, starting fresh');
+        setState(() {
+          _currentSentenceIndex = 0;
+        });
       }
 
       AppLogger.info('Loaded ${_transcript.length} transcript segments');
@@ -297,37 +332,75 @@ class _DictationScreenState extends State<DictationScreen>
     try {
       AppLogger.info('Restoring user progress...');
 
-      // Restore user input and merge back into transcript
+      // Restore user input - exactly like React version
       final userInputData = progressData['userInput'] as Map<String, dynamic>?;
-      if (userInputData != null) {
-        // Convert string keys to int and store in _userInput map
+      if (userInputData != null && userInputData.isNotEmpty) {
         _userInput.clear();
-        userInputData.forEach((key, value) {
-          final intKey = int.tryParse(key);
-          if (intKey != null && value is String) {
-            _userInput[intKey] = value;
-          }
-        });
-
-        // Update transcript items with user input
+        
+        // Create new transcript with user input - mirroring React lines 374-378
+        final List<TranscriptItem> newTranscript = [];
         for (int i = 0; i < _transcript.length; i++) {
-          if (_userInput.containsKey(i)) {
-            _transcript[i] = _transcript[i].copyWith(userInput: _userInput[i]);
+          final userInput = userInputData[i.toString()] ?? '';
+          newTranscript.add(_transcript[i].copyWith(userInput: userInput));
+          
+          // Store in our map too
+          if (userInput.isNotEmpty) {
+            _userInput[i] = userInput;
           }
         }
-      }
+        _transcript = newTranscript;
 
-      // Restore current position - find last input index
-      if (_userInput.isNotEmpty) {
-        final lastInputIndex = _userInput.keys.reduce((a, b) => a > b ? a : b);
+        // Find last input index - exactly like React line 380-383
+        final lastInputIndex = _userInput.keys.isEmpty 
+            ? 0 
+            : _userInput.keys.reduce((a, b) => a > b ? a : b);
+        
+        // Set current sentence index to last input - like React line 383
         _currentSentenceIndex = lastInputIndex.clamp(0, _transcript.length - 1);
+
+        // Set revealed sentences - like React lines 385-386  
+        _revealedSentences.clear();
+        _revealedSentences.addAll(_userInput.keys);
+        
+        // Mark all input sentences as played and completed
+        _playedSentences.clear();
+        _playedSentences.addAll(_userInput.keys);
+        _completedSentences.clear();
+        _completedSentences.addAll(_userInput.keys);
+
+        // Auto-score all restored sentences - like React lines 388-403
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Trigger comparison for all restored inputs
+        for (int index in _userInput.keys) {
+          if (index < _transcript.length) {
+            _performComparison(index);
+          }
+        }
+        
+        // Update overall progress
+        _updateOverallProgress();
+
+        // Set text controller to current sentence's input
+        _textController.text = _userInput[_currentSentenceIndex] ?? '';
+
+        // Seek video to current position if possible - mimic React line 387-389
+        if (_isVideoReady && _currentSentenceIndex < _transcript.length) {
+          final targetSegment = _transcript[_currentSentenceIndex];
+          try {
+            _youtubeController.seekTo(Duration(seconds: targetSegment.start.toInt()));
+            AppLogger.info('Video seeked to ${targetSegment.start} seconds for restored progress');
+          } catch (e) {
+            AppLogger.warning('Failed to seek video during progress restoration: $e');
+          }
+        }
+
+        AppLogger.info(
+          'Progress restored: ${_userInput.length} inputs, positioned at sentence ${_currentSentenceIndex + 1}/${_transcript.length}',
+        );
       }
 
-      // Restore revealed sentences (ones with user input)
-      _revealedSentences.clear();
-      _revealedSentences.addAll(_userInput.keys);
-
-      // Restore overall completion and other metrics
+      // Restore timing and completion data
       final completion = progressData['overallCompletion'];
       if (completion != null) {
         _overallCompletion = (completion is double)
@@ -335,18 +408,18 @@ class _DictationScreenState extends State<DictationScreen>
             : (completion as num).toDouble();
       }
 
-      // Recalculate comparisons for existing inputs
-      _recalculateAllComparisons();
+      // Reset timer for new session - like React lines 437-439
+      _totalTime = 0;
 
       setState(() {
         _hasUnsavedChanges = false; // Just loaded, so no unsaved changes
       });
 
       AppLogger.info(
-        'Restored progress: ${_userInput.length} inputs, ${_overallCompletion.toStringAsFixed(1)}% complete',
+        'User progress fully restored: ${_userInput.length} sentences, ${_overallCompletion.toStringAsFixed(1)}% complete',
       );
     } catch (e) {
-      AppLogger.warning('Could not restore user progress: $e');
+      AppLogger.error('Error restoring user progress: $e');
     }
   }
 
@@ -388,6 +461,8 @@ class _DictationScreenState extends State<DictationScreen>
       // Perform comparison if we have transcript
       if (_currentSentenceIndex < _transcript.length) {
         _performComparison(_currentSentenceIndex);
+        
+        // 不再实时更新整体进度，只在句子完成时更新
       }
 
       // Auto-save after certain number of inputs
@@ -401,6 +476,19 @@ class _DictationScreenState extends State<DictationScreen>
 
   void _onFocusChanged() {
     setState(() {}); // Rebuild to update UI focus state
+  }
+
+  void _markCurrentSentenceCompleted() {
+    final input = _userInput[_currentSentenceIndex];
+    if (input != null && input.trim().isNotEmpty) {
+      // 标记当前句子为完成
+      _completedSentences.add(_currentSentenceIndex);
+      
+      // 重新计算整体进度
+      _updateOverallProgress();
+      
+      AppLogger.info('Sentence $_currentSentenceIndex marked as completed: "$input"');
+    }
   }
 
   void _performComparison(int index) {
@@ -418,7 +506,7 @@ class _DictationScreenState extends State<DictationScreen>
       _comparisonResults[index] = result;
     });
 
-    _updateOverallProgress();
+    // 不再自动更新整体进度，由调用方决定何时更新
   }
 
   void _recalculateAllComparisons() {
@@ -430,40 +518,58 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   void _updateOverallProgress() {
-    int totalSentences = _transcript.length;
-    int completedSentences = 0;
-    
-    // New accuracy calculation: total correct words / total covered original words
-    int totalCorrectWords = 0;
-    int totalCoveredWords = 0;
+    // 计算所有原文单词总数
+    int totalOriginalWords = 0;
+    for (final transcript in _transcript) {
+      final words = transcript.transcript.trim().split(RegExp(r'\s+'));
+      totalOriginalWords += words.where((w) => w.isNotEmpty).length;
+    }
 
-    for (int i = 0; i < totalSentences; i++) {
-      final input = _userInput[i];
-      if (input != null && input.trim().isNotEmpty) {
-        completedSentences++;
-        final result = _comparisonResults[i];
+    // 计算已播放句子的原文单词总数
+    int playedOriginalWords = 0;
+    for (int playedIndex in _playedSentences) {
+      if (playedIndex < _transcript.length) {
+        final words = _transcript[playedIndex].transcript.trim().split(RegExp(r'\s+'));
+        playedOriginalWords += words.where((w) => w.isNotEmpty).length;
+      }
+    }
+
+    // 计算已完成句子的用户输入正确单词数和对应的原文单词数
+    int totalCorrectWords = 0;
+    int totalCompletedOriginalWords = 0; // 已完成句子的原文单词数
+    
+    for (int completedIndex in _completedSentences) {
+      if (completedIndex < _transcript.length) {
+        final result = _comparisonResults[completedIndex];
         if (result != null) {
-          // Count correct words in this sentence
+          // 计算用户输入中正确的单词数
           final correctWordsInSentence = result.userInputResult
               .where((word) => word.isCorrect)
               .length;
           totalCorrectWords += correctWordsInSentence;
           
-          // Count total words in the original transcript for this sentence
-          final originalWordsInSentence = result.transcriptResult.length;
-          totalCoveredWords += originalWordsInSentence;
+          // 计算该句子原文的单词数
+          final words = _transcript[completedIndex].transcript.trim().split(RegExp(r'\s+'));
+          totalCompletedOriginalWords += words.where((w) => w.isNotEmpty).length;
         }
       }
     }
 
     setState(() {
-      _overallCompletion = totalSentences > 0
-          ? (completedSentences / totalSentences * 100).clamp(0.0, 100.0)
+      // 完成率 = 已播放句子的原文单词数 / 所有原文单词数
+      _overallCompletion = totalOriginalWords > 0
+          ? (playedOriginalWords / totalOriginalWords * 100).clamp(0.0, 100.0)
           : 0.0;
-      _overallAccuracy = totalCoveredWords > 0
-          ? (totalCorrectWords / totalCoveredWords * 100).clamp(0.0, 100.0)
+      
+      // 准确率 = 已完成句子的正确单词数 / 已完成句子的原文单词数
+      _overallAccuracy = totalCompletedOriginalWords > 0
+          ? (totalCorrectWords / totalCompletedOriginalWords * 100).clamp(0.0, 100.0)
           : 0.0;
     });
+
+    AppLogger.info('Progress updated - Completion: ${_overallCompletion.toStringAsFixed(1)}%, Accuracy: ${_overallAccuracy.toStringAsFixed(1)}%');
+    AppLogger.info('Played sentences: $_playedSentences, Completed sentences: $_completedSentences');
+    AppLogger.info('Total correct words: $totalCorrectWords, Completed original words: $totalCompletedOriginalWords, Played original words: $playedOriginalWords');
 
     // Check for completion
     if (_overallCompletion >= 100.0 && !_isCompleted) {
@@ -530,6 +636,8 @@ class _DictationScreenState extends State<DictationScreen>
       // Set loading state when starting playback
       setState(() {
         _isVideoLoading = true;
+        // 记录这个句子已经被播放过
+        _playedSentences.add(_currentSentenceIndex);
       });
       AppLogger.info('Video loading state set to true');
 
@@ -550,6 +658,27 @@ class _DictationScreenState extends State<DictationScreen>
       });
       _showPlaybackErrorSnackBar();
     }
+  }
+
+  /// Play button should move to the next sentence after the last input
+  /// This matches React version behavior
+  Future<void> _handlePlayButtonClick() async {
+    // Find the next sentence to play after the last input
+    if (_userInput.isNotEmpty) {
+      final lastInputIndex = _userInput.keys.reduce((a, b) => a > b ? a : b);
+      final nextIndex = (lastInputIndex + 1).clamp(0, _transcript.length - 1);
+      
+      // Only move if we're not already positioned correctly
+      if (_currentSentenceIndex != nextIndex) {
+        setState(() {
+          _currentSentenceIndex = nextIndex;
+          _textController.text = _userInput[_currentSentenceIndex] ?? '';
+        });
+        AppLogger.info('Play button: moved to sentence ${nextIndex + 1} (next after last input)');
+      }
+    }
+    
+    await _playCurrentSentence();
   }
 
   void _showPlaybackErrorSnackBar() {
@@ -577,11 +706,17 @@ class _DictationScreenState extends State<DictationScreen>
 
   Future<void> _playNextSentence() async {
     _saveCurrentInput();
+    
+    // 标记当前句子为完成状态（如果有输入）
+    _markCurrentSentenceCompleted();
+    
+    // Auto-save progress after completing a sentence
+    await _saveProgress();
 
     if (_currentSentenceIndex < _transcript.length - 1) {
       setState(() {
         _currentSentenceIndex++;
-        _revealedSentences.add(_currentSentenceIndex);
+        // 不再自动显示原文，用户需要手动控制
         _textController.text = _userInput[_currentSentenceIndex] ?? '';
       });
 
@@ -607,7 +742,21 @@ class _DictationScreenState extends State<DictationScreen>
         _userInput[_currentSentenceIndex] = text;
         _hasUnsavedChanges = true;
       });
+      
+      // Update transcript with user input - like React line 662-669
+      _transcript[_currentSentenceIndex] = _transcript[_currentSentenceIndex].copyWith(userInput: text);
+      
+      // Add to revealed sentences - like React lines 670-674
+      if (!_revealedSentences.contains(_currentSentenceIndex)) {
+        _revealedSentences.add(_currentSentenceIndex);
+      }
+      
       _performComparison(_currentSentenceIndex);
+      
+      // Auto-save after input - like React lines 679-682
+      Future.delayed(const Duration(milliseconds: 200), () {
+        _saveProgress();
+      });
     }
   }
 
@@ -742,7 +891,7 @@ class _DictationScreenState extends State<DictationScreen>
                 playbackController: _playbackController,
                 onPlayCurrent: _isVideoReady ? () {
                   AppLogger.info('Play current button clicked - video ready: $_isVideoReady');
-                  _playCurrentSentence();
+                  _handlePlayButtonClick();
                 } : null,
                 onPlayNext: _isVideoReady && !_isVideoLoading && _currentSentenceIndex < _transcript.length - 1 ? _playNextSentence : null,
                 onPlayPrevious: _isVideoReady && !_isVideoLoading && _currentSentenceIndex > 0 ? _playPreviousSentence : null,
@@ -913,7 +1062,7 @@ class _DictationScreenState extends State<DictationScreen>
                 decoration: BoxDecoration(
                   color: Theme.of(
                     context,
-                  ).colorScheme.surfaceVariant.withOpacity(0.3),
+                  ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -990,8 +1139,13 @@ class _DictationScreenState extends State<DictationScreen>
             ],
           ),
         ),
-        onSubmitted: (text) {
+        onSubmitted: (text) async {
           _saveCurrentInput();
+          // Mark current sentence as completed if there's input
+          _markCurrentSentenceCompleted();
+          // Auto-save progress after submitting
+          await _saveProgress();
+          
           if (_currentSentenceIndex < _transcript.length - 1) {
             _playNextSentence();
           }

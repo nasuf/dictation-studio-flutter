@@ -27,11 +27,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  @override
-  void initState() {
-    super.initState();
-    // Don't load data here - wait for user to be logged in
-  }
 
   Future<void> _loadUserDuration({bool forceRefresh = false}) async {
     // Only load if we haven't loaded before or if it's a forced refresh

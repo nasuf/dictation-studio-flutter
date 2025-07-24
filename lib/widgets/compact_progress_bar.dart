@@ -66,7 +66,7 @@ class _CompactProgressBarState extends State<CompactProgressBar>
   String _formatTime(int seconds) {
     final minutes = seconds ~/ 60;
     final remainingSeconds = seconds % 60;
-    return '${minutes}:${remainingSeconds.toString().padLeft(2, '0')}';
+    return '$minutes:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   @override
@@ -86,51 +86,27 @@ class _CompactProgressBarState extends State<CompactProgressBar>
             // Compact progress bar - always visible
             Padding(
               padding: const EdgeInsets.all(16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Dual progress bar on the left (replacing "Progress" text)
-                  Expanded(
-                    flex: 3,
-                    child: _buildDualProgressBar(theme, progressColor, accuracyColor),
-                  ),
-                  const SizedBox(width: 16),
-                  // Progress and accuracy percentages on the right
+                  // Single clean progress bar without any text labels
+                  _buildCleanProgressBar(theme, progressColor, accuracyColor),
+                  const SizedBox(height: 8),
+                  // Only expand/collapse indicator
                   Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.trending_up,
-                            size: 14,
-                            color: progressColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${widget.completion.toStringAsFixed(0)}%',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: progressColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      Icon(
+                        widget.isExpanded ? Icons.expand_less : Icons.expand_more,
+                        size: 16,
+                        color: theme.colorScheme.onSurface.withOpacity(0.6),
                       ),
-                      const SizedBox(width: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.gps_fixed,
-                            size: 14,
-                            color: accuracyColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${widget.accuracy.toStringAsFixed(0)}%',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: accuracyColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(width: 4),
+                      Text(
+                        widget.isExpanded ? 'Less Details' : 'More Details',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.6),
+                        ),
                       ),
                     ],
                   ),
@@ -154,7 +130,7 @@ class _CompactProgressBarState extends State<CompactProgressBar>
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+                  color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
                   borderRadius: const BorderRadius.only(
                     bottomLeft: Radius.circular(12),
                     bottomRight: Radius.circular(12),
@@ -217,18 +193,14 @@ class _CompactProgressBarState extends State<CompactProgressBar>
     );
   }
 
-  // Build dual progress bar with clean text labels below
-  Widget _buildDualProgressBar(ThemeData theme, Color progressColor, Color accuracyColor) {
+  // Build clean progress bar without any text labels - no duplication
+  Widget _buildCleanProgressBar(ThemeData theme, Color progressColor, Color accuracyColor) {
     // Use different background colors for light and dark modes
     final backgroundColor = theme.brightness == Brightness.dark 
         ? const Color(0xFF374151) // Dark gray for dark mode
         : const Color(0xFFE5E7EB); // Light gray for light mode
     
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Progress bar without overlay text
-        Container(
+    return Container(
           height: 24, // Similar to React version h-6 (24px)
           decoration: BoxDecoration(
             color: backgroundColor,
@@ -277,32 +249,7 @@ class _CompactProgressBarState extends State<CompactProgressBar>
               ],
             ),
           ),
-        ),
-        // Text labels positioned below the progress bar for better visibility
-        const SizedBox(height: 4),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Completion: ${widget.completion.round()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-                fontSize: 11,
-              ),
-            ),
-            Text(
-              'Accuracy: ${widget.accuracy.round()}%',
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-                fontSize: 11,
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+        );
   }
 
   Widget _buildStatItem(
