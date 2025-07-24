@@ -29,16 +29,24 @@ class ChannelProvider extends ChangeNotifier {
   }
 
   // Fetch channels from API
-  Future<void> fetchChannels({String? language, String? visibility}) async {
+  Future<void> fetchChannels({String? language, String? visibility, bool forceRefresh = false}) async {
     // Prevent duplicate requests
     if (_isLoading) return;
+
+    // If we already have channels and not forcing refresh, skip API call
+    if (_channels.isNotEmpty && !forceRefresh) {
+      AppLogger.info('Channels already cached (${_channels.length} channels), skipping API call');
+      return;
+    }
 
     _setLoading(true);
     _clearError();
     
-    // Clear previous channels immediately to prevent showing wrong data
-    _channels = [];
-    notifyListeners();
+    // Only clear channels if forcing refresh, otherwise keep existing data during loading
+    if (forceRefresh) {
+      _channels = [];
+      notifyListeners();
+    }
 
     try {
       final langFilter = language ?? _languageFilter;
@@ -153,4 +161,21 @@ class ChannelProvider extends ChangeNotifier {
     _clearError();
     notifyListeners();
   }
+
+  // Force refresh channels from API (ignoring cache)
+  Future<void> refreshChannels({String? language, String? visibility}) async {
+    AppLogger.info('Force refreshing channels from API');
+    await fetchChannels(language: language, visibility: visibility, forceRefresh: true);
+  }
+
+  // Clear cached channels (useful for logout or when data becomes stale)
+  void clearCache() {
+    AppLogger.info('Clearing channels cache');
+    _channels = [];
+    _clearError();
+    notifyListeners();
+  }
+
+  // Check if channels are cached
+  bool get hasCache => _channels.isNotEmpty;
 }

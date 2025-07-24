@@ -90,10 +90,19 @@ class DictationConfig {
   factory DictationConfig.fromJson(Map<String, dynamic> json) {
     return DictationConfig(
       playbackSpeed: (json['playback_speed'] ?? 1.0).toDouble(),
-      autoRepeat: json['auto_repeat'] ?? 0,
+      autoRepeat: _parseIntValue(json['auto_repeat']) ?? 0,
       shortcuts: ShortcutKeys.fromJson(json['shortcuts'] ?? {}),
       language: json['language'],
     );
+  }
+
+  // Helper method for type-safe int parsing (same as User class)
+  static int? _parseIntValue(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value);
+    return null;
   }
 
   Map<String, dynamic> toJson() {

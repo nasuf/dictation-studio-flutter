@@ -337,7 +337,7 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Logout
-  Future<void> logout() async {
+  Future<void> logout({VoidCallback? onClearCache}) async {
     _setLoading(true);
     try {
       AppLogger.info('🚪 Logging out user...');
@@ -362,6 +362,10 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = null;
       await _clearUserFromPrefs();
 
+      // Clear other caches if callback is provided
+      onClearCache?.call();
+      AppLogger.info('✅ External caches cleared');
+
       notifyListeners();
       AppLogger.info('✅ User logged out and data cleared');
     } catch (e) {
@@ -372,6 +376,11 @@ class AuthProvider extends ChangeNotifier {
       _currentUser = null;
       await _clearUserFromPrefs();
       await TokenManager.clearTokens();
+      
+      // Clear other caches even if logout fails
+      onClearCache?.call();
+      AppLogger.info('✅ External caches cleared (fallback)');
+      
       notifyListeners();
     } finally {
       _setLoading(false);
@@ -417,6 +426,15 @@ class AuthProvider extends ChangeNotifier {
       } catch (e) {
         AppLogger.error('Failed to update user language: $e');
       }
+    }
+  }
+
+  // Refresh user data from backend (e.g., after config changes)
+  Future<void> refreshUserData() async {
+    final supabaseUser = _supabase.auth.currentUser;
+    if (supabaseUser != null) {
+      AppLogger.info('🔄 Refreshing user data from backend...');
+      await _loadUserFromSession(supabaseUser);
     }
   }
 }

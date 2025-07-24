@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 
 import '../models/transcript_item.dart';
@@ -9,6 +10,7 @@ import '../utils/video_playback_utils.dart';
 import '../utils/language_utils.dart';
 import '../utils/logger.dart';
 import '../services/api_service.dart';
+import '../providers/auth_provider.dart';
 import '../widgets/simple_comparison_widget.dart';
 import '../widgets/compact_progress_bar.dart';
 import '../widgets/video_player_with_controls.dart';
@@ -54,11 +56,14 @@ class _DictationScreenState extends State<DictationScreen>
   bool _isCompleted = false;
   bool _hasUnsavedChanges = false;
   bool _isTimerRunning = false;
-  
+
   // Video player state management
   bool _isVideoReady = false;
   bool _isVideoPlaying = false;
   bool _isVideoLoading = false;
+
+  // Playback task management to prevent concurrent playback
+  int _currentPlaybackTaskId = 0;
 
   // Progress tracking
   double _overallCompletion = 0.0;
@@ -67,13 +72,36 @@ class _DictationScreenState extends State<DictationScreen>
 
   // Configuration
   double _playbackSpeed = 1.0;
-  int _autoRepeatCount = 1;
-  bool _autoRepeat = true;
+  int _autoRepeatCount = 0; // Default: no auto repeat (play once)
+  bool _autoRepeat = false; // Default: auto repeat disabled
+
+  // Services
+  final ApiService _apiService = ApiService();
+
+  // Supported playback speeds
+  static const List<double> _supportedPlaybackSpeeds = [
+    0.5,
+    0.6,
+    0.7,
+    0.75,
+    0.8,
+    0.9,
+    1.0,
+    1.1,
+    1.2,
+    1.25,
+    1.3,
+    1.4,
+    1.5,
+    1.6,
+    1.7,
+    1.8,
+    1.9,
+    2.0,
+  ];
 
   // Timers
   Timer? _progressTimer;
-  Timer? _autoSaveTimer;
-  int _autoSaveInputCount = 0;
 
   @override
   void initState() {
@@ -88,7 +116,14 @@ class _DictationScreenState extends State<DictationScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopTimers();
-    _saveProgress(); // Save before disposing
+
+    // Save progress only if there are actual changes
+    if (_hasUnsavedChanges) {
+      AppLogger.info('Saving progress on page exit - user has unsaved changes');
+      _saveProgress();
+    } else {
+      AppLogger.info('No unsaved changes on page exit - skipping save');
+    }
 
     // Remove listeners before disposing
     _youtubeController.removeListener(_onYouTubePlayerStateChange);
@@ -104,6 +139,9 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   void _initializeComponents() {
+    // Load user configuration first
+    _loadUserConfiguration();
+
     // Initialize YouTube controller with improved configuration
     final videoId =
         YoutubePlayer.convertUrlToId(widget.video.link) ?? widget.video.videoId;
@@ -128,17 +166,17 @@ class _DictationScreenState extends State<DictationScreen>
     // Add listener for player state changes
     _youtubeController.addListener(_onYouTubePlayerStateChange);
 
-    // Initialize playback controller with configuration
+    // Initialize playback controller with user configuration
     _playbackController = VideoPlaybackController(
       _youtubeController,
       onStateChange: _onPlaybackStateChange,
       onProgress: _onPlaybackProgress,
-      config: const PlaybackConfig(
-        playbackSpeed: 1.0,
+      config: PlaybackConfig(
+        playbackSpeed: _playbackSpeed, // Use user's preferred speed
         timeAccuracy: 0.1,
         bufferTolerance: 0.3,
         maxRetries: 2, // Reduce retries to fail faster
-        retryDelay: Duration(milliseconds: 200),
+        retryDelay: const Duration(milliseconds: 200),
         enableLogging: true,
       ),
     );
@@ -149,6 +187,105 @@ class _DictationScreenState extends State<DictationScreen>
 
     _textController.addListener(_onTextChanged);
     _textFocusNode.addListener(_onFocusChanged);
+  }
+
+  /// Load user configuration from authentication provider
+  void _loadUserConfiguration() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+
+    if (user != null && user.dictationConfig != null) {
+      final config = user.dictationConfig!;
+
+      setState(() {
+        // Load playback speed (clamp to supported range)
+        _playbackSpeed = config.playbackSpeed.clamp(0.5, 2.0);
+
+        // Ensure the loaded speed is in our supported list
+        if (!_supportedPlaybackSpeeds.contains(_playbackSpeed)) {
+          // Find the closest supported speed
+          double minDiff = double.infinity;
+          double closestSpeed = 1.0;
+          for (double speed in _supportedPlaybackSpeeds) {
+            double diff = (_playbackSpeed - speed).abs();
+            if (diff < minDiff) {
+              minDiff = diff;
+              closestSpeed = speed;
+            }
+          }
+          _playbackSpeed = closestSpeed;
+          AppLogger.info(
+            'Adjusted unsupported playback speed to closest supported value: $_playbackSpeed',
+          );
+        }
+
+        // Load auto repeat settings
+        // auto_repeat: 0 means no repeat (play once), >0 means repeat N times (total plays = N+1)
+        _autoRepeat = config.autoRepeat > 0;
+        _autoRepeatCount =
+            config.autoRepeat; // Store the actual repeat count from backend
+
+        AppLogger.info('Raw config.autoRepeat value: ${config.autoRepeat}');
+        AppLogger.info(
+          'Processed _autoRepeat: $_autoRepeat, _autoRepeatCount: $_autoRepeatCount',
+        );
+      });
+
+      AppLogger.info(
+        'Loaded user configuration: speed=${_playbackSpeed}, autoRepeat=${_autoRepeat}, repeatCount=${_autoRepeatCount}',
+      );
+    } else {
+      AppLogger.info('No user configuration found, using defaults');
+    }
+  }
+
+  /// Save configuration changes to backend API
+  Future<void> _saveConfigurationToServer() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final user = authProvider.currentUser;
+
+    if (user == null) {
+      AppLogger.warning('Cannot save configuration: user not logged in');
+      return;
+    }
+
+    try {
+      // Prepare configuration data for API
+      final configData = {
+        'dictation_config': {
+          'playback_speed': _playbackSpeed,
+          'auto_repeat': _autoRepeat ? _autoRepeatCount : 0,
+          // Preserve existing shortcuts (mobile app doesn't change them)
+          'shortcuts': user.dictationConfig?.shortcuts.toJson() ?? {},
+          // Preserve language preference
+          'language': user.dictationConfig?.language,
+        },
+      };
+
+      AppLogger.info('Saving user configuration to server: $configData');
+
+      // Call API service to save configuration
+      await _apiService.saveUserConfig(configData);
+
+      AppLogger.info('User configuration saved successfully');
+
+      // Update local user data in auth provider
+      // Note: This might require a method in AuthProvider to update dictation config
+      // For now, the config will be refreshed on next app launch
+    } catch (e) {
+      AppLogger.error('Failed to save user configuration: $e');
+
+      // Show error message to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save settings: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 
   void _onYouTubePlayerStateChange() {
@@ -163,10 +300,10 @@ class _DictationScreenState extends State<DictationScreen>
     setState(() {
       // Update video ready state - if isReady is true, consider it ready regardless of playerState
       _isVideoReady = isReady;
-      
+
       // More accurate playing state sync - use the isPlaying property directly
       _isVideoPlaying = isPlaying;
-      
+
       // Clear loading state when actually playing
       if (isPlaying && _isVideoLoading) {
         _isVideoLoading = false;
@@ -176,7 +313,9 @@ class _DictationScreenState extends State<DictationScreen>
 
     // Handle player ready state
     if (_isVideoReady) {
-      AppLogger.info('YouTube player is ready and functional - buttons should be enabled now');
+      AppLogger.info(
+        'YouTube player is ready and functional - buttons should be enabled now',
+      );
     } else {
       AppLogger.info('YouTube player not ready - buttons are disabled');
     }
@@ -192,17 +331,11 @@ class _DictationScreenState extends State<DictationScreen>
       }
     });
 
-    // Auto-save timer
-    _autoSaveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (_hasUnsavedChanges) {
-        _saveProgress();
-      }
-    });
+    // Remove auto-save timer - will only save on page exit if there are changes
   }
 
   void _stopTimers() {
     _progressTimer?.cancel();
-    _autoSaveTimer?.cancel();
   }
 
   Future<void> _loadTranscript() async {
@@ -277,22 +410,26 @@ class _DictationScreenState extends State<DictationScreen>
       // Restore user progress if exists - API returns data directly without 'data' wrapper
       AppLogger.info('=== PROGRESS RESTORATION DEBUG ===');
       AppLogger.info('Progress response type: ${progressResponse.runtimeType}');
-      AppLogger.info('Progress response keys: ${progressResponse.keys.toList()}');
+      AppLogger.info(
+        'Progress response keys: ${progressResponse.keys.toList()}',
+      );
       AppLogger.info('Progress response: ${progressResponse.toString()}');
-      
+
       // Check for valid progress data - API returns data directly
       bool hasValidProgress = false;
       try {
         // Backend API returns progress data directly: {channelId, videoId, userInput, currentTime, overallCompletion}
-        if (progressResponse.containsKey('userInput') && 
+        if (progressResponse.containsKey('userInput') &&
             progressResponse['userInput'] != null) {
           final userInput = progressResponse['userInput'];
           AppLogger.info('UserInput type: ${userInput.runtimeType}');
           AppLogger.info('UserInput content: $userInput');
-          
+
           if (userInput is Map && userInput.isNotEmpty) {
             hasValidProgress = true;
-            AppLogger.info('✓ Valid progress found with ${userInput.length} inputs');
+            AppLogger.info(
+              '✓ Valid progress found with ${userInput.length} inputs',
+            );
             AppLogger.info('UserInput keys: ${userInput.keys.toList()}');
           } else {
             AppLogger.info('✗ UserInput is empty or not a Map');
@@ -303,9 +440,9 @@ class _DictationScreenState extends State<DictationScreen>
       } catch (e) {
         AppLogger.warning('Error checking progress data: $e');
       }
-      
+
       AppLogger.info('Final hasValidProgress: $hasValidProgress');
-      
+
       if (hasValidProgress) {
         AppLogger.info('Found existing progress, restoring...');
         await _restoreUserProgress(progressResponse);
@@ -336,32 +473,33 @@ class _DictationScreenState extends State<DictationScreen>
       final userInputData = progressData['userInput'] as Map<String, dynamic>?;
       if (userInputData != null && userInputData.isNotEmpty) {
         _userInput.clear();
-        
+
         // Create new transcript with user input - mirroring React lines 374-378
         final List<TranscriptItem> newTranscript = [];
         for (int i = 0; i < _transcript.length; i++) {
-          final userInput = userInputData[i.toString()] ?? '';
+          final userInput = userInputData.containsKey(i.toString())
+              ? userInputData[i.toString()]
+              : '';
           newTranscript.add(_transcript[i].copyWith(userInput: userInput));
-          
-          // Store in our map too
-          if (userInput.isNotEmpty) {
-            _userInput[i] = userInput;
+
+          // Only store entries that actually exist in the progress data
+          if (userInputData.containsKey(i.toString())) {
+            _userInput[i] = userInputData[i.toString()];
           }
         }
         _transcript = newTranscript;
 
         // Find last input index - exactly like React line 380-383
-        final lastInputIndex = _userInput.keys.isEmpty 
-            ? 0 
+        final lastInputIndex = _userInput.keys.isEmpty
+            ? 0
             : _userInput.keys.reduce((a, b) => a > b ? a : b);
-        
+
         // Set current sentence index to last input - like React line 383
         _currentSentenceIndex = lastInputIndex.clamp(0, _transcript.length - 1);
 
-        // Set revealed sentences - like React lines 385-386  
+        // Don't auto-reveal sentences - user controls original text display
         _revealedSentences.clear();
-        _revealedSentences.addAll(_userInput.keys);
-        
+
         // Mark all input sentences as played and completed
         _playedSentences.clear();
         _playedSentences.addAll(_userInput.keys);
@@ -370,14 +508,14 @@ class _DictationScreenState extends State<DictationScreen>
 
         // Auto-score all restored sentences - like React lines 388-403
         await Future.delayed(const Duration(milliseconds: 100));
-        
+
         // Trigger comparison for all restored inputs
         for (int index in _userInput.keys) {
           if (index < _transcript.length) {
             _performComparison(index);
           }
         }
-        
+
         // Update overall progress
         _updateOverallProgress();
 
@@ -388,10 +526,16 @@ class _DictationScreenState extends State<DictationScreen>
         if (_isVideoReady && _currentSentenceIndex < _transcript.length) {
           final targetSegment = _transcript[_currentSentenceIndex];
           try {
-            _youtubeController.seekTo(Duration(seconds: targetSegment.start.toInt()));
-            AppLogger.info('Video seeked to ${targetSegment.start} seconds for restored progress');
+            _youtubeController.seekTo(
+              Duration(seconds: targetSegment.start.toInt()),
+            );
+            AppLogger.info(
+              'Video seeked to ${targetSegment.start} seconds for restored progress',
+            );
           } catch (e) {
-            AppLogger.warning('Failed to seek video during progress restoration: $e');
+            AppLogger.warning(
+              'Failed to seek video during progress restoration: $e',
+            );
           }
         }
 
@@ -428,16 +572,17 @@ class _DictationScreenState extends State<DictationScreen>
 
     setState(() {
       _isTimerRunning = state == VideoPlaybackState.playing;
-      
+
       // Clear loading state when playback starts
       if (state == VideoPlaybackState.playing) {
         _isVideoLoading = false;
       }
-      
+
       // Don't modify _isVideoReady here - let YouTube player state listener handle it
       // Don't override _isVideoPlaying here - let YouTube player state listener handle it
       // Only update if we're transitioning to a definitive non-playing state
-      if (state == VideoPlaybackState.paused || state == VideoPlaybackState.ended) {
+      if (state == VideoPlaybackState.paused ||
+          state == VideoPlaybackState.ended) {
         _isVideoPlaying = false;
         _isVideoLoading = false; // Clear loading state when stopped
       }
@@ -461,16 +606,11 @@ class _DictationScreenState extends State<DictationScreen>
       // Perform comparison if we have transcript
       if (_currentSentenceIndex < _transcript.length) {
         _performComparison(_currentSentenceIndex);
-        
+
         // 不再实时更新整体进度，只在句子完成时更新
       }
 
-      // Auto-save after certain number of inputs
-      _autoSaveInputCount++;
-      if (_autoSaveInputCount >= 5) {
-        _saveProgress();
-        _autoSaveInputCount = 0;
-      }
+      // Remove auto-save logic - will only save on page exit
     }
   }
 
@@ -483,11 +623,13 @@ class _DictationScreenState extends State<DictationScreen>
     if (input != null && input.trim().isNotEmpty) {
       // 标记当前句子为完成
       _completedSentences.add(_currentSentenceIndex);
-      
+
       // 重新计算整体进度
       _updateOverallProgress();
-      
-      AppLogger.info('Sentence $_currentSentenceIndex marked as completed: "$input"');
+
+      AppLogger.info(
+        'Sentence $_currentSentenceIndex marked as completed: "$input"',
+      );
     }
   }
 
@@ -529,7 +671,9 @@ class _DictationScreenState extends State<DictationScreen>
     int playedOriginalWords = 0;
     for (int playedIndex in _playedSentences) {
       if (playedIndex < _transcript.length) {
-        final words = _transcript[playedIndex].transcript.trim().split(RegExp(r'\s+'));
+        final words = _transcript[playedIndex].transcript.trim().split(
+          RegExp(r'\s+'),
+        );
         playedOriginalWords += words.where((w) => w.isNotEmpty).length;
       }
     }
@@ -537,7 +681,7 @@ class _DictationScreenState extends State<DictationScreen>
     // 计算已完成句子的用户输入正确单词数和对应的原文单词数
     int totalCorrectWords = 0;
     int totalCompletedOriginalWords = 0; // 已完成句子的原文单词数
-    
+
     for (int completedIndex in _completedSentences) {
       if (completedIndex < _transcript.length) {
         final result = _comparisonResults[completedIndex];
@@ -547,10 +691,14 @@ class _DictationScreenState extends State<DictationScreen>
               .where((word) => word.isCorrect)
               .length;
           totalCorrectWords += correctWordsInSentence;
-          
+
           // 计算该句子原文的单词数
-          final words = _transcript[completedIndex].transcript.trim().split(RegExp(r'\s+'));
-          totalCompletedOriginalWords += words.where((w) => w.isNotEmpty).length;
+          final words = _transcript[completedIndex].transcript.trim().split(
+            RegExp(r'\s+'),
+          );
+          totalCompletedOriginalWords += words
+              .where((w) => w.isNotEmpty)
+              .length;
         }
       }
     }
@@ -560,16 +708,25 @@ class _DictationScreenState extends State<DictationScreen>
       _overallCompletion = totalOriginalWords > 0
           ? (playedOriginalWords / totalOriginalWords * 100).clamp(0.0, 100.0)
           : 0.0;
-      
+
       // 准确率 = 已完成句子的正确单词数 / 已完成句子的原文单词数
       _overallAccuracy = totalCompletedOriginalWords > 0
-          ? (totalCorrectWords / totalCompletedOriginalWords * 100).clamp(0.0, 100.0)
+          ? (totalCorrectWords / totalCompletedOriginalWords * 100).clamp(
+              0.0,
+              100.0,
+            )
           : 0.0;
     });
 
-    AppLogger.info('Progress updated - Completion: ${_overallCompletion.toStringAsFixed(1)}%, Accuracy: ${_overallAccuracy.toStringAsFixed(1)}%');
-    AppLogger.info('Played sentences: $_playedSentences, Completed sentences: $_completedSentences');
-    AppLogger.info('Total correct words: $totalCorrectWords, Completed original words: $totalCompletedOriginalWords, Played original words: $playedOriginalWords');
+    AppLogger.info(
+      'Progress updated - Completion: ${_overallCompletion.toStringAsFixed(1)}%, Accuracy: ${_overallAccuracy.toStringAsFixed(1)}%',
+    );
+    AppLogger.info(
+      'Played sentences: $_playedSentences, Completed sentences: $_completedSentences',
+    );
+    AppLogger.info(
+      'Total correct words: $totalCorrectWords, Completed original words: $totalCompletedOriginalWords, Played original words: $playedOriginalWords',
+    );
 
     // Check for completion
     if (_overallCompletion >= 100.0 && !_isCompleted) {
@@ -590,6 +747,30 @@ class _DictationScreenState extends State<DictationScreen>
     if (!_hasUnsavedChanges) return;
 
     try {
+      // Show progress saving indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Saving progress...'),
+              ],
+            ),
+            duration: Duration(seconds: 1),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+
       // Create a proper ProgressData object (convert Map<int,String> to Map<String,String>)
       final userInputForApi = Map<String, String>.fromEntries(
         _userInput.entries.map((e) => MapEntry(e.key.toString(), e.value)),
@@ -610,16 +791,72 @@ class _DictationScreenState extends State<DictationScreen>
         _hasUnsavedChanges = false;
       });
 
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Progress saved successfully'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
       AppLogger.info('Progress saved successfully');
     } catch (e) {
       AppLogger.error('Failed to save progress: $e');
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(child: Text('Failed to save progress: ${e.toString()}')),
+              ],
+            ),
+            duration: const Duration(seconds: 3),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // Playback control methods
+  // Playback control methods with debouncing
+  DateTime? _lastPlaybackAction;
+  // Increased debounce delay to prevent chaos from rapid clicking
+  static const Duration _playbackDebounceDelay = Duration(milliseconds: 600);
+  bool _isPlaybackInProgress = false;
+
   Future<void> _playCurrentSentence() async {
+    // Debouncing: prevent rapid successive calls
+    final now = DateTime.now();
+    if (_lastPlaybackAction != null &&
+        now.difference(_lastPlaybackAction!) < _playbackDebounceDelay) {
+      AppLogger.info(
+        'Playback call debounced - too soon after last action (${now.difference(_lastPlaybackAction!).inMilliseconds}ms ago)',
+      );
+      return;
+    }
+    _lastPlaybackAction = now;
+
+    // Prevent concurrent playback operations
+    if (_isPlaybackInProgress) {
+      AppLogger.info('Playback already in progress, ignoring new request');
+      return;
+    }
+
     if (_currentSentenceIndex >= _transcript.length) return;
-    
+
     // Check if video is ready before attempting to play
     if (!_isVideoReady) {
       AppLogger.warning('Video not ready, cannot play current sentence');
@@ -627,10 +864,22 @@ class _DictationScreenState extends State<DictationScreen>
       return;
     }
 
+    _isPlaybackInProgress = true;
+
+    // Generate unique task ID - this will invalidate any previous tasks
+    final taskId = ++_currentPlaybackTaskId;
+    AppLogger.info(
+      'Starting playback task $taskId for sentence ${_currentSentenceIndex + 1}',
+    );
+
+    // Always stop any current playback before starting new one (like React version)
+    await _playbackController.stop();
+    AppLogger.info('Stopped previous playback for task $taskId');
+
     try {
       final segment = _transcript[_currentSentenceIndex];
       AppLogger.info(
-        'Playing sentence ${_currentSentenceIndex + 1}: "${segment.transcript}"',
+        'Playing sentence ${_currentSentenceIndex + 1}: "${segment.transcript}" (task $taskId)',
       );
 
       // Set loading state when starting playback
@@ -639,46 +888,104 @@ class _DictationScreenState extends State<DictationScreen>
         // 记录这个句子已经被播放过
         _playedSentences.add(_currentSentenceIndex);
       });
-      AppLogger.info('Video loading state set to true');
+      AppLogger.info('Video loading state set to true for task $taskId');
 
+      // Check if this task is still current before starting playback
+      if (taskId != _currentPlaybackTaskId) {
+        AppLogger.info('Playback task $taskId was cancelled before starting');
+        setState(() {
+          _isVideoLoading = false;
+        });
+        return;
+      }
+
+      // Play the segment (initial play)
+      AppLogger.info('Starting initial playback at ${_playbackSpeed}x speed');
       await _playbackController.playSegment(segment);
 
+      // Check if task is still current after main playback
+      if (taskId != _currentPlaybackTaskId) {
+        AppLogger.info(
+          'Playback task $taskId was cancelled after main playback',
+        );
+        setState(() {
+          _isVideoLoading = false;
+        });
+        return;
+      }
+
       // Auto-repeat if enabled
-      if (_autoRepeat && _autoRepeatCount > 1) {
-        for (int i = 1; i < _autoRepeatCount; i++) {
+      // _autoRepeatCount represents how many additional times to repeat (not total plays)
+      // auto_repeat: 1 means play once + repeat 1 time = total 2 plays
+      if (_autoRepeat && _autoRepeatCount > 0) {
+        AppLogger.info(
+          'Auto-repeat enabled: will repeat $_autoRepeatCount additional times',
+        );
+
+        for (int i = 0; i < _autoRepeatCount; i++) {
+          // Check if we're still the current task
+          if (taskId != _currentPlaybackTaskId) {
+            AppLogger.info(
+              'Playback task $taskId cancelled during auto-repeat',
+            );
+            setState(() {
+              _isVideoLoading = false;
+            });
+            return;
+          }
+
           await Future.delayed(const Duration(milliseconds: 500));
+          AppLogger.info('Auto-repeat ${i + 1}/$_autoRepeatCount');
           await _playbackController.playSegment(segment);
         }
       }
+
+      // Final check and only update UI if we're still the current task
+      if (taskId == _currentPlaybackTaskId) {
+        setState(() {
+          _isVideoLoading = false;
+        });
+        AppLogger.info('Playback task $taskId completed successfully');
+      } else {
+        AppLogger.info('Playback task $taskId completed but was superseded');
+      }
     } catch (e) {
-      AppLogger.error('Error playing current sentence: $e');
-      // Reset loading state on error
-      setState(() {
-        _isVideoLoading = false;
-      });
-      _showPlaybackErrorSnackBar();
+      AppLogger.error('Error in playback task $taskId: $e');
+      // Only reset loading state if this is still the current task
+      if (taskId == _currentPlaybackTaskId) {
+        setState(() {
+          _isVideoLoading = false;
+        });
+        _showPlaybackErrorSnackBar();
+      }
+    } finally {
+      _isPlaybackInProgress = false;
     }
   }
 
-  /// Play button should move to the next sentence after the last input
-  /// This matches React version behavior
+  /// Play button toggles between play and pause
+  /// If currently playing: pause playback
+  /// If not playing: play the current sentence
   Future<void> _handlePlayButtonClick() async {
-    // Find the next sentence to play after the last input
-    if (_userInput.isNotEmpty) {
-      final lastInputIndex = _userInput.keys.reduce((a, b) => a > b ? a : b);
-      final nextIndex = (lastInputIndex + 1).clamp(0, _transcript.length - 1);
-      
-      // Only move if we're not already positioned correctly
-      if (_currentSentenceIndex != nextIndex) {
-        setState(() {
-          _currentSentenceIndex = nextIndex;
-          _textController.text = _userInput[_currentSentenceIndex] ?? '';
-        });
-        AppLogger.info('Play button: moved to sentence ${nextIndex + 1} (next after last input)');
-      }
+    // Check if currently playing the current sentence
+    if (_playbackController.isPlayingSegment) {
+      // Currently playing, so pause/stop
+      AppLogger.info(
+        'Pausing current playback for sentence ${_currentSentenceIndex + 1}',
+      );
+      await _playbackController.stop();
+
+      setState(() {
+        _isVideoLoading = false;
+        _isVideoPlaying = false;
+      });
+    } else {
+      // Not playing, so start playing the current sentence
+      AppLogger.info(
+        'Starting playback for sentence ${_currentSentenceIndex + 1}',
+      );
+      await _playCurrentSentence();
     }
-    
-    await _playCurrentSentence();
   }
 
   void _showPlaybackErrorSnackBar() {
@@ -705,19 +1012,37 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   Future<void> _playNextSentence() async {
+    // Debouncing: prevent rapid successive calls for navigation
+    final now = DateTime.now();
+    if (_lastPlaybackAction != null &&
+        now.difference(_lastPlaybackAction!) < _playbackDebounceDelay) {
+      AppLogger.info(
+        'Next sentence call debounced - too soon after last action (${now.difference(_lastPlaybackAction!).inMilliseconds}ms ago)',
+      );
+      return;
+    }
+    // Don't set _lastPlaybackAction here - let _playCurrentSentence() handle it
+
     _saveCurrentInput();
-    
+
     // 标记当前句子为完成状态（如果有输入）
     _markCurrentSentenceCompleted();
-    
-    // Auto-save progress after completing a sentence
-    await _saveProgress();
+
+    // Remove auto-save - will only save on page exit
 
     if (_currentSentenceIndex < _transcript.length - 1) {
+      // Force stop any current playback immediately and reset playback state
+      await _playbackController.stop();
+      _isPlaybackInProgress =
+          false; // Reset flag to ensure new playback can start
+      AppLogger.info('Stopped playback for next sentence navigation');
+
       setState(() {
         _currentSentenceIndex++;
         // 不再自动显示原文，用户需要手动控制
         _textController.text = _userInput[_currentSentenceIndex] ?? '';
+        // Set loading state immediately for button feedback
+        _isVideoLoading = true;
       });
 
       await _playCurrentSentence();
@@ -725,10 +1050,29 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   Future<void> _playPreviousSentence() async {
+    // Debouncing: prevent rapid successive calls for navigation
+    final now = DateTime.now();
+    if (_lastPlaybackAction != null &&
+        now.difference(_lastPlaybackAction!) < _playbackDebounceDelay) {
+      AppLogger.info(
+        'Previous sentence call debounced - too soon after last action (${now.difference(_lastPlaybackAction!).inMilliseconds}ms ago)',
+      );
+      return;
+    }
+    // Don't set _lastPlaybackAction here - let _playCurrentSentence() handle it
+
     if (_currentSentenceIndex > 0) {
+      // Force stop any current playback immediately and reset playback state
+      await _playbackController.stop();
+      _isPlaybackInProgress =
+          false; // Reset flag to ensure new playback can start
+      AppLogger.info('Stopped playback for previous sentence navigation');
+
       setState(() {
         _currentSentenceIndex--;
         _textController.text = _userInput[_currentSentenceIndex] ?? '';
+        // Set loading state immediately for button feedback
+        _isVideoLoading = true;
       });
 
       await _playCurrentSentence();
@@ -742,21 +1086,19 @@ class _DictationScreenState extends State<DictationScreen>
         _userInput[_currentSentenceIndex] = text;
         _hasUnsavedChanges = true;
       });
-      
+
       // Update transcript with user input - like React line 662-669
-      _transcript[_currentSentenceIndex] = _transcript[_currentSentenceIndex].copyWith(userInput: text);
-      
+      _transcript[_currentSentenceIndex] = _transcript[_currentSentenceIndex]
+          .copyWith(userInput: text);
+
       // Add to revealed sentences - like React lines 670-674
       if (!_revealedSentences.contains(_currentSentenceIndex)) {
         _revealedSentences.add(_currentSentenceIndex);
       }
-      
+
       _performComparison(_currentSentenceIndex);
-      
-      // Auto-save after input - like React lines 679-682
-      Future.delayed(const Duration(milliseconds: 200), () {
-        _saveProgress();
-      });
+
+      // Remove auto-save logic - will only save on page exit
     }
   }
 
@@ -876,7 +1218,9 @@ class _DictationScreenState extends State<DictationScreen>
               controller: _youtubeController,
               showVideoProgressIndicator: false,
               onReady: () {
-                AppLogger.info('YouTube player ready - updating video ready state');
+                AppLogger.info(
+                  'YouTube player ready - updating video ready state',
+                );
                 setState(() {
                   _isVideoReady = true;
                 });
@@ -889,12 +1233,26 @@ class _DictationScreenState extends State<DictationScreen>
               return VideoPlayerWithControls(
                 youtubeController: _youtubeController,
                 playbackController: _playbackController,
-                onPlayCurrent: _isVideoReady ? () {
-                  AppLogger.info('Play current button clicked - video ready: $_isVideoReady');
-                  _handlePlayButtonClick();
-                } : null,
-                onPlayNext: _isVideoReady && !_isVideoLoading && _currentSentenceIndex < _transcript.length - 1 ? _playNextSentence : null,
-                onPlayPrevious: _isVideoReady && !_isVideoLoading && _currentSentenceIndex > 0 ? _playPreviousSentence : null,
+                onPlayCurrent: _isVideoReady
+                    ? () {
+                        AppLogger.info(
+                          'Play current button clicked - video ready: $_isVideoReady',
+                        );
+                        _handlePlayButtonClick();
+                      }
+                    : null,
+                onPlayNext:
+                    _isVideoReady &&
+                        !_isVideoLoading &&
+                        _currentSentenceIndex < _transcript.length - 1
+                    ? _playNextSentence
+                    : null,
+                onPlayPrevious:
+                    _isVideoReady &&
+                        !_isVideoLoading &&
+                        _currentSentenceIndex > 0
+                    ? _playPreviousSentence
+                    : null,
                 canGoNext: _currentSentenceIndex < _transcript.length - 1,
                 canGoPrevious: _currentSentenceIndex > 0,
                 isPlaying: _isVideoPlaying,
@@ -921,72 +1279,164 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   void _showSettingsDialog() {
+    // Create local copies of settings for the dialog
+    double tempPlaybackSpeed = _playbackSpeed;
+    bool tempAutoRepeat = _autoRepeat;
+    int tempAutoRepeatCount = _autoRepeatCount;
+    bool isSaving = false;
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Playback Settings'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: const Text('Playback Speed'),
-              trailing: DropdownButton<double>(
-                value: _playbackSpeed,
-                items: [0.5, 0.75, 1.0, 1.25, 1.5].map((speed) {
-                  return DropdownMenuItem(
-                    value: speed,
-                    child: Text('${speed}x'),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setState(() {
-                      _playbackSpeed = value;
-                    });
-                    _playbackController.setPlaybackSpeed(value);
-                  }
-                },
-              ),
-            ),
-            ListTile(
-              title: const Text('Auto Repeat'),
-              trailing: Switch(
-                value: _autoRepeat,
-                onChanged: (value) {
-                  setState(() {
-                    _autoRepeat = value;
-                  });
-                },
-              ),
-            ),
-            if (_autoRepeat)
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Playback Settings'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               ListTile(
-                title: const Text('Repeat Count'),
-                trailing: DropdownButton<int>(
-                  value: _autoRepeatCount,
-                  items: [1, 2, 3].map((count) {
+                title: const Text('Playback Speed'),
+                trailing: DropdownButton<double>(
+                  value: tempPlaybackSpeed,
+                  items: _supportedPlaybackSpeeds.map((speed) {
                     return DropdownMenuItem(
-                      value: count,
-                      child: Text('$count'),
+                      value: speed,
+                      child: Text('${speed}x'),
                     );
                   }).toList(),
-                  onChanged: (value) {
-                    if (value != null) {
-                      setState(() {
-                        _autoRepeatCount = value;
-                      });
-                    }
-                  },
+                  onChanged: isSaving
+                      ? null
+                      : (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              tempPlaybackSpeed = value;
+                            });
+                          }
+                        },
                 ),
               ),
+              ListTile(
+                title: const Text('Auto Repeat'),
+                trailing: Switch(
+                  value: tempAutoRepeat,
+                  onChanged: isSaving
+                      ? null
+                      : (value) {
+                          setDialogState(() {
+                            tempAutoRepeat = value;
+                            // If disabling auto repeat, reset count to 0 (no repeats)
+                            if (!value) {
+                              tempAutoRepeatCount = 0;
+                            } else {
+                              // If enabling auto repeat, set to 1 repeat (2 total plays)
+                              if (tempAutoRepeatCount == 0) {
+                                tempAutoRepeatCount = 1;
+                              }
+                            }
+                          });
+                        },
+                ),
+              ),
+              if (tempAutoRepeat)
+                ListTile(
+                  title: const Text('Repeat Count'),
+                  trailing: DropdownButton<int>(
+                    value: tempAutoRepeatCount,
+                    items: [1, 2, 3, 4, 5].map((count) {
+                      return DropdownMenuItem(
+                        value: count,
+                        child: Text('$count time${count > 1 ? 's' : ''}'),
+                      );
+                    }).toList(),
+                    onChanged: isSaving
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              setDialogState(() {
+                                tempAutoRepeatCount = value;
+                              });
+                            }
+                          },
+                  ),
+                ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      setDialogState(() {
+                        isSaving = true;
+                      });
+
+                      try {
+                        // Apply changes to main state
+                        setState(() {
+                          _playbackSpeed = tempPlaybackSpeed;
+                          _autoRepeat = tempAutoRepeat;
+                          _autoRepeatCount = tempAutoRepeatCount;
+                        });
+
+                        // Update playback controller speed
+                        _playbackController.setPlaybackSpeed(tempPlaybackSpeed);
+
+                        AppLogger.info(
+                          'Settings updated: speed=${_playbackSpeed}, autoRepeat=${_autoRepeat}, repeatCount=${_autoRepeatCount}',
+                        );
+
+                        // Save configuration to server
+                        await _saveConfigurationToServer();
+
+                        // Refresh user data to reflect the new configuration
+                        final authProvider = Provider.of<AuthProvider>(
+                          context,
+                          listen: false,
+                        );
+                        await authProvider.refreshUserData();
+                        AppLogger.info('User data refreshed after config save');
+
+                        // Show success message
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Row(
+                                children: [
+                                  Icon(Icons.check_circle, color: Colors.white),
+                                  SizedBox(width: 8),
+                                  Text('Settings saved successfully'),
+                                ],
+                              ),
+                              backgroundColor: Colors.green,
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          Navigator.of(context).pop();
+                        }
+                      } catch (e) {
+                        // Error is already handled in _saveConfigurationToServer
+                        // Just reset the saving state
+                        setDialogState(() {
+                          isSaving = false;
+                        });
+                      }
+                    },
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Text('Save'),
+            ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
   }
@@ -1126,14 +1576,10 @@ class _DictationScreenState extends State<DictationScreen>
                   },
                 ),
               IconButton(
-                icon: const Icon(Icons.keyboard_voice),
+                icon: const Icon(Icons.send),
                 onPressed: () {
-                  // Voice input could be implemented here
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Voice input not yet implemented'),
-                    ),
-                  );
+                  _saveCurrentInput();
+                  _markCurrentSentenceCompleted();
                 },
               ),
             ],
@@ -1143,9 +1589,8 @@ class _DictationScreenState extends State<DictationScreen>
           _saveCurrentInput();
           // Mark current sentence as completed if there's input
           _markCurrentSentenceCompleted();
-          // Auto-save progress after submitting
-          await _saveProgress();
-          
+          // Remove auto-save logic - will only save on page exit
+
           if (_currentSentenceIndex < _transcript.length - 1) {
             _playNextSentence();
           }

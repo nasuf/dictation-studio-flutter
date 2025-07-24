@@ -283,7 +283,19 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         }
 
         if (channelProvider.error != null) {
-          return _buildErrorState(theme, channelProvider.error!);
+          return RefreshIndicator(
+            onRefresh: () async {
+              AppLogger.info('User initiated refresh from error state');
+              await channelProvider.refreshChannels();
+            },
+            child: SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.7,
+                child: _buildErrorState(theme, channelProvider.error!),
+              ),
+            ),
+          );
         }
 
         if (channelProvider.channels.isEmpty) {
@@ -311,17 +323,23 @@ class _ChannelListScreenState extends State<ChannelListScreen>
           }
         }
 
-        return MasonryGridView.count(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          physics: const BouncingScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 8,
-          crossAxisSpacing: 8,
-          itemCount: filteredChannels.length,
-          itemBuilder: (context, index) {
-            final channel = filteredChannels[index];
-            return _buildChannelCard(channel, index, theme);
+        return RefreshIndicator(
+          onRefresh: () async {
+            AppLogger.info('User initiated refresh');
+            await channelProvider.refreshChannels();
           },
+          child: MasonryGridView.count(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            crossAxisCount: 2,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            itemCount: filteredChannels.length,
+            itemBuilder: (context, index) {
+              final channel = filteredChannels[index];
+              return _buildChannelCard(channel, index, theme);
+            },
+          ),
         );
       },
     );
