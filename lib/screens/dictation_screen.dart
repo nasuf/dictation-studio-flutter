@@ -1091,10 +1091,8 @@ class _DictationScreenState extends State<DictationScreen>
       _transcript[_currentSentenceIndex] = _transcript[_currentSentenceIndex]
           .copyWith(userInput: text);
 
-      // Add to revealed sentences - like React lines 670-674
-      if (!_revealedSentences.contains(_currentSentenceIndex)) {
-        _revealedSentences.add(_currentSentenceIndex);
-      }
+      // Don't auto-reveal sentences based on user input - let user control original text display
+      // Original text visibility should be consistent across all sentences
 
       _performComparison(_currentSentenceIndex);
 
