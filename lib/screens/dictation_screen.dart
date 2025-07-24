@@ -120,7 +120,7 @@ class _DictationScreenState extends State<DictationScreen>
     // Save progress only if there are actual changes
     if (_hasUnsavedChanges) {
       AppLogger.info('Saving progress on page exit - user has unsaved changes');
-      _saveProgress();
+      _saveProgress(); // Save silently during disposal
     } else {
       AppLogger.info('No unsaved changes on page exit - skipping save');
     }
@@ -347,8 +347,8 @@ class _DictationScreenState extends State<DictationScreen>
       // Fetch transcript and user progress concurrently
       AppLogger.info('Calling APIs for transcript and progress...');
       final futures = await Future.wait([
-        apiService.getVideoTranscript(widget.channelId, widget.videoId),
-        apiService.getUserProgress(widget.channelId, widget.videoId).catchError(
+        _apiService.getVideoTranscript(widget.channelId, widget.videoId),
+        _apiService.getUserProgress(widget.channelId, widget.videoId).catchError(
           (e) {
             AppLogger.warning(
               'User progress not found, continuing without it: $e',
@@ -744,11 +744,16 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   Future<void> _saveProgress() async {
+    await _saveProgressWithUI(showNotifications: false);
+  }
+
+
+  Future<void> _saveProgressWithUI({required bool showNotifications}) async {
     if (!_hasUnsavedChanges) return;
 
     try {
-      // Show progress saving indicator
-      if (mounted) {
+      // Show progress saving indicator only if notifications are enabled and widget is mounted
+      if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(
@@ -785,14 +790,20 @@ class _DictationScreenState extends State<DictationScreen>
         duration: _totalTime.toDouble(),
       );
 
-      await apiService.saveUserProgress(progressData);
+      await _apiService.saveUserProgress(progressData);
 
-      setState(() {
-        _hasUnsavedChanges = false;
-      });
-
-      // Show success message
+      // Only call setState if widget is still mounted
       if (mounted) {
+        setState(() {
+          _hasUnsavedChanges = false;
+        });
+      } else {
+        // Update flag directly if widget is disposed
+        _hasUnsavedChanges = false;
+      }
+
+      // Show success message only if notifications are enabled and widget is mounted
+      if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Row(
@@ -812,8 +823,8 @@ class _DictationScreenState extends State<DictationScreen>
     } catch (e) {
       AppLogger.error('Failed to save progress: $e');
       
-      // Show error message
-      if (mounted) {
+      // Show error message only if notifications are enabled and widget is mounted
+      if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -883,19 +894,23 @@ class _DictationScreenState extends State<DictationScreen>
       );
 
       // Set loading state when starting playback
-      setState(() {
-        _isVideoLoading = true;
-        // 记录这个句子已经被播放过
-        _playedSentences.add(_currentSentenceIndex);
-      });
+      if (mounted) {
+        setState(() {
+          _isVideoLoading = true;
+          // 记录这个句子已经被播放过
+          _playedSentences.add(_currentSentenceIndex);
+        });
+      }
       AppLogger.info('Video loading state set to true for task $taskId');
 
       // Check if this task is still current before starting playback
       if (taskId != _currentPlaybackTaskId) {
         AppLogger.info('Playback task $taskId was cancelled before starting');
-        setState(() {
-          _isVideoLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isVideoLoading = false;
+          });
+        }
         return;
       }
 
@@ -908,9 +923,11 @@ class _DictationScreenState extends State<DictationScreen>
         AppLogger.info(
           'Playback task $taskId was cancelled after main playback',
         );
-        setState(() {
-          _isVideoLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isVideoLoading = false;
+          });
+        }
         return;
       }
 
@@ -942,9 +959,11 @@ class _DictationScreenState extends State<DictationScreen>
 
       // Final check and only update UI if we're still the current task
       if (taskId == _currentPlaybackTaskId) {
-        setState(() {
-          _isVideoLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isVideoLoading = false;
+          });
+        }
         AppLogger.info('Playback task $taskId completed successfully');
       } else {
         AppLogger.info('Playback task $taskId completed but was superseded');
@@ -953,9 +972,11 @@ class _DictationScreenState extends State<DictationScreen>
       AppLogger.error('Error in playback task $taskId: $e');
       // Only reset loading state if this is still the current task
       if (taskId == _currentPlaybackTaskId) {
-        setState(() {
-          _isVideoLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _isVideoLoading = false;
+          });
+        }
         _showPlaybackErrorSnackBar();
       }
     } finally {
@@ -975,10 +996,12 @@ class _DictationScreenState extends State<DictationScreen>
       );
       await _playbackController.stop();
 
-      setState(() {
-        _isVideoLoading = false;
-        _isVideoPlaying = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isVideoLoading = false;
+          _isVideoPlaying = false;
+        });
+      }
     } else {
       // Not playing, so start playing the current sentence
       AppLogger.info(
@@ -1037,13 +1060,15 @@ class _DictationScreenState extends State<DictationScreen>
           false; // Reset flag to ensure new playback can start
       AppLogger.info('Stopped playback for next sentence navigation');
 
-      setState(() {
-        _currentSentenceIndex++;
-        // 不再自动显示原文，用户需要手动控制
-        _textController.text = _userInput[_currentSentenceIndex] ?? '';
-        // Set loading state immediately for button feedback
-        _isVideoLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _currentSentenceIndex++;
+          // 不再自动显示原文，用户需要手动控制
+          _textController.text = _userInput[_currentSentenceIndex] ?? '';
+          // Set loading state immediately for button feedback
+          _isVideoLoading = true;
+        });
+      }
 
       await _playCurrentSentence();
     }
@@ -1068,12 +1093,14 @@ class _DictationScreenState extends State<DictationScreen>
           false; // Reset flag to ensure new playback can start
       AppLogger.info('Stopped playback for previous sentence navigation');
 
-      setState(() {
-        _currentSentenceIndex--;
-        _textController.text = _userInput[_currentSentenceIndex] ?? '';
-        // Set loading state immediately for button feedback
-        _isVideoLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _currentSentenceIndex--;
+          _textController.text = _userInput[_currentSentenceIndex] ?? '';
+          // Set loading state immediately for button feedback
+          _isVideoLoading = true;
+        });
+      }
 
       await _playCurrentSentence();
     }
@@ -1189,6 +1216,36 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
+  Future<bool> _onWillPop() async {
+    // Save progress if there are changes before returning
+    if (_hasUnsavedChanges) {
+      AppLogger.info('Saving progress before returning to video list');
+      await _saveProgress();
+      
+      // Schedule notification to show on the previous screen
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        // Small delay to ensure we're back on the video list screen
+        await Future.delayed(const Duration(milliseconds: 100));
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 12),
+                  Text('Progress saved successfully'),
+                ],
+              ),
+              duration: Duration(seconds: 2),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      });
+    }
+    return true; // Allow pop
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoadingTranscript) {
@@ -1198,16 +1255,26 @@ class _DictationScreenState extends State<DictationScreen>
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.video.title),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.settings),
-            onPressed: _showSettingsDialog,
-          ),
-        ],
-      ),
+    return WillPopScope(
+      onWillPop: () async {
+        await _handleWillPop();
+        return false; // Prevent default pop behavior
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.video.title),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.restart_alt_outlined),
+              onPressed: _showResetConfirmationDialog,
+              tooltip: 'Reset Progress',
+            ),
+            IconButton(
+              icon: const Icon(Icons.settings),
+              onPressed: _showSettingsDialog,
+            ),
+          ],
+        ),
       body: Column(
         children: [
           // Video player with integrated controls
@@ -1273,6 +1340,7 @@ class _DictationScreenState extends State<DictationScreen>
           Expanded(child: _buildMainContent()),
         ],
       ),
+    ),
     );
   }
 
@@ -1439,6 +1507,183 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
+  Future<void> _handleWillPop() async {
+    try {
+      // Only save if there are unsaved changes
+      if (_hasUnsavedChanges) {
+        await _saveProgress();
+      }
+      
+      // Navigate back without notification
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      AppLogger.error('Error during navigation: $e');
+      // Navigate back even if save fails
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    }
+  }
+
+  void _showResetConfirmationDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_outlined, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Reset Progress'),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Are you sure you want to reset your progress for this video?',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'This will:',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 4),
+              Text('• Clear all your typed text'),
+              Text('• Reset completion status'),
+              Text('• Return to the first sentence'),
+              SizedBox(height: 12),
+              Text(
+                'This action cannot be undone.',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _resetProgress();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Reset Progress'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _resetProgress() async {
+    try {
+      // Show loading indicator
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+                SizedBox(width: 12),
+                Text('Resetting...'),
+              ],
+            ),
+            duration: Duration(seconds: 2),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+
+      // Reset all local state
+      setState(() {
+        _currentSentenceIndex = 0;
+        _userInput.clear();
+        _completedSentences.clear();
+        _revealedSentences.clear();
+        _comparisonResults.clear();
+        
+        // Reset progress calculations
+        _overallCompletion = 0.0;
+        _overallAccuracy = 0.0;
+        
+        // Reset input field
+        _textController.clear();
+        
+        // Mark as changed so it will save the reset state
+        _hasUnsavedChanges = true;
+      });
+
+      // Save the reset progress to server immediately
+      await _saveProgress();
+      
+      // Clear the unsaved changes flag after successful save
+      if (mounted) {
+        setState(() {
+          _hasUnsavedChanges = false;
+        });
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Reset completed'),
+              ],
+            ),
+            duration: Duration(seconds: 3),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+
+      AppLogger.info('Progress reset successfully for video: ${widget.video.videoId}');
+    } catch (e) {
+      AppLogger.error('Failed to reset progress: $e');
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text('Reset failed: ${e.toString()}'),
+                ),
+              ],
+            ),
+            duration: const Duration(seconds: 4),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// Build main content with mobile keyboard optimization
   Widget _buildMainContent() {
     return SingleChildScrollView(
@@ -1575,9 +1820,13 @@ class _DictationScreenState extends State<DictationScreen>
                 ),
               IconButton(
                 icon: const Icon(Icons.send),
-                onPressed: () {
+                onPressed: () async {
                   _saveCurrentInput();
                   _markCurrentSentenceCompleted();
+                  // Move to next sentence if available (same as onSubmitted)
+                  if (_currentSentenceIndex < _transcript.length - 1) {
+                    await _playNextSentence();
+                  }
                 },
               ),
             ],

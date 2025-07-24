@@ -372,10 +372,17 @@ class VideoPlaybackController {
         if (_segmentEndTime != null) {
           final timeRemaining = _segmentEndTime! - currentTime;
           
-          // Stop if we've reached or passed the end time
-          if (timeRemaining <= _config.timeAccuracy) {
+          // More conservative stopping: only stop if we're clearly past the end
+          // Account for YouTube player's slight timing inconsistencies
+          if (timeRemaining <= -0.1) { // Allow 100ms overshoot to prevent premature stopping
             if (_config.enableLogging) {
-              AppLogger.info('Stopping playback at ${currentTime}s (target: ${_segmentEndTime}s)');
+              AppLogger.info('Stopping playback at ${currentTime}s (target: ${_segmentEndTime}s, overshoot: ${(-timeRemaining).toStringAsFixed(3)}s)');
+            }
+            _stopSegmentPlayback();
+          } else if (timeRemaining <= 0.2 && !isActuallyPlaying) {
+            // If we're very close to the end and playback has naturally stopped, also stop
+            if (_config.enableLogging) {
+              AppLogger.info('Stopping playback due to natural end at ${currentTime}s (target: ${_segmentEndTime}s)');
             }
             _stopSegmentPlayback();
           }
@@ -394,25 +401,27 @@ class VideoPlaybackController {
     // Get current actual position to calculate remaining time more accurately
     try {
       final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
-      final remainingTime = segment.end - currentTime + _config.bufferTolerance;
-      final duration = Duration(milliseconds: (remainingTime * 1000).round().clamp(500, 30000)); // Min 500ms, max 30s
+      // Add extra buffer time to prevent premature stopping - let progress monitoring handle precise timing
+      final extraBuffer = 0.5; // Extra 500ms buffer for safety
+      final remainingTime = segment.end - currentTime + _config.bufferTolerance + extraBuffer;
+      final duration = Duration(milliseconds: (remainingTime * 1000).round().clamp(1000, 35000)); // Min 1s, max 35s
       
-      AppLogger.info('Setting stop timer for ${remainingTime.toStringAsFixed(1)}s (from ${currentTime}s to ${segment.end}s)');
+      AppLogger.info('Setting stop timer for ${remainingTime.toStringAsFixed(1)}s (from ${currentTime}s to ${segment.end}s, with safety buffer)');
       
       _stopTimer = Timer(duration, () {
         if (_isPlaying && !_isCancelled) {
-          AppLogger.warning('Force stopping segment playback due to timeout');
+          AppLogger.warning('Force stopping segment playback due to safety timeout (this should rarely happen)');
           _stopSegmentPlayback();
         }
       });
     } catch (e) {
       // Fallback to original logic if getting position fails
       AppLogger.warning('Could not get current position for timer, using fallback: $e');
-      final duration = Duration(milliseconds: ((segment.end - segment.start + _config.bufferTolerance) * 1000).round());
+      final duration = Duration(milliseconds: ((segment.end - segment.start + _config.bufferTolerance + 1.0) * 1000).round());
       
       _stopTimer = Timer(duration, () {
         if (_isPlaying) {
-          AppLogger.warning('Force stopping segment playback due to timeout (fallback)');
+          AppLogger.warning('Force stopping segment playback due to safety timeout (fallback)');
           _stopSegmentPlayback();
         }
       });

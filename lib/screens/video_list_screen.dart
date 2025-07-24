@@ -23,6 +23,7 @@ class _VideoListScreenState extends State<VideoListScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _sortBy = 'recent'; // recent, alphabetical, progress
+  String? _saveNotificationMessage;
 
   @override
   void initState() {
@@ -48,6 +49,7 @@ class _VideoListScreenState extends State<VideoListScreen>
     _animationController.dispose();
     super.dispose();
   }
+
 
   @override
   Widget build(BuildContext context) {
