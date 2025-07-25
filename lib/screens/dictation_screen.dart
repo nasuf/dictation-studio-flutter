@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'dart:async';
 
 import '../models/transcript_item.dart';
@@ -194,8 +195,8 @@ class _DictationScreenState extends State<DictationScreen>
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final user = authProvider.currentUser;
 
-    if (user != null && user.dictationConfig != null) {
-      final config = user.dictationConfig!;
+    if (user != null) {
+      final config = user.dictationConfig;
 
       setState(() {
         // Load playback speed (clamp to supported range)
@@ -232,7 +233,7 @@ class _DictationScreenState extends State<DictationScreen>
       });
 
       AppLogger.info(
-        'Loaded user configuration: speed=${_playbackSpeed}, autoRepeat=${_autoRepeat}, repeatCount=${_autoRepeatCount}',
+        'Loaded user configuration: speed=$_playbackSpeed, autoRepeat=$_autoRepeat, repeatCount=$_autoRepeatCount',
       );
     } else {
       AppLogger.info('No user configuration found, using defaults');
@@ -256,9 +257,9 @@ class _DictationScreenState extends State<DictationScreen>
           'playback_speed': _playbackSpeed,
           'auto_repeat': _autoRepeat ? _autoRepeatCount : 0,
           // Preserve existing shortcuts (mobile app doesn't change them)
-          'shortcuts': user.dictationConfig?.shortcuts.toJson() ?? {},
+          'shortcuts': user.dictationConfig.shortcuts.toJson(),
           // Preserve language preference
-          'language': user.dictationConfig?.language,
+          'language': user.dictationConfig.language,
         },
       };
 
@@ -348,14 +349,17 @@ class _DictationScreenState extends State<DictationScreen>
       AppLogger.info('Calling APIs for transcript and progress...');
       final futures = await Future.wait([
         _apiService.getVideoTranscript(widget.channelId, widget.videoId),
-        _apiService.getUserProgress(widget.channelId, widget.videoId).catchError(
-          (e) {
-            AppLogger.warning(
-              'User progress not found, continuing without it: $e',
-            );
-            return <String, dynamic>{}; // Return empty map if no progress found
-          },
-        ),
+        _apiService
+            .getUserProgress(widget.channelId, widget.videoId)
+            .catchError((e) {
+              AppLogger.warning(
+                'User progress not found, continuing without it: $e',
+              );
+              return <
+                String,
+                dynamic
+              >{}; // Return empty map if no progress found
+            }),
       ]);
 
       final transcriptResponse = futures[0];
@@ -651,14 +655,6 @@ class _DictationScreenState extends State<DictationScreen>
     // 不再自动更新整体进度，由调用方决定何时更新
   }
 
-  void _recalculateAllComparisons() {
-    for (int i = 0; i < _transcript.length; i++) {
-      if (_userInput.containsKey(i)) {
-        _performComparison(i);
-      }
-    }
-  }
-
   void _updateOverallProgress() {
     // 计算所有原文单词总数
     int totalOriginalWords = 0;
@@ -747,7 +743,6 @@ class _DictationScreenState extends State<DictationScreen>
     await _saveProgressWithUI(showNotifications: false);
   }
 
-
   Future<void> _saveProgressWithUI({required bool showNotifications}) async {
     if (!_hasUnsavedChanges) return;
 
@@ -822,7 +817,7 @@ class _DictationScreenState extends State<DictationScreen>
       AppLogger.info('Progress saved successfully');
     } catch (e) {
       AppLogger.error('Failed to save progress: $e');
-      
+
       // Show error message only if notifications are enabled and widget is mounted
       if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -831,7 +826,9 @@ class _DictationScreenState extends State<DictationScreen>
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Failed to save progress: ${e.toString()}')),
+                Expanded(
+                  child: Text('Failed to save progress: ${e.toString()}'),
+                ),
               ],
             ),
             duration: const Duration(seconds: 3),
@@ -1216,49 +1213,46 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
-  Future<bool> _onWillPop() async {
-    // Save progress if there are changes before returning
-    if (_hasUnsavedChanges) {
-      AppLogger.info('Saving progress before returning to video list');
-      await _saveProgress();
-      
-      // Schedule notification to show on the previous screen
-      WidgetsBinding.instance.addPostFrameCallback((_) async {
-        // Small delay to ensure we're back on the video list screen
-        await Future.delayed(const Duration(milliseconds: 100));
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Text('Progress saved successfully'),
-                ],
-              ),
-              duration: Duration(seconds: 2),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      });
-    }
-    return true; // Allow pop
-  }
-
   @override
   Widget build(BuildContext context) {
     if (_isLoadingTranscript) {
       return Scaffold(
         appBar: AppBar(title: Text(widget.video.title)),
-        body: const Center(child: CircularProgressIndicator()),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SpinKitPulse(
+                color: Theme.of(context).colorScheme.primary,
+                size: 50,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Loading dictation resource...',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 
-    return WillPopScope(
-      onWillPop: () async {
-        await _handleWillPop();
-        return false; // Prevent default pop behavior
+    return PopScope(
+      canPop: true, // Always allow swipe back and button navigation
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          // Pop already happened, start background save if needed
+          if (_hasUnsavedChanges) {
+            _saveProgress().catchError((e) {
+              AppLogger.error('Background save failed after navigation: $e');
+            });
+          }
+          return;
+        }
       },
       child: Scaffold(
         appBar: AppBar(
@@ -1275,72 +1269,72 @@ class _DictationScreenState extends State<DictationScreen>
             ),
           ],
         ),
-      body: Column(
-        children: [
-          // Video player with integrated controls
-          YoutubePlayerBuilder(
-            player: YoutubePlayer(
-              controller: _youtubeController,
-              showVideoProgressIndicator: false,
-              onReady: () {
-                AppLogger.info(
-                  'YouTube player ready - updating video ready state',
+        body: Column(
+          children: [
+            // Video player with integrated controls
+            YoutubePlayerBuilder(
+              player: YoutubePlayer(
+                controller: _youtubeController,
+                showVideoProgressIndicator: false,
+                onReady: () {
+                  AppLogger.info(
+                    'YouTube player ready - updating video ready state',
+                  );
+                  setState(() {
+                    _isVideoReady = true;
+                  });
+                },
+                onEnded: (metaData) {
+                  AppLogger.info('YouTube video ended');
+                },
+              ),
+              builder: (context, player) {
+                return VideoPlayerWithControls(
+                  youtubeController: _youtubeController,
+                  playbackController: _playbackController,
+                  onPlayCurrent: _isVideoReady
+                      ? () {
+                          AppLogger.info(
+                            'Play current button clicked - video ready: $_isVideoReady',
+                          );
+                          _handlePlayButtonClick();
+                        }
+                      : null,
+                  onPlayNext:
+                      _isVideoReady &&
+                          !_isVideoLoading &&
+                          _currentSentenceIndex < _transcript.length - 1
+                      ? _playNextSentence
+                      : null,
+                  onPlayPrevious:
+                      _isVideoReady &&
+                          !_isVideoLoading &&
+                          _currentSentenceIndex > 0
+                      ? _playPreviousSentence
+                      : null,
+                  canGoNext: _currentSentenceIndex < _transcript.length - 1,
+                  canGoPrevious: _currentSentenceIndex > 0,
+                  isPlaying: _isVideoPlaying,
+                  isLoading: _isVideoLoading,
+                  fallbackWidget: player,
                 );
-                setState(() {
-                  _isVideoReady = true;
-                });
-              },
-              onEnded: (metaData) {
-                AppLogger.info('YouTube video ended');
               },
             ),
-            builder: (context, player) {
-              return VideoPlayerWithControls(
-                youtubeController: _youtubeController,
-                playbackController: _playbackController,
-                onPlayCurrent: _isVideoReady
-                    ? () {
-                        AppLogger.info(
-                          'Play current button clicked - video ready: $_isVideoReady',
-                        );
-                        _handlePlayButtonClick();
-                      }
-                    : null,
-                onPlayNext:
-                    _isVideoReady &&
-                        !_isVideoLoading &&
-                        _currentSentenceIndex < _transcript.length - 1
-                    ? _playNextSentence
-                    : null,
-                onPlayPrevious:
-                    _isVideoReady &&
-                        !_isVideoLoading &&
-                        _currentSentenceIndex > 0
-                    ? _playPreviousSentence
-                    : null,
-                canGoNext: _currentSentenceIndex < _transcript.length - 1,
-                canGoPrevious: _currentSentenceIndex > 0,
-                isPlaying: _isVideoPlaying,
-                isLoading: _isVideoLoading,
-                fallbackWidget: player,
-              );
-            },
-          ),
 
-          // Compact progress bar
-          CompactProgressBar(
-            completion: _overallCompletion,
-            accuracy: _overallAccuracy,
-            timeSpent: _totalTime,
-            isExpanded: _isProgressExpanded,
-            onToggleExpanded: _toggleProgressExpanded,
-          ),
+            // Compact progress bar
+            CompactProgressBar(
+              completion: _overallCompletion,
+              accuracy: _overallAccuracy,
+              timeSpent: _totalTime,
+              isExpanded: _isProgressExpanded,
+              onToggleExpanded: _toggleProgressExpanded,
+            ),
 
-          // Main content - optimized for mobile keyboard
-          Expanded(child: _buildMainContent()),
-        ],
+            // Main content - optimized for mobile keyboard
+            Expanded(child: _buildMainContent()),
+          ],
+        ),
       ),
-    ),
     );
   }
 
@@ -1451,19 +1445,23 @@ class _DictationScreenState extends State<DictationScreen>
                         _playbackController.setPlaybackSpeed(tempPlaybackSpeed);
 
                         AppLogger.info(
-                          'Settings updated: speed=${_playbackSpeed}, autoRepeat=${_autoRepeat}, repeatCount=${_autoRepeatCount}',
+                          'Settings updated: speed=$_playbackSpeed, autoRepeat=$_autoRepeat, repeatCount=$_autoRepeatCount',
                         );
 
                         // Save configuration to server
                         await _saveConfigurationToServer();
 
                         // Refresh user data to reflect the new configuration
-                        final authProvider = Provider.of<AuthProvider>(
-                          context,
-                          listen: false,
-                        );
-                        await authProvider.refreshUserData();
-                        AppLogger.info('User data refreshed after config save');
+                        if (context.mounted) {
+                          final authProvider = Provider.of<AuthProvider>(
+                            context,
+                            listen: false,
+                          );
+                          await authProvider.refreshUserData();
+                          AppLogger.info(
+                            'User data refreshed after config save',
+                          );
+                        }
 
                         // Show success message
                         if (context.mounted) {
@@ -1507,26 +1505,6 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
-  Future<void> _handleWillPop() async {
-    try {
-      // Only save if there are unsaved changes
-      if (_hasUnsavedChanges) {
-        await _saveProgress();
-      }
-      
-      // Navigate back without notification
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    } catch (e) {
-      AppLogger.error('Error during navigation: $e');
-      // Navigate back even if save fails
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
-    }
-  }
-
   void _showResetConfirmationDialog() {
     showDialog(
       context: context,
@@ -1548,10 +1526,7 @@ class _DictationScreenState extends State<DictationScreen>
                 style: TextStyle(fontSize: 16),
               ),
               SizedBox(height: 12),
-              Text(
-                'This will:',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
+              Text('This will:', style: TextStyle(fontWeight: FontWeight.w600)),
               SizedBox(height: 4),
               Text('• Clear all your typed text'),
               Text('• Reset completion status'),
@@ -1621,21 +1596,21 @@ class _DictationScreenState extends State<DictationScreen>
         _completedSentences.clear();
         _revealedSentences.clear();
         _comparisonResults.clear();
-        
+
         // Reset progress calculations
         _overallCompletion = 0.0;
         _overallAccuracy = 0.0;
-        
+
         // Reset input field
         _textController.clear();
-        
+
         // Mark as changed so it will save the reset state
         _hasUnsavedChanges = true;
       });
 
       // Save the reset progress to server immediately
       await _saveProgress();
-      
+
       // Clear the unsaved changes flag after successful save
       if (mounted) {
         setState(() {
@@ -1660,10 +1635,12 @@ class _DictationScreenState extends State<DictationScreen>
         );
       }
 
-      AppLogger.info('Progress reset successfully for video: ${widget.video.videoId}');
+      AppLogger.info(
+        'Progress reset successfully for video: ${widget.video.videoId}',
+      );
     } catch (e) {
       AppLogger.error('Failed to reset progress: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1671,9 +1648,7 @@ class _DictationScreenState extends State<DictationScreen>
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Expanded(
-                  child: Text('Reset failed: ${e.toString()}'),
-                ),
+                Expanded(child: Text('Reset failed: ${e.toString()}')),
               ],
             ),
             duration: const Duration(seconds: 4),
@@ -1755,7 +1730,7 @@ class _DictationScreenState extends State<DictationScreen>
                 decoration: BoxDecoration(
                   color: Theme.of(
                     context,
-                  ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Column(
@@ -1787,7 +1762,7 @@ class _DictationScreenState extends State<DictationScreen>
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
