@@ -49,18 +49,6 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>dictationstudio.com</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<false/>
-				<key>NSExceptionMinimumTLSVersion</key>
-				<string>TLSv1.2</string>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-		</dict>
 	</dict>
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -84,5 +72,14 @@
 	<string>This app needs access to microphone for video features</string>
 	<key>io.flutter.embedded_views_preview</key>
 	<true/>
+	
+	<!-- Additional WebView configuration for iOS devices -->
+	<key>WKWebViewConfiguration</key>
+	<dict>
+		<key>allowsInlineMediaPlayback</key>
+		<true/>
+		<key>mediaPlaybackRequiresUserAction</key>
+		<false/>
+	</dict>
 </dict>
 </plist>

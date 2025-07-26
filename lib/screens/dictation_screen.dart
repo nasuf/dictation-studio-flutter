@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'dart:async';
 
 import '../models/transcript_item.dart';
@@ -15,8 +16,10 @@ import '../providers/auth_provider.dart';
 import '../widgets/simple_comparison_widget.dart';
 import '../widgets/compact_progress_bar.dart';
 import '../widgets/video_player_with_controls.dart';
+import '../widgets/youtube_login_webview.dart';
 import '../utils/precise_text_comparison.dart';
 import '../models/simple_comparison_result.dart';
+import '../services/youtube_login_service.dart';
 
 class DictationScreen extends StatefulWidget {
   final String channelId;
@@ -62,6 +65,9 @@ class _DictationScreenState extends State<DictationScreen>
   bool _isVideoReady = false;
   bool _isVideoPlaying = false;
   bool _isVideoLoading = false;
+  bool _hasAttemptedLogin = false; // 防止死循环
+  bool _isLoginInProgress = false; // 登录进行中标志
+  // 移除本地_isLoggedIn状态，改用全局YouTubeLoginService
 
   // Playback task management to prevent concurrent playback
   int _currentPlaybackTaskId = 0;
@@ -111,6 +117,11 @@ class _DictationScreenState extends State<DictationScreen>
     _initializeComponents();
     _loadTranscript();
     _startTimers();
+    
+    // 异步加载登录状态并检查
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAndCheckLoginStatus();
+    });
   }
 
   @override
@@ -144,43 +155,18 @@ class _DictationScreenState extends State<DictationScreen>
     _loadUserConfiguration();
 
     // Initialize YouTube controller with improved configuration
-    final videoId =
-        YoutubePlayer.convertUrlToId(widget.video.link) ?? widget.video.videoId;
-    AppLogger.info('Initializing YouTube player with video ID: $videoId');
+    final extractedVideoId = YoutubePlayer.convertUrlToId(widget.video.link);
+    final videoId = extractedVideoId ?? widget.video.videoId;
+    
+    // Ensure videoId is a String (defensive programming)
+    final safeVideoId = videoId.toString();
+    
+    AppLogger.info('Initializing video player with video ID: $safeVideoId');
     AppLogger.info('Video link: ${widget.video.link}');
-
-    _youtubeController = YoutubePlayerController(
-      initialVideoId: videoId,
-      flags: const YoutubePlayerFlags(
-        autoPlay: false,
-        mute: false,
-        disableDragSeek: false,
-        loop: false,
-        isLive: false,
-        forceHD: false,
-        enableCaption: false,
-        hideControls: true, // Hide default controls since we have custom ones
-        useHybridComposition: true,
-      ),
-    );
-
-    // Add listener for player state changes
-    _youtubeController.addListener(_onYouTubePlayerStateChange);
-
-    // Initialize playback controller with user configuration
-    _playbackController = VideoPlaybackController(
-      _youtubeController,
-      onStateChange: _onPlaybackStateChange,
-      onProgress: _onPlaybackProgress,
-      config: PlaybackConfig(
-        playbackSpeed: _playbackSpeed, // Use user's preferred speed
-        timeAccuracy: 0.1,
-        bufferTolerance: 0.3,
-        maxRetries: 2, // Reduce retries to fail faster
-        retryDelay: const Duration(milliseconds: 200),
-        enableLogging: true,
-      ),
-    );
+    AppLogger.info('Extracted ID: $extractedVideoId, Original ID: ${widget.video.videoId}');
+    
+    // Try YouTube Player first, fallback to WebView if it fails
+    _initializeYouTubePlayer(safeVideoId);
 
     // Initialize text controller and focus
     _textController = TextEditingController();
@@ -289,6 +275,343 @@ class _DictationScreenState extends State<DictationScreen>
     }
   }
 
+  void _initializeYouTubePlayer(String videoId) {
+    try {
+      AppLogger.info('Attempting to initialize YouTube Player with ID: $videoId');
+      
+      _youtubeController = YoutubePlayerController(
+        initialVideoId: videoId,
+        flags: const YoutubePlayerFlags(
+          autoPlay: false,
+          mute: false,
+          disableDragSeek: false,
+          loop: false,
+          isLive: false,
+          forceHD: false,
+          enableCaption: false,
+          hideControls: true,
+          useHybridComposition: true,
+        ),
+      );
+
+      // Add listener for player state changes
+      _youtubeController.addListener(_onYouTubePlayerStateChange);
+
+      // Initialize playback controller
+      _playbackController = VideoPlaybackController(
+        _youtubeController,
+        onStateChange: _onPlaybackStateChange,
+        onProgress: _onPlaybackProgress,
+        onPlaybackFailure: _onPlaybackFailure,
+        config: PlaybackConfig(
+          playbackSpeed: _playbackSpeed,
+          timeAccuracy: 0.1,
+          bufferTolerance: 0.3,
+          maxRetries: 2,
+          retryDelay: const Duration(milliseconds: 200),
+          enableLogging: true,
+        ),
+      );
+      
+      // 移除初始化时的登录检测，改为在播放失败时检测
+      
+      AppLogger.info('YouTube Player initialized successfully');
+    } catch (e) {
+      AppLogger.error('YouTube Player initialization failed: $e');
+      _showYouTubeLoginPage();
+    }
+  }
+
+  void _checkYouTubePlayerStatus() {
+    // 如果已经准备好或正在登录，不需要检测
+    if (_isVideoReady || _isLoginInProgress || _hasAttemptedLogin) {
+      return;
+    }
+
+    try {
+      final playerState = _youtubeController.value.playerState;
+      final isReady = _youtubeController.value.isReady;
+      
+      AppLogger.info('Checking YouTube Player status: ready=$isReady, state=$playerState');
+      
+      // 检测可能的登录问题状态
+      bool needsLogin = false;
+      
+      if (!isReady && playerState == PlayerState.unknown) {
+        needsLogin = true;
+        AppLogger.warning('Player state is unknown and not ready - likely login issue');
+      } else if (playerState == PlayerState.unStarted && !isReady) {
+        needsLogin = true;
+        AppLogger.warning('Player unstarted and not ready - possible login issue');
+      } else if (!_isVideoReady && !isReady) {
+        // 8秒后仍然不ready，可能是登录问题
+        needsLogin = true;
+        AppLogger.warning('Player still not ready after 8 seconds - showing login');
+      }
+      
+      if (needsLogin) {
+        _showYouTubeLoginPage();
+      } else {
+        AppLogger.info('Player status seems OK, no login needed');
+      }
+    } catch (e) {
+      AppLogger.error('Error checking player status: $e');
+      // 如果无法获取状态，可能是严重问题，尝试登录
+      _showYouTubeLoginPage();
+    }
+  }
+
+  void _showYouTubeLoginPage() {
+    if (_isLoginInProgress) {
+      AppLogger.info('Login already in progress, skipping');
+      return;
+    }
+    
+    AppLogger.info('Showing YouTube login page...');
+    setState(() {
+      _isLoginInProgress = true;
+    });
+    
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (BuildContext context) {
+          return YouTubeLoginWebView(
+            onLoginSuccess: () {
+              AppLogger.info('Login successful, retrying YouTube Player...');
+              
+              // 先关闭登录页面
+              Navigator.of(context).pop();
+              
+              // 异步处理后续操作，避免Navigator锁定
+              Future.microtask(() async {
+                if (!mounted) return;
+                
+                // 保存当前进度
+                try {
+                  await _saveProgress();
+                  AppLogger.info('Progress saved before YouTube Player restart');
+                } catch (e) {
+                  AppLogger.warning('Failed to save progress before restart: $e');
+                }
+                
+                // 更新状态标志
+                setState(() {
+                  _hasAttemptedLogin = true;
+                  _isLoginInProgress = false;
+                });
+                
+                // 设置全局登录状态
+                await YouTubeLoginService.instance.setLoginStatus(true);
+                
+                AppLogger.info('Login state updated successfully');
+              });
+            },
+            onCancel: () {
+              Navigator.of(context).pop();
+              AppLogger.info('Login cancelled by user');
+              setState(() {
+                _isLoginInProgress = false;
+              });
+            },
+          );
+        },
+        fullscreenDialog: true,
+      ),
+    ).then((_) {
+      // 确保状态正确重置
+      setState(() {
+        _isLoginInProgress = false;
+      });
+    });
+  }
+
+
+  /// 加载并检查登录状态
+  Future<void> _loadAndCheckLoginStatus() async {
+    // 加载全局登录状态
+    await YouTubeLoginService.instance.loadLoginStatus();
+    
+    AppLogger.info('Global YouTube login status: ${YouTubeLoginService.instance.isLoggedIn}');
+    
+    // 如果已经登录，触发UI更新
+    if (YouTubeLoginService.instance.isLoggedIn && mounted) {
+      setState(() {
+        // 触发UI重新构建以隐藏登录按钮
+      });
+      AppLogger.info('Login button hidden due to existing login status');
+    } else {
+      // 如果未登录，检查是否需要提示
+      _checkInitialLoginStatus();
+    }
+  }
+
+  /// 检查初始登录状态，如果未登录则提示用户
+  void _checkInitialLoginStatus() {
+    // 给YouTube Player一些时间来初始化，然后检查登录状态
+    Future.delayed(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      
+      // 检查是否已经尝试过登录或正在登录过程中
+      if (_hasAttemptedLogin || _isLoginInProgress) {
+        AppLogger.info('Login already attempted or in progress, skipping initial check');
+        return;
+      }
+      
+      // 检查YouTube Player状态
+      final playerState = _youtubeController.value.playerState;
+      final isReady = _youtubeController.value.isReady;
+      
+      AppLogger.info('Initial login check: playerState=$playerState, ready=$isReady');
+      
+      // 如果player ready但遇到登录问题，且当前未登录，显示登录提示
+      if (isReady && !YouTubeLoginService.instance.isLoggedIn && (playerState == PlayerState.unknown || playerState == PlayerState.unStarted)) {
+        _showInitialLoginPrompt();
+      } else if (isReady && (playerState == PlayerState.unStarted || playerState == PlayerState.paused)) {
+        // 如果player ready且状态正常，自动设置为已登录
+        YouTubeLoginService.instance.setLoginStatus(true).then((_) {
+          if (mounted) {
+            setState(() {
+              // 触发UI更新
+            });
+          }
+          AppLogger.info('Initial check: YouTube Player working normally, marked as logged in');
+        });
+      }
+    });
+  }
+  
+  /// 显示初始登录提示对话框
+  void _showInitialLoginPrompt() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.video_library, color: Colors.red),
+              SizedBox(width: 8),
+              Text('YouTube Login Required'),
+            ],
+          ),
+          content: const Text(
+            'To watch and practice with YouTube videos, you need to log in to your YouTube/Google account. '
+            'This allows the app to access video content properly.\n\n'
+            'Would you like to log in now?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                AppLogger.info('User chose to skip initial login');
+                // 用户选择跳过，可以稍后通过手动登录按钮登录
+              },
+              child: const Text('Skip for now'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                AppLogger.info('User chose to log in immediately');
+                _showYouTubeLoginPage();
+              },
+              child: const Text('Log In'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 显示登出确认对话框（临时测试功能）
+  void _showLogoutConfirmDialog() {
+    if (!mounted) return;
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.logout, color: Colors.red),
+              SizedBox(width: 8),
+              Text('YouTube Logout'),
+            ],
+          ),
+          content: const Text(
+            'This will log you out from YouTube and reset the login state. '
+            'You can use this to test the login flow again.\n\n'
+            'Continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () {
+                Navigator.of(context).pop();
+                _performLogout();
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+  
+  /// 执行登出操作（临时测试功能）
+  void _performLogout() {
+    AppLogger.info('Performing YouTube logout (test function)');
+    
+    // 清除全局登录状态
+    YouTubeLoginService.instance.clearLoginStatus();
+    
+    setState(() {
+      _hasAttemptedLogin = false;
+      _isLoginInProgress = false;
+      _isVideoReady = false;
+    });
+    
+    // 重新初始化YouTube Player来模拟登出状态
+    final extractedVideoId = YoutubePlayer.convertUrlToId(widget.video.link);
+    final videoId = extractedVideoId ?? widget.video.videoId;
+    final safeVideoId = videoId.toString();
+    
+    // 清理旧的控制器
+    _youtubeController.removeListener(_onYouTubePlayerStateChange);
+    _playbackController.dispose();
+    
+    // 重新创建YouTube Player
+    _initializeYouTubePlayer(safeVideoId);
+    
+    AppLogger.info('YouTube logout completed - login button should reappear');
+    
+    // 显示成功提示
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            Icon(Icons.check_circle, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Logged out successfully - you can test login again'),
+          ],
+        ),
+        backgroundColor: Colors.orange,
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+
   void _onYouTubePlayerStateChange() {
     final playerState = _youtubeController.value.playerState;
     final isReady = _youtubeController.value.isReady;
@@ -309,6 +632,14 @@ class _DictationScreenState extends State<DictationScreen>
       if (isPlaying && _isVideoLoading) {
         _isVideoLoading = false;
         AppLogger.info('Video loading state cleared - now playing');
+      }
+      
+      // 如果player ready且状态正常，说明登录成功
+      if (isReady && (playerState == PlayerState.unStarted || playerState == PlayerState.paused || playerState == PlayerState.playing)) {
+        if (!YouTubeLoginService.instance.isLoggedIn) {
+          YouTubeLoginService.instance.setLoginStatus(true);
+          AppLogger.info('Detected successful YouTube login - hiding login button');
+        }
       }
     });
 
@@ -595,6 +926,21 @@ class _DictationScreenState extends State<DictationScreen>
 
   void _onPlaybackProgress(double currentTime) {
     // Update progress if needed
+  }
+
+  void _onPlaybackFailure(String reason) {
+    AppLogger.warning('Playback failure detected: $reason');
+    
+    // 只有在全局登录状态为false且没有正在登录时才显示登录页面
+    if (reason == 'login_required' && 
+        !YouTubeLoginService.instance.isLoggedIn && 
+        !_hasAttemptedLogin && 
+        !_isLoginInProgress) {
+      AppLogger.info('Login issue detected during playback, showing login page');
+      _showYouTubeLoginPage();
+    } else if (reason == 'login_required' && YouTubeLoginService.instance.isLoggedIn) {
+      AppLogger.warning('Login required detected but global status shows logged in - ignoring');
+    }
   }
 
   void _onTextChanged() {
@@ -1258,6 +1604,29 @@ class _DictationScreenState extends State<DictationScreen>
         appBar: AppBar(
           title: Text(widget.video.title),
           actions: [
+            // YouTube login button (只在未登录时显示)
+            if (!YouTubeLoginService.instance.isLoggedIn)
+              IconButton(
+                icon: const Icon(Icons.login),
+                onPressed: () {
+                  AppLogger.info('Manual YouTube login triggered');
+                  // 手动登录时，重置已尝试登录标志
+                  setState(() {
+                    _hasAttemptedLogin = false;
+                  });
+                  _showYouTubeLoginPage();
+                },
+                tooltip: 'Login to YouTube',
+              ),
+            // YouTube logout button (临时测试用，只在已登录时显示)
+            if (YouTubeLoginService.instance.isLoggedIn)
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.red),
+                onPressed: () {
+                  _showLogoutConfirmDialog();
+                },
+                tooltip: 'Logout from YouTube (Test)',
+              ),
             IconButton(
               icon: const Icon(Icons.restart_alt_outlined),
               onPressed: _showResetConfirmationDialog,
@@ -1273,22 +1642,22 @@ class _DictationScreenState extends State<DictationScreen>
           children: [
             // Video player with integrated controls
             YoutubePlayerBuilder(
-              player: YoutubePlayer(
-                controller: _youtubeController,
-                showVideoProgressIndicator: false,
-                onReady: () {
-                  AppLogger.info(
-                    'YouTube player ready - updating video ready state',
-                  );
-                  setState(() {
-                    _isVideoReady = true;
-                  });
-                },
-                onEnded: (metaData) {
-                  AppLogger.info('YouTube video ended');
-                },
-              ),
-              builder: (context, player) {
+                  player: YoutubePlayer(
+                    controller: _youtubeController,
+                    showVideoProgressIndicator: false,
+                    onReady: () {
+                      AppLogger.info(
+                        'YouTube player ready - updating video ready state',
+                      );
+                      setState(() {
+                        _isVideoReady = true;
+                      });
+                    },
+                    onEnded: (metaData) {
+                      AppLogger.info('YouTube video ended');
+                    },
+                  ),
+                  builder: (context, player) {
                 return VideoPlayerWithControls(
                   youtubeController: _youtubeController,
                   playbackController: _playbackController,

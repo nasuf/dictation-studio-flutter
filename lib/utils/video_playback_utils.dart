@@ -38,12 +38,16 @@ class PlaybackConfig {
 typedef PlaybackStateCallback = void Function(VideoPlaybackState state);
 typedef PlaybackProgressCallback = void Function(double currentTime);
 
+/// Callback for playback failure
+typedef PlaybackFailureCallback = void Function(String reason);
+
 /// Controller for precise video segment playback
 class VideoPlaybackController {
   final YoutubePlayerController _playerController;
   final PlaybackConfig _config;
   final PlaybackStateCallback? _onStateChange;
   final PlaybackProgressCallback? _onProgress;
+  final PlaybackFailureCallback? _onPlaybackFailure;
   
   // Current playback speed (can be updated dynamically)
   double _currentPlaybackSpeed;
@@ -60,9 +64,11 @@ class VideoPlaybackController {
     PlaybackConfig config = PlaybackConfig.defaultConfig,
     PlaybackStateCallback? onStateChange,
     PlaybackProgressCallback? onProgress,
+    PlaybackFailureCallback? onPlaybackFailure,
   }) : _config = config,
        _onStateChange = onStateChange,
        _onProgress = onProgress,
+       _onPlaybackFailure = onPlaybackFailure,
        _currentPlaybackSpeed = config.playbackSpeed {
     _initializeListener();
   }
@@ -141,6 +147,13 @@ class VideoPlaybackController {
       AppLogger.warning('Cannot control player: $e');
       return false;
     }
+  }
+
+  /// Simple wait strategy for iOS devices  
+  Future<void> _waitForPlaybackSimple() async {
+    // Just wait a fixed time for iOS devices
+    await Future.delayed(const Duration(milliseconds: 1000));
+    AppLogger.info('iOS playback wait completed (simplified strategy)');
   }
 
   /// Wait for actual playback to start with enhanced buffering detection
@@ -278,13 +291,8 @@ class VideoPlaybackController {
         throw Exception('Cannot control YouTube player - player may not be properly initialized');
       }
       
-      // Set playback speed with error handling (use current dynamic speed)
-      try {
-        _playerController.setPlaybackRate(_currentPlaybackSpeed);
-        AppLogger.info('Set playback speed to: ${_currentPlaybackSpeed}');
-      } catch (e) {
-        AppLogger.warning('Failed to set playback rate: $e, continuing anyway');
-      }
+      // Skip playback speed setting for iOS device compatibility
+      AppLogger.info('Skipping playback speed setting for iOS device compatibility');
       
       // Seek to start position with precise timing
       final seekTime = (segment.start * 1000).round();
@@ -318,8 +326,8 @@ class VideoPlaybackController {
           return;
         }
         
-        // Wait for actual playback to start before setting up timers
-        await _waitForPlaybackToStart();
+        // For iOS devices, use a simpler wait strategy
+        await _waitForPlaybackSimple();
         AppLogger.info('Playback confirmed to have started');
       } catch (e) {
         AppLogger.error('Failed to start playback: $e');
@@ -409,9 +417,17 @@ class VideoPlaybackController {
       AppLogger.info('Setting stop timer for ${remainingTime.toStringAsFixed(1)}s (from ${currentTime}s to ${segment.end}s, with safety buffer)');
       
       _stopTimer = Timer(duration, () {
-        if (_isPlaying && !_isCancelled) {
-          AppLogger.warning('Force stopping segment playback due to safety timeout (this should rarely happen)');
-          _stopSegmentPlayback();
+        try {
+          if (_isPlaying && !_isCancelled) {
+            AppLogger.warning('Force stopping segment playback due to safety timeout (this should rarely happen)');
+            
+            // 检测是否为登录问题导致的播放失败
+            _checkPlaybackFailureReason();
+            
+            _stopSegmentPlayback();
+          }
+        } catch (e) {
+          AppLogger.warning('Error in stop timer: $e');
         }
       });
     } catch (e) {
@@ -420,9 +436,13 @@ class VideoPlaybackController {
       final duration = Duration(milliseconds: ((segment.end - segment.start + _config.bufferTolerance + 1.0) * 1000).round());
       
       _stopTimer = Timer(duration, () {
-        if (_isPlaying) {
-          AppLogger.warning('Force stopping segment playback due to safety timeout (fallback)');
-          _stopSegmentPlayback();
+        try {
+          if (_isPlaying) {
+            AppLogger.warning('Force stopping segment playback due to safety timeout (fallback)');
+            _stopSegmentPlayback();
+          }
+        } catch (e) {
+          AppLogger.warning('Error in fallback stop timer: $e');
         }
       });
     }
@@ -493,8 +513,7 @@ class VideoPlaybackController {
   /// Set playback speed
   Future<void> setPlaybackSpeed(double speed) async {
     _currentPlaybackSpeed = speed;
-    _playerController.setPlaybackRate(speed);
-    AppLogger.info('Updated YouTube player playback speed to: ${speed}x');
+    AppLogger.info('Playback speed change to ${speed}x skipped for iOS compatibility');
   }
 
   /// Get current playback time in seconds
@@ -508,6 +527,35 @@ class VideoPlaybackController {
 
   /// Get current playback state
   VideoPlaybackState get playbackState => _getVideoPlaybackState();
+
+  /// Check if playback failure is due to login issues
+  void _checkPlaybackFailureReason() {
+    try {
+      final playerState = _playerController.value.playerState;
+      final isReady = _playerController.value.isReady;
+      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+      
+      AppLogger.info('Checking playback failure reason: state=$playerState, ready=$isReady, time=$currentTime');
+      
+      // 关键检测：如果播放器ready但状态一直不是playing，且时间没有进展
+      // 但要确保播放器确实ready且有合理的状态
+      if (isReady && 
+          playerState != PlayerState.playing &&
+          playerState != PlayerState.paused &&
+          (playerState == PlayerState.unknown || 
+           playerState == PlayerState.unStarted ||
+           playerState == PlayerState.buffering) &&
+          currentTime <= 1.0) { // 时间基本没有进展
+        
+        AppLogger.warning('Detected potential login issue: ready but not playing, time not progressing');
+        _onPlaybackFailure?.call('login_required');
+      } else {
+        AppLogger.info('Playback failure doesn\'t seem to be login-related (state=$playerState, ready=$isReady, time=$currentTime)');
+      }
+    } catch (e) {
+      AppLogger.error('Error checking playback failure reason: $e');
+    }
+  }
 
   /// Dispose of the controller
   void dispose() {
