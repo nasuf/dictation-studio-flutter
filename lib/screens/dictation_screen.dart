@@ -439,50 +439,25 @@ class _DictationScreenState extends State<DictationScreen>
         // 触发UI重新构建以隐藏登录按钮
       });
       AppLogger.info('Login button hidden due to existing login status');
-    } else {
-      // 如果未登录，检查是否需要提示
-      _checkInitialLoginStatus();
+    } else if (!_hasAttemptedLogin && !_isLoginInProgress) {
+      // 如果未登录且未尝试过登录，短暂延迟后显示登录提示确保页面完全加载
+      AppLogger.info('User not logged in, showing login prompt after short delay');
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted && !_hasAttemptedLogin && !_isLoginInProgress) {
+          _showInitialLoginPrompt();
+        }
+      });
     }
-  }
-
-  /// 检查初始登录状态，如果未登录则提示用户
-  void _checkInitialLoginStatus() {
-    // 给YouTube Player一些时间来初始化，然后检查登录状态
-    Future.delayed(const Duration(seconds: 3), () {
-      if (!mounted) return;
-      
-      // 检查是否已经尝试过登录或正在登录过程中
-      if (_hasAttemptedLogin || _isLoginInProgress) {
-        AppLogger.info('Login already attempted or in progress, skipping initial check');
-        return;
-      }
-      
-      // 检查YouTube Player状态
-      final playerState = _youtubeController.value.playerState;
-      final isReady = _youtubeController.value.isReady;
-      
-      AppLogger.info('Initial login check: playerState=$playerState, ready=$isReady');
-      
-      // 如果player ready但遇到登录问题，且当前未登录，显示登录提示
-      if (isReady && !YouTubeLoginService.instance.isLoggedIn && (playerState == PlayerState.unknown || playerState == PlayerState.unStarted)) {
-        _showInitialLoginPrompt();
-      } else if (isReady && (playerState == PlayerState.unStarted || playerState == PlayerState.paused)) {
-        // 如果player ready且状态正常，自动设置为已登录
-        YouTubeLoginService.instance.setLoginStatus(true).then((_) {
-          if (mounted) {
-            setState(() {
-              // 触发UI更新
-            });
-          }
-          AppLogger.info('Initial check: YouTube Player working normally, marked as logged in');
-        });
-      }
-    });
   }
   
   /// 显示初始登录提示对话框
   void _showInitialLoginPrompt() {
-    if (!mounted) return;
+    if (!mounted || _isLoginInProgress) return;
+    
+    // 标记正在显示登录相关UI，防止重复弹出
+    setState(() {
+      _isLoginInProgress = true;
+    });
     
     showDialog(
       context: context,
@@ -490,29 +465,59 @@ class _DictationScreenState extends State<DictationScreen>
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.video_library, color: Colors.red),
+              Icon(Icons.video_library, color: Colors.red, size: 20),
               SizedBox(width: 8),
-              Text('YouTube Login Required'),
+              Flexible(
+                child: Text(
+                  'YouTube Login Required',
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
             ],
           ),
-          content: const Text(
-            'To watch and practice with YouTube videos, you need to log in to your YouTube/Google account. '
-            'This allows the app to access video content properly.\n\n'
-            'Would you like to log in now?',
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'To watch and practice with YouTube videos, you need to log in to your YouTube/Google account.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'This allows the app to access video content properly.',
+                  style: TextStyle(fontSize: 14),
+                ),
+                SizedBox(height: 12),
+                Text(
+                  'Would you like to log in now?',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                setState(() {
+                  _isLoginInProgress = false;
+                  _hasAttemptedLogin = true; // 标记已尝试，避免再次弹出
+                });
                 AppLogger.info('User chose to skip initial login');
                 // 用户选择跳过，可以稍后通过手动登录按钮登录
               },
-              child: const Text('Skip for now'),
+              child: const Text('Skip'),
             ),
             ElevatedButton(
               onPressed: () {
                 Navigator.of(context).pop();
+                setState(() {
+                  _isLoginInProgress = false; // 这里会在_showYouTubeLoginPage中重新设置
+                });
                 AppLogger.info('User chose to log in immediately');
                 _showYouTubeLoginPage();
               },
@@ -524,92 +529,6 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
-  /// 显示登出确认对话框（临时测试功能）
-  void _showLogoutConfirmDialog() {
-    if (!mounted) return;
-    
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.logout, color: Colors.red),
-              SizedBox(width: 8),
-              Text('YouTube Logout'),
-            ],
-          ),
-          content: const Text(
-            'This will log you out from YouTube and reset the login state. '
-            'You can use this to test the login flow again.\n\n'
-            'Continue?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () {
-                Navigator.of(context).pop();
-                _performLogout();
-              },
-              child: const Text('Logout'),
-            ),
-          ],
-        );
-      },
-    );
-  }
-  
-  /// 执行登出操作（临时测试功能）
-  void _performLogout() {
-    AppLogger.info('Performing YouTube logout (test function)');
-    
-    // 清除全局登录状态
-    YouTubeLoginService.instance.clearLoginStatus();
-    
-    setState(() {
-      _hasAttemptedLogin = false;
-      _isLoginInProgress = false;
-      _isVideoReady = false;
-    });
-    
-    // 重新初始化YouTube Player来模拟登出状态
-    final extractedVideoId = YoutubePlayer.convertUrlToId(widget.video.link);
-    final videoId = extractedVideoId ?? widget.video.videoId;
-    final safeVideoId = videoId.toString();
-    
-    // 清理旧的控制器
-    _youtubeController.removeListener(_onYouTubePlayerStateChange);
-    _playbackController.dispose();
-    
-    // 重新创建YouTube Player
-    _initializeYouTubePlayer(safeVideoId);
-    
-    AppLogger.info('YouTube logout completed - login button should reappear');
-    
-    // 显示成功提示
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Row(
-          children: [
-            Icon(Icons.check_circle, color: Colors.white),
-            SizedBox(width: 8),
-            Text('Logged out successfully - you can test login again'),
-          ],
-        ),
-        backgroundColor: Colors.orange,
-        duration: Duration(seconds: 3),
-      ),
-    );
-  }
 
 
   void _onYouTubePlayerStateChange() {
@@ -634,11 +553,11 @@ class _DictationScreenState extends State<DictationScreen>
         AppLogger.info('Video loading state cleared - now playing');
       }
       
-      // 如果player ready且状态正常，说明登录成功
-      if (isReady && (playerState == PlayerState.unStarted || playerState == PlayerState.paused || playerState == PlayerState.playing)) {
+      // 只有在实际播放时才确认登录成功，避免误判
+      if (isReady && isPlaying) {
         if (!YouTubeLoginService.instance.isLoggedIn) {
           YouTubeLoginService.instance.setLoginStatus(true);
-          AppLogger.info('Detected successful YouTube login - hiding login button');
+          AppLogger.info('Confirmed successful YouTube login through actual playback - hiding login button');
         }
       }
     });
@@ -1617,15 +1536,6 @@ class _DictationScreenState extends State<DictationScreen>
                   _showYouTubeLoginPage();
                 },
                 tooltip: 'Login to YouTube',
-              ),
-            // YouTube logout button (临时测试用，只在已登录时显示)
-            if (YouTubeLoginService.instance.isLoggedIn)
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.red),
-                onPressed: () {
-                  _showLogoutConfirmDialog();
-                },
-                tooltip: 'Logout from YouTube (Test)',
               ),
             IconButton(
               icon: const Icon(Icons.restart_alt_outlined),
