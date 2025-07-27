@@ -78,6 +78,7 @@ class _CompactProgressBarState extends State<CompactProgressBar>
     return Card(
       elevation: 2,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: theme.colorScheme.primaryContainer,
       child: InkWell(
         onTap: widget.onToggleExpanded,
         borderRadius: BorderRadius.circular(12),

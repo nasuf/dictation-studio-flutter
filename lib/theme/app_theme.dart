@@ -30,9 +30,7 @@ class AppTheme {
 
   /// Create light theme with light green color scheme
   static ThemeData lightTheme() {
-    final lightGreenColorScheme = ColorScheme.fromSeed(
-      seedColor: _lightPrimary,
-      brightness: Brightness.light,
+    final lightGreenColorScheme = ColorScheme.light(
       primary: _lightPrimary,
       primaryContainer: _lightPrimaryContainer,
       secondary: _lightSecondary,
@@ -50,10 +48,7 @@ class AppTheme {
 
   /// Create dark theme with dark green color scheme
   static ThemeData darkTheme() {
-    final darkGreenColorScheme = ColorScheme.fromSeed(
-      seedColor: _darkPrimary,
-      brightness: Brightness.dark,
-      // Custom overrides for cohesive dark green theme
+    final darkGreenColorScheme = ColorScheme.dark(
       primary: _darkPrimary,
       primaryContainer: _darkPrimaryContainer,
       secondary: _darkSecondary,
@@ -67,15 +62,15 @@ class AppTheme {
       outline: _darkOutline,
       shadow: _darkShadow.withValues(alpha: 0.3),
       // Ensure proper contrast for dark theme
-      onPrimary: Color(0xFF003300),        // Very dark green for text on primary
-      onPrimaryContainer: Color(0xFFE8F5E8), // Light green for text on primary container
-      onSecondary: Color(0xFF003300),      // Very dark green for text on secondary
-      onSecondaryContainer: Color(0xFFE8F5E8), // Light green for text on secondary container
-      onTertiary: Color(0xFF003300),       // Very dark green for text on tertiary
-      error: Color(0xFFCF6679),            // Soft red for errors in dark theme
-      onError: Color(0xFF000000),          // Black text on error
-      inverseSurface: Color(0xFFE8F5E8),   // Light green for inverse elements
-      onInverseSurface: Color(0xFF1B5E20), // Dark green for text on inverse surface
+      onPrimary: const Color(0xFF003300),        // Very dark green for text on primary
+      onPrimaryContainer: const Color(0xFFE8F5E8), // Light green for text on primary container
+      onSecondary: const Color(0xFF003300),      // Very dark green for text on secondary
+      onSecondaryContainer: const Color(0xFFE8F5E8), // Light green for text on secondary container
+      onTertiary: const Color(0xFF003300),       // Very dark green for text on tertiary
+      error: const Color(0xFFCF6679),            // Soft red for errors in dark theme
+      onError: const Color(0xFF000000),          // Black text on error
+      inverseSurface: const Color(0xFFE8F5E8),   // Light green for inverse elements
+      onInverseSurface: const Color(0xFF1B5E20), // Dark green for text on inverse surface
     );
 
     return _buildTheme(darkGreenColorScheme, Brightness.dark);

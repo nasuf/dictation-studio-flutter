@@ -308,10 +308,11 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   // Show success snackbar
   void _showSuccessSnackBar(String message) {
     if (mounted) {
+      final theme = Theme.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.green,
+          backgroundColor: theme.colorScheme.primary,
           duration: const Duration(seconds: 3),
         ),
       );
@@ -321,10 +322,11 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   // Show error snackbar
   void _showErrorSnackBar(String message) {
     if (mounted) {
+      final theme = Theme.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: Colors.red,
+          backgroundColor: theme.colorScheme.error,
           duration: const Duration(seconds: 4),
         ),
       );
@@ -333,6 +335,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Show confirmation dialog
   Future<bool> _showConfirmDialog(String title, String content) async {
+    final theme = Theme.of(context);
     final result = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -346,8 +349,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+              backgroundColor: theme.colorScheme.error,
+              foregroundColor: theme.colorScheme.onError,
             ),
             child: const Text('Delete'),
           ),
@@ -359,17 +362,19 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
+      backgroundColor: theme.colorScheme.surface,
       appBar: AppBar(
         title: const Text('Video Management'),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
         elevation: 1,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Colors.blue,
-          unselectedLabelColor: Colors.grey,
-          indicatorColor: Colors.blue,
+          labelColor: theme.colorScheme.primary,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+          indicatorColor: theme.colorScheme.primary,
           tabs: const [
             Tab(text: 'Videos', icon: Icon(Icons.video_library)),
             Tab(text: 'Analytics', icon: Icon(Icons.analytics)),
@@ -417,14 +422,15 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Build filters section
   Widget _buildFiltersSection() {
+    final theme = Theme.of(context);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surfaceContainerHighest,
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: theme.colorScheme.shadow.withOpacity(0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -543,6 +549,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Build video content area
   Widget _buildVideoContent() {
+    final theme = Theme.of(context);
     if (_isLoading) {
       return const Center(
         child: Column(
@@ -561,7 +568,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error, size: 48, color: Colors.red),
+            Icon(Icons.error, size: 48, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 16),
@@ -572,13 +579,13 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     }
 
     if (_selectedChannelId == null) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.video_library_outlined, size: 48, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Select a channel to manage videos'),
+            Icon(Icons.video_library_outlined, size: 48, color: theme.colorScheme.outline),
+            const SizedBox(height: 16),
+            const Text('Select a channel to manage videos'),
           ],
         ),
       );
@@ -591,10 +598,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.video_library_outlined,
               size: 48,
-              color: Colors.grey,
+              color: theme.colorScheme.outline,
             ),
             const SizedBox(height: 16),
             Text(_videos.isEmpty ? 'No videos found' : 'No matching videos'),
@@ -603,7 +610,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
               _videos.isEmpty
                   ? 'Add your first video to get started'
                   : 'Try adjusting your search terms',
-              style: const TextStyle(color: Colors.grey),
+              style: TextStyle(color: theme.colorScheme.outline),
             ),
           ],
         ),
@@ -627,6 +634,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Build video card
   Widget _buildVideoCard(Video video) {
+    final theme = Theme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
@@ -653,9 +661,9 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                       const SizedBox(height: 4),
                       Text(
                         'ID: ${video.videoId}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey,
+                          color: theme.colorScheme.outline,
                           fontFamily: 'monospace',
                         ),
                       ),
@@ -704,7 +712,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                           Icon(
                             Icons.public,
                             color: video.visibility == 'public'
-                                ? Colors.green
+                                ? theme.colorScheme.primary
                                 : null,
                           ),
                           const SizedBox(width: 8),
@@ -719,7 +727,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                           Icon(
                             Icons.lock,
                             color: video.visibility == 'private'
-                                ? Colors.orange
+                                ? theme.colorScheme.secondary
                                 : null,
                           ),
                           const SizedBox(width: 8),
@@ -728,13 +736,13 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                       ),
                     ),
                     const PopupMenuDivider(),
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
-                          Icon(Icons.delete, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: Colors.red)),
+                          Icon(Icons.delete, color: theme.colorScheme.error),
+                          const SizedBox(width: 8),
+                          Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
                         ],
                       ),
                     ),
@@ -755,8 +763,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                     style: const TextStyle(fontSize: 10),
                   ),
                   backgroundColor: video.visibility == 'public'
-                      ? Colors.green.withValues(alpha: 0.2)
-                      : Colors.orange.withValues(alpha: 0.2),
+                      ? theme.colorScheme.primary.withOpacity(0.2)
+                      : theme.colorScheme.secondary.withOpacity(0.2),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 Chip(
@@ -772,7 +780,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                       'HAS LINK',
                       style: TextStyle(fontSize: 10),
                     ),
-                    backgroundColor: Colors.blue.withValues(alpha: 0.2),
+                    backgroundColor: theme.colorScheme.tertiary.withOpacity(0.2),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
               ],
@@ -811,13 +819,14 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Build analytics tab (placeholder)
   Widget _buildAnalyticsTab() {
-    return const Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.analytics, size: 48, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Analytics feature coming soon'),
+          Icon(Icons.analytics, size: 48, color: theme.colorScheme.outline),
+          const SizedBox(height: 16),
+          const Text('Analytics feature coming soon'),
         ],
       ),
     );
@@ -825,13 +834,14 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
   // Build settings tab (placeholder)
   Widget _buildSettingsTab() {
-    return const Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.settings, size: 48, color: Colors.grey),
-          SizedBox(height: 16),
-          Text('Settings feature coming soon'),
+          Icon(Icons.settings, size: 48, color: theme.colorScheme.outline),
+          const SizedBox(height: 16),
+          const Text('Settings feature coming soon'),
         ],
       ),
     );

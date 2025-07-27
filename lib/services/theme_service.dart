@@ -14,7 +14,7 @@ class ThemeService extends ChangeNotifier {
   static const String _themeKey = 'app_theme_mode';
   static ThemeService? _instance;
   
-  AppThemeMode _themeMode = AppThemeMode.system;
+  AppThemeMode _themeMode = AppThemeMode.light;
   SharedPreferences? _prefs;
   
   ThemeService._();

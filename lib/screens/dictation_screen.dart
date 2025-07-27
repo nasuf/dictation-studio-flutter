@@ -1971,6 +1971,7 @@ class _DictationScreenState extends State<DictationScreen>
     final comparison = _comparisonResults[_currentSentenceIndex];
 
     return Card(
+      color: Theme.of(context).colorScheme.primaryContainer,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -1988,7 +1989,7 @@ class _DictationScreenState extends State<DictationScreen>
                     isRevealed ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: _toggleCurrentSentenceReveal,
-                  tooltip: isRevealed ? 'Hide original' : 'Show original',
+                  tooltip: isRevealed ? 'Hide comparison' : 'Show comparison',
                   iconSize: 20,
                 ),
               ],
@@ -1999,7 +2000,7 @@ class _DictationScreenState extends State<DictationScreen>
               SimpleComparisonWidget(
                 comparison: comparison,
                 showOriginal: isRevealed,
-                showUserInput: true,
+                showUserInput: isRevealed,
               ),
             ] else if (isRevealed) ...[
               Container(

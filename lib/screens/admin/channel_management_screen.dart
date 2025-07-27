@@ -90,10 +90,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
       );
     } catch (e) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to load channels: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -149,8 +150,9 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: theme.colorScheme.surface,
       appBar: _buildAppBar(),
       body: FadeTransition(
         opacity: _fadeAnimation,
@@ -186,18 +188,17 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   PreferredSizeWidget _buildAppBar() {
+    final theme = Theme.of(context);
     return AppBar(
-      backgroundColor: Colors.white,
+      backgroundColor: theme.colorScheme.surface,
       elevation: 2,
-      shadowColor: Colors.black.withValues(alpha: 0.1),
+      shadowColor: theme.colorScheme.shadow,
       title: Row(
         children: [
           const SizedBox(width: 12),
-          const Text(
+          Text(
             'Channel Management',
-            style: TextStyle(
-              color: Color(0xFF1F2937),
-              fontSize: 20,
+            style: theme.textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -213,23 +214,23 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF3F4F6),
+                    color: theme.colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: provider.isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 20,
                           height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF3B82F6),
+                              theme.colorScheme.primary,
                             ),
                           ),
                         )
-                      : const Icon(
+                      : Icon(
                           Icons.refresh,
-                          color: Color(0xFF3B82F6),
+                          color: theme.colorScheme.primary,
                           size: 20,
                         ),
                 ),
@@ -242,16 +243,17 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildSearchAndFilters() {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: theme.colorScheme.shadow.withOpacity(0.1),
             blurRadius: 10,
             spreadRadius: 0,
             offset: const Offset(0, 2),
@@ -263,9 +265,9 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
           // Search Bar
           Container(
             decoration: BoxDecoration(
-              color: const Color(0xFFF9FAFB),
+              color: theme.colorScheme.surfaceContainerHighest,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
             ),
             child: TextField(
               controller: _searchController,
@@ -274,11 +276,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                   _searchQuery = value;
                 });
               },
-              style: const TextStyle(color: Color(0xFF1F2937)),
-              decoration: const InputDecoration(
+              style: TextStyle(color: theme.colorScheme.onSurface),
+              decoration: InputDecoration(
                 hintText: 'Search channels by name or ID...',
-                hintStyle: TextStyle(color: Color(0xFF9CA3AF)),
-                prefixIcon: Icon(Icons.search, color: Color(0xFF6B7280)),
+                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
                 border: InputBorder.none,
                 contentPadding: EdgeInsets.symmetric(
                   horizontal: 16,
@@ -332,12 +334,13 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     Map<String, String> options,
     Function(String) onChanged,
   ) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
@@ -347,15 +350,15 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               onChanged(newValue);
             }
           },
-          style: const TextStyle(color: Color(0xFF1F2937)),
-          dropdownColor: Colors.white,
-          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF6B7280)),
+          style: TextStyle(color: theme.colorScheme.onSurface),
+          dropdownColor: theme.colorScheme.surface,
+          icon: Icon(Icons.keyboard_arrow_down, color: theme.colorScheme.onSurfaceVariant),
           items: options.entries.map((entry) {
             return DropdownMenuItem<String>(
               value: entry.value,
               child: Text(
                 entry.key,
-                style: const TextStyle(color: Color(0xFF1F2937)),
+                style: TextStyle(color: theme.colorScheme.onSurface),
               ),
             );
           }).toList(),
@@ -365,17 +368,20 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildLoadingState() {
-    return const Center(
+    final theme = Theme.of(context);
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+            valueColor: AlwaysStoppedAnimation<Color>(theme.colorScheme.primary),
           ),
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
           Text(
             'Loading channels...',
-            style: TextStyle(color: Color(0xFF6B7280), fontSize: 16),
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -383,6 +389,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildChannelList(List<Channel> channels, ChannelProvider provider) {
+    final theme = Theme.of(context);
     if (channels.isEmpty) {
       return Center(
         child: Column(
@@ -391,29 +398,29 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: theme.colorScheme.surface,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.video_library_outlined,
                 size: 64,
-                color: Color(0xFF9CA3AF),
+                color: theme.colorScheme.outline,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No channels found',
-              style: TextStyle(
-                color: Color(0xFF1F2937),
-                fontSize: 18,
+              style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w500,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'Try adjusting your search or filters',
-              style: TextStyle(color: Color(0xFF6B7280), fontSize: 14),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -431,15 +438,16 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildChannelCard(Channel channel, ChannelProvider provider) {
+    final theme = Theme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
+        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: theme.colorScheme.shadow.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -455,7 +463,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               height: 60,
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFFE5E7EB), width: 2),
+                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 2),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(10),
@@ -465,16 +473,12 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: theme.colorScheme.primary,
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.video_library,
-                        color: Colors.white,
+                        color: theme.colorScheme.onPrimary,
                         size: 24,
                       ),
                     );
@@ -491,9 +495,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                 children: [
                   Text(
                     channel.name,
-                    style: const TextStyle(
-                      color: Color(0xFF1F2937),
-                      fontSize: 16,
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                     maxLines: 1,
@@ -502,17 +504,15 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                   const SizedBox(height: 4),
                   Text(
                     'ID: ${channel.id}',
-                    style: const TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 12,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Videos: ${channel.videoCount}',
-                    style: const TextStyle(
-                      color: Color(0xFF3B82F6),
-                      fontSize: 12,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.primary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -523,14 +523,14 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                     children: [
                       _buildTag(
                         channel.displayLanguage,
-                        const Color(0xFF3B82F6),
+                        theme.colorScheme.primary,
                       ),
                       const SizedBox(width: 8),
                       _buildTag(
                         channel.isPublic ? 'PUBLIC' : 'PRIVATE',
                         channel.isPublic
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFF59E0B),
+                            ? theme.colorScheme.primary
+                            : theme.colorScheme.secondary,
                       ),
                     ],
                   ),
@@ -552,7 +552,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                   Icons.open_in_new,
                   'View',
                   () => _openChannelLink(channel.link),
-                  const Color(0xFF10B981),
+                  theme.colorScheme.secondary,
                 ),
               ],
             ),
@@ -604,17 +604,14 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildFloatingActionButton() {
+    final theme = Theme.of(context);
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF3B82F6), Color(0xFF1D4ED8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: theme.colorScheme.primary,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
+            color: theme.colorScheme.primary.withOpacity(0.3),
             blurRadius: 20,
             spreadRadius: 0,
           ),
@@ -624,7 +621,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
         onPressed: _showAddChannelModal,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        child: const Icon(Icons.add, color: Colors.white, size: 24),
+        child: Icon(Icons.add, color: theme.colorScheme.onPrimary, size: 24),
       ),
     );
   }
@@ -632,10 +629,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   void _openChannelLink(String link) async {
     if (link.isEmpty) {
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No link available for this channel'),
-            backgroundColor: Colors.orange,
+          SnackBar(
+            content: const Text('No link available for this channel'),
+            backgroundColor: theme.colorScheme.secondary,
           ),
         );
       }
@@ -707,10 +705,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     } catch (e) {
       AppLogger.error('Error parsing channel link: $e');
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Invalid URL format: $link'),
-            backgroundColor: Colors.red,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -730,10 +729,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
 
       AppLogger.info('Successfully opened URL: $uri');
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Opening link in browser...'),
-            backgroundColor: Colors.green,
+            backgroundColor: theme.colorScheme.primary,
             duration: const Duration(seconds: 2),
           ),
         );
@@ -741,10 +741,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     } catch (e) {
       AppLogger.error('Error launching URL: $e');
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to open link: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -769,10 +770,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
         );
 
         if (mounted) {
+          final theme = Theme.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Channel updated successfully'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('Channel updated successfully'),
+              backgroundColor: theme.colorScheme.primary,
             ),
           );
         }
@@ -796,10 +798,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
         await channelProvider.addChannel(newChannel);
 
         if (mounted) {
+          final theme = Theme.of(context);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Channel added successfully'),
-              backgroundColor: Colors.green,
+            SnackBar(
+              content: const Text('Channel added successfully'),
+              backgroundColor: theme.colorScheme.primary,
             ),
           );
         }
@@ -814,10 +817,11 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     } catch (e) {
       AppLogger.error('Error saving channel: $e');
       if (mounted) {
+        final theme = Theme.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to save channel: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: theme.colorScheme.error,
           ),
         );
       }
@@ -825,12 +829,13 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   }
 
   Widget _buildChannelFormModal() {
+    final theme = Theme.of(context);
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
       padding: const EdgeInsets.all(20),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [

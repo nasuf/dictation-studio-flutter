@@ -393,22 +393,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Row(
-                        children: [
-                          Text('Order:', style: Theme.of(context).textTheme.bodyMedium),
-                          const SizedBox(width: 8),
-                          FilterChip(
-                            label: Text(_sortAscending ? 'Ascending' : 'Descending'),
-                            selected: true,
-                            onSelected: (selected) {
-                              setState(() {
-                                _sortAscending = !_sortAscending;
-                                _sortUsers();
-                                _applyFilters();
-                              });
-                            },
-                          ),
+                      child: DropdownButtonFormField<bool>(
+                        value: _sortAscending,
+                        decoration: const InputDecoration(
+                          labelText: 'Order',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: true, child: Text('Ascending')),
+                          DropdownMenuItem(value: false, child: Text('Descending')),
                         ],
+                        onChanged: (value) {
+                          setState(() {
+                            _sortAscending = value!;
+                            _sortUsers();
+                            _applyFilters();
+                          });
+                        },
                       ),
                     ),
                   ],
@@ -599,9 +600,13 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             color: Theme.of(context).colorScheme.outline,
           ),
         ),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.bodySmall,
+        Expanded(
+          child: Text(
+            value,
+            style: Theme.of(context).textTheme.bodySmall,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+          ),
         ),
       ],
     );
