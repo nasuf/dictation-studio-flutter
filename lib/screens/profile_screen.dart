@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/token_manager.dart';
 import '../utils/logger.dart';
 import '../widgets/calendar_heatmap.dart';
+import '../widgets/theme_toggle_button.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -573,6 +574,52 @@ class _ProfileScreenState extends State<ProfileScreen>
                           ),
                       ],
                     ),
+                  ),
+                ),
+
+                const SizedBox(height: 24),
+
+                // Theme Settings Section
+                Container(
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surface,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.settings_outlined,
+                              color: theme.colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Settings',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const ThemeSettingsListTile(),
+                    ],
                   ),
                 ),
 

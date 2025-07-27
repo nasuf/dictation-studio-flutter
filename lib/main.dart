@@ -7,6 +7,8 @@ import 'providers/channel_provider.dart';
 import 'providers/video_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/admin_provider.dart';
+import 'services/theme_service.dart';
+import 'theme/app_theme.dart';
 import 'screens/main_screen.dart';
 import 'screens/video_list_screen.dart';
 import 'screens/admin/channel_management_screen.dart';
@@ -76,6 +78,11 @@ void main() async {
     await DeepLinkService().initialize();
     AppLogger.success('✅ Deep link service initialized');
 
+    // Initialize theme service
+    AppLogger.info('🎨 Initializing theme service...');
+    await ThemeService.instance.initialize();
+    AppLogger.success('✅ Theme service initialized');
+
     AppLogger.info('🎯 Running app...');
     runApp(DictationStudioApp());
   } catch (e, stackTrace) {
@@ -144,313 +151,41 @@ class DictationStudioApp extends StatelessWidget {
             return AdminProvider();
           },
         ),
+        ChangeNotifierProvider.value(
+          value: ThemeService.instance,
+        ),
       ],
-      child: MaterialApp.router(
-        title: 'Dictation Studio',
-        debugShowCheckedModeBanner: false,
-        theme: _buildTheme(),
-        routerConfig: _buildRouter(_navigatorKey),
-        builder: (context, child) {
-          // Add error boundary
-          return child ?? const SizedBox();
+      child: Consumer<ThemeService>(
+        builder: (context, themeService, child) {
+          return MaterialApp.router(
+            title: 'Dictation Studio',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme(),
+            darkTheme: AppTheme.darkTheme(),
+            themeMode: _getThemeMode(themeService.themeMode),
+            routerConfig: _buildRouter(_navigatorKey),
+            builder: (context, child) {
+              // Add error boundary
+              return child ?? const SizedBox();
+            },
+          );
         },
       ),
     );
   }
 
-  // Build comprehensive Material Design 3 theme with light green color scheme
-  ThemeData _buildTheme() {
-    // Create custom light green color scheme
-    final lightGreenColorScheme = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF66BB6A), // Light green primary
-      brightness: Brightness.light,
-      // Custom color overrides for light green theme
-      primary: const Color(0xFF4CAF50),        // Green 500
-      primaryContainer: const Color(0xFFE8F5E8), // Very light green
-      secondary: const Color(0xFF8BC34A),       // Light green 500
-      secondaryContainer: const Color(0xFFF1F8E9), // Very light lime
-      tertiary: const Color(0xFF009688),        // Teal 500
-      surface: Colors.white,
-      surfaceContainerHighest: const Color(0xFFF1F8E9),  // Light green tint
-      onSurface: const Color(0xFF1B5E20),       // Dark green for text
-      outline: const Color(0xFF81C784),         // Medium green for borders
-      shadow: Colors.black.withValues(alpha: 0.1),
-    );
-
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: lightGreenColorScheme,
-      
-      // AppBar theme with light green styling
-      appBarTheme: AppBarTheme(
-        centerTitle: false,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        shadowColor: lightGreenColorScheme.shadow,
-        backgroundColor: lightGreenColorScheme.surface,
-        surfaceTintColor: lightGreenColorScheme.primary,
-        foregroundColor: lightGreenColorScheme.onSurface,
-        titleTextStyle: TextStyle(
-          color: lightGreenColorScheme.onSurface,
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.0,
-        ),
-        iconTheme: IconThemeData(
-          color: lightGreenColorScheme.primary,
-          size: 24,
-        ),
-        actionsIconTheme: IconThemeData(
-          color: lightGreenColorScheme.primary,
-          size: 24,
-        ),
-      ),
-
-      // Modern button themes
-      elevatedButtonTheme: ElevatedButtonThemeData(
-        style: ElevatedButton.styleFrom(
-          elevation: 1,
-          backgroundColor: lightGreenColorScheme.primary,
-          foregroundColor: lightGreenColorScheme.onPrimary,
-          disabledBackgroundColor: lightGreenColorScheme.outline.withValues(alpha: 0.12),
-          disabledForegroundColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.38),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          textStyle: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ),
-      
-      filledButtonTheme: FilledButtonThemeData(
-        style: FilledButton.styleFrom(
-          backgroundColor: lightGreenColorScheme.primary,
-          foregroundColor: lightGreenColorScheme.onPrimary,
-          disabledBackgroundColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.12),
-          disabledForegroundColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.38),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        ),
-      ),
-
-      outlinedButtonTheme: OutlinedButtonThemeData(
-        style: OutlinedButton.styleFrom(
-          foregroundColor: lightGreenColorScheme.primary,
-          disabledForegroundColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.38),
-          side: BorderSide(color: lightGreenColorScheme.outline),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        ),
-      ),
-
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: lightGreenColorScheme.primary,
-          disabledForegroundColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.38),
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(20)),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        ),
-      ),
-
-      // FAB theme
-      floatingActionButtonTheme: FloatingActionButtonThemeData(
-        backgroundColor: lightGreenColorScheme.primaryContainer,
-        foregroundColor: lightGreenColorScheme.onPrimaryContainer,
-        elevation: 3,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(16)),
-        ),
-      ),
-
-      // Card theme
-      cardTheme: CardThemeData(
-        elevation: 1,
-        shadowColor: lightGreenColorScheme.shadow,
-        surfaceTintColor: lightGreenColorScheme.surfaceContainerHighest,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-        ),
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      ),
-
-      // Chip theme
-      chipTheme: ChipThemeData(
-        backgroundColor: lightGreenColorScheme.surfaceContainerHighest,
-        deleteIconColor: lightGreenColorScheme.onSurfaceVariant,
-        disabledColor: lightGreenColorScheme.onSurface.withValues(alpha: 0.12),
-        selectedColor: lightGreenColorScheme.secondaryContainer,
-        secondarySelectedColor: lightGreenColorScheme.secondary,
-        shadowColor: lightGreenColorScheme.shadow,
-        labelStyle: TextStyle(
-          color: lightGreenColorScheme.onSurfaceVariant,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        secondaryLabelStyle: TextStyle(
-          color: lightGreenColorScheme.onSecondaryContainer,
-          fontSize: 14,
-          fontWeight: FontWeight.w500,
-        ),
-        brightness: Brightness.light,
-        elevation: 0,
-        pressElevation: 1,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(8)),
-        ),
-      ),
-
-      // Input decoration theme
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: lightGreenColorScheme.surfaceContainerHighest,
-        hintStyle: TextStyle(
-          color: lightGreenColorScheme.onSurfaceVariant,
-          fontSize: 16,
-        ),
-        labelStyle: TextStyle(
-          color: lightGreenColorScheme.primary,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: lightGreenColorScheme.outline,
-            width: 1,
-          ),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: lightGreenColorScheme.outline,
-            width: 1,
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: lightGreenColorScheme.primary,
-            width: 2,
-          ),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: lightGreenColorScheme.error,
-            width: 1,
-          ),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      ),
-
-      // Navigation theme
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: lightGreenColorScheme.surface,
-        indicatorColor: lightGreenColorScheme.secondaryContainer,
-        labelTextStyle: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return TextStyle(
-              color: lightGreenColorScheme.onSecondaryContainer,
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            );
-          }
-          return TextStyle(
-            color: lightGreenColorScheme.onSurfaceVariant,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          );
-        }),
-        iconTheme: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) {
-            return IconThemeData(
-              color: lightGreenColorScheme.onSecondaryContainer,
-              size: 24,
-            );
-          }
-          return IconThemeData(
-            color: lightGreenColorScheme.onSurfaceVariant,
-            size: 24,
-          );
-        }),
-      ),
-
-      // SnackBar theme
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: lightGreenColorScheme.inverseSurface,
-        contentTextStyle: TextStyle(
-          color: lightGreenColorScheme.onInverseSurface,
-          fontSize: 14,
-        ),
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(4)),
-        ),
-        behavior: SnackBarBehavior.floating,
-        elevation: 3,
-      ),
-
-      // Dialog theme
-      dialogTheme: DialogThemeData(
-        backgroundColor: lightGreenColorScheme.surface,
-        surfaceTintColor: lightGreenColorScheme.surfaceContainerHighest,
-        elevation: 3,
-        shadowColor: lightGreenColorScheme.shadow,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(20)),
-        ),
-        titleTextStyle: TextStyle(
-          color: lightGreenColorScheme.onSurface,
-          fontSize: 24,
-          fontWeight: FontWeight.w400,
-        ),
-        contentTextStyle: TextStyle(
-          color: lightGreenColorScheme.onSurfaceVariant,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-        ),
-      ),
-
-      // Progress indicator theme
-      progressIndicatorTheme: ProgressIndicatorThemeData(
-        color: lightGreenColorScheme.primary,
-        linearTrackColor: lightGreenColorScheme.surfaceContainerHighest,
-        circularTrackColor: lightGreenColorScheme.surfaceContainerHighest,
-      ),
-
-      // Scaffold background
-      scaffoldBackgroundColor: lightGreenColorScheme.surface,
-      
-      // Typography
-      fontFamily: 'Roboto',
-      textTheme: TextTheme(
-        displayLarge: TextStyle(color: lightGreenColorScheme.onSurface),
-        displayMedium: TextStyle(color: lightGreenColorScheme.onSurface),
-        displaySmall: TextStyle(color: lightGreenColorScheme.onSurface),
-        headlineLarge: TextStyle(color: lightGreenColorScheme.onSurface),
-        headlineMedium: TextStyle(color: lightGreenColorScheme.onSurface),
-        headlineSmall: TextStyle(color: lightGreenColorScheme.onSurface),
-        titleLarge: TextStyle(color: lightGreenColorScheme.onSurface, fontWeight: FontWeight.w500),
-        titleMedium: TextStyle(color: lightGreenColorScheme.onSurface, fontWeight: FontWeight.w500),
-        titleSmall: TextStyle(color: lightGreenColorScheme.onSurface, fontWeight: FontWeight.w500),
-        labelLarge: TextStyle(color: lightGreenColorScheme.primary, fontWeight: FontWeight.w500),
-        labelMedium: TextStyle(color: lightGreenColorScheme.primary, fontWeight: FontWeight.w500),
-        labelSmall: TextStyle(color: lightGreenColorScheme.primary, fontWeight: FontWeight.w500),
-        bodyLarge: TextStyle(color: lightGreenColorScheme.onSurface),
-        bodyMedium: TextStyle(color: lightGreenColorScheme.onSurface),
-        bodySmall: TextStyle(color: lightGreenColorScheme.onSurfaceVariant),
-      ),
-    );
+  /// Convert our theme mode to Flutter's ThemeMode
+  ThemeMode _getThemeMode(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return ThemeMode.light;
+      case AppThemeMode.dark:
+        return ThemeMode.dark;
+      case AppThemeMode.system:
+        return ThemeMode.system;
+    }
   }
+
 
   // Build app router using GoRouter
   GoRouter _buildRouter(GlobalKey<NavigatorState> navigatorKey) {
