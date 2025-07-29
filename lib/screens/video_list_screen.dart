@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/video_provider.dart';
 import '../providers/auth_provider.dart';
+import '../generated/app_localizations.dart';
 
 class VideoListScreen extends StatefulWidget {
   final String channelId;
@@ -23,6 +24,7 @@ class _VideoListScreenState extends State<VideoListScreen>
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   String _sortBy = 'recent'; // recent, alphabetical, progress
+  String _progressFilter = 'all'; // all, done, in_progress, not_started
 
   @override
   void initState() {
@@ -121,7 +123,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            widget.channelName ?? 'Videos',
+                            widget.channelName ?? AppLocalizations.of(context)!.videos,
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w600,
                               color: theme.colorScheme.onSurface,
@@ -135,7 +137,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                                 provider,
                               );
                               return Text(
-                                '${videos.length} videos',
+                                AppLocalizations.of(context)!.videosCount(videos.length),
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: theme.colorScheme.onSurface.withValues(
                                     alpha: 0.7,
@@ -237,7 +239,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.channelName ?? 'Videos',
+                        widget.channelName ?? AppLocalizations.of(context)!.videos,
                         style: theme.textTheme.titleLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                           color: theme.colorScheme.onSurface,
@@ -246,7 +248,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
-                        'Login required to view content',
+                        AppLocalizations.of(context)!.loginRequiredDescription,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -285,7 +287,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                       ),
                       const SizedBox(height: 32),
                       Text(
-                        'Login Required',
+                        AppLocalizations.of(context)!.loginRequired,
                         style: theme.textTheme.headlineSmall?.copyWith(
                           color: theme.colorScheme.onSurface,
                           fontWeight: FontWeight.w600,
@@ -294,7 +296,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'You need to sign in to access video content and track your progress',
+                        AppLocalizations.of(context)!.loginRequiredDescription,
                         style: theme.textTheme.bodyLarge?.copyWith(
                           color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                         ),
@@ -307,7 +309,7 @@ class _VideoListScreenState extends State<VideoListScreen>
                           context.push('/login');
                         },
                         icon: const Icon(Icons.login),
-                        label: const Text('Sign In'),
+                        label: Text(AppLocalizations.of(context)!.signIn),
                       ),
                     ],
                   ),
@@ -378,7 +380,7 @@ class _VideoListScreenState extends State<VideoListScreen>
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Search videos...',
+          hintText: AppLocalizations.of(context)!.searchVideos,
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 14,
@@ -424,9 +426,11 @@ class _VideoListScreenState extends State<VideoListScreen>
     List<dynamic> videos,
     VideoProvider videoProvider,
   ) {
-    final completed = _getVideosWithDoneProgress(videos, videoProvider);
-    final inProgress = _getVideosWithProgress(videos, videoProvider);
-    final notStarted = videos.length - completed - inProgress;
+    // Always calculate stats from all videos (not filtered ones)
+    final allVideos = videoProvider.sortedVideos;
+    final completed = _getVideosWithDoneProgress(allVideos, videoProvider);
+    final inProgress = _getVideosWithProgress(allVideos, videoProvider);
+    final notStarted = allVideos.length - completed - inProgress;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 2, 12, 4),
@@ -443,22 +447,31 @@ class _VideoListScreenState extends State<VideoListScreen>
           _buildStatChip(
             theme,
             '$completed',
-            'Done',
+            AppLocalizations.of(context)!.done,
             theme.colorScheme.primary,
+            'done',
+            _progressFilter == 'done',
+            completed > 0,
           ),
           const SizedBox(width: 8),
           _buildStatChip(
             theme,
             '$inProgress',
-            'In Progress',
+            AppLocalizations.of(context)!.inProgress,
             theme.colorScheme.secondary,
+            'in_progress',
+            _progressFilter == 'in_progress',
+            inProgress > 0,
           ),
           const SizedBox(width: 8),
           _buildStatChip(
             theme,
             '$notStarted',
-            'Not Started',
+            AppLocalizations.of(context)!.notStarted,
             theme.colorScheme.outline,
+            'not_started',
+            _progressFilter == 'not_started',
+            notStarted > 0,
           ),
         ],
       ),
@@ -470,32 +483,52 @@ class _VideoListScreenState extends State<VideoListScreen>
     String count,
     String label,
     Color color,
+    String filterType,
+    bool isSelected,
+    bool isClickable,
   ) {
+    final effectiveColor = isClickable ? color : theme.colorScheme.outline.withValues(alpha: 0.5);
+    
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Column(
-          children: [
-            Text(
-              count,
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w600,
-              ),
+      child: GestureDetector(
+        onTap: isClickable ? () {
+          HapticFeedback.lightImpact();
+          setState(() {
+            // Toggle filter: if same filter is tapped, set to 'all', otherwise set to the tapped filter
+            _progressFilter = _progressFilter == filterType ? 'all' : filterType;
+          });
+        } : null,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+          decoration: BoxDecoration(
+            color: isSelected ? effectiveColor : effectiveColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: effectiveColor.withValues(alpha: isSelected ? 1.0 : (isClickable ? 0.3 : 0.2)),
+              width: isSelected ? 2 : 1,
             ),
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: color.withValues(alpha: 0.8),
-                fontSize: 10,
+          ),
+          child: Column(
+            children: [
+              Text(
+                count,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: isSelected ? Colors.white : effectiveColor,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isSelected 
+                      ? Colors.white.withValues(alpha: 0.9) 
+                      : effectiveColor.withValues(alpha: isClickable ? 0.8 : 0.6),
+                  fontSize: 10,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -778,7 +811,7 @@ class _VideoListScreenState extends State<VideoListScreen>
           SpinKitPulse(color: theme.colorScheme.primary, size: 50),
           const SizedBox(height: 16),
           Text(
-            'Loading videos...',
+            AppLocalizations.of(context)!.loadingVideos,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -798,7 +831,7 @@ class _VideoListScreenState extends State<VideoListScreen>
             Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
-              'Unable to load videos',
+              AppLocalizations.of(context)!.unableToLoadVideos,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -816,7 +849,7 @@ class _VideoListScreenState extends State<VideoListScreen>
               onPressed: () =>
                   context.read<VideoProvider>().fetchVideos(widget.channelId),
               icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
+              label: Text(AppLocalizations.of(context)!.tryAgain),
             ),
           ],
         ),
@@ -841,32 +874,31 @@ class _VideoListScreenState extends State<VideoListScreen>
             const SizedBox(height: 16),
             Text(
               _searchQuery.isNotEmpty
-                  ? 'No videos found'
-                  : 'No videos available',
+                  ? AppLocalizations.of(context)!.noVideosFound
+                  : AppLocalizations.of(context)!.noVideosAvailable,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              _searchQuery.isNotEmpty
-                  ? 'Try adjusting your search terms'
-                  : 'This channel doesn\'t have any videos yet',
+              _getEmptyStateMessage(),
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               textAlign: TextAlign.center,
             ),
-            if (_searchQuery.isNotEmpty) ...[
+            if (_searchQuery.isNotEmpty || _progressFilter != 'all') ...[
               const SizedBox(height: 16),
               OutlinedButton(
                 onPressed: () {
                   _searchController.clear();
                   setState(() {
                     _searchQuery = '';
+                    _progressFilter = 'all';
                   });
                 },
-                child: const Text('Clear search'),
+                child: Text(AppLocalizations.of(context)!.clearFilters),
               ),
             ],
           ],
@@ -875,9 +907,31 @@ class _VideoListScreenState extends State<VideoListScreen>
     );
   }
 
+  String _getEmptyStateMessage() {
+    if (_searchQuery.isNotEmpty && _progressFilter != 'all') {
+      return AppLocalizations.of(context)!.noVideosMatchFilter;
+    } else if (_searchQuery.isNotEmpty) {
+      return AppLocalizations.of(context)!.tryAdjustingTerms;
+    } else if (_progressFilter != 'all') {
+      switch (_progressFilter) {
+        case 'done':
+          return AppLocalizations.of(context)!.noCompletedVideos;
+        case 'in_progress':
+          return AppLocalizations.of(context)!.noVideosInProgress;
+        case 'not_started':
+          return AppLocalizations.of(context)!.noUnstartedVideos;
+        default:
+          return AppLocalizations.of(context)!.noVideosFound;
+      }
+    } else {
+      return AppLocalizations.of(context)!.channelDoesntHaveVideos;
+    }
+  }
+
   List<dynamic> _getFilteredAndSortedVideos(VideoProvider provider) {
     List<dynamic> videos = provider.sortedVideos;
 
+    // Apply search filter
     if (_searchQuery.isNotEmpty) {
       videos = videos
           .where(
@@ -887,6 +941,24 @@ class _VideoListScreenState extends State<VideoListScreen>
           .toList();
     }
 
+    // Apply progress status filter
+    if (_progressFilter != 'all') {
+      videos = videos.where((video) {
+        final progress = provider.getVideoProgress(video.videoId);
+        switch (_progressFilter) {
+          case 'done':
+            return progress >= 100;
+          case 'in_progress':
+            return progress > 0 && progress < 100;
+          case 'not_started':
+            return progress == 0;
+          default:
+            return true;
+        }
+      }).toList();
+    }
+
+    // Apply sorting
     switch (_sortBy) {
       case 'alphabetical':
         videos.sort((a, b) => a.title.compareTo(b.title));
@@ -928,11 +1000,11 @@ class _VideoListScreenState extends State<VideoListScreen>
 
   String _getStatusText(double progress) {
     if (progress >= 100) {
-      return 'Completed';
+      return AppLocalizations.of(context)!.completed;
     } else if (progress > 0) {
-      return 'In Progress';
+      return AppLocalizations.of(context)!.inProgress;
     } else {
-      return 'Not Started';
+      return AppLocalizations.of(context)!.notStarted;
     }
   }
 
@@ -966,26 +1038,26 @@ class _VideoListScreenState extends State<VideoListScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sort Videos',
+                      AppLocalizations.of(context)!.sortVideos,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(height: 16),
                     _buildSortOption(
-                      'Recent',
+                      AppLocalizations.of(context)!.recent,
                       'recent',
                       Icons.access_time,
                       theme,
                     ),
                     _buildSortOption(
-                      'Alphabetical',
+                      AppLocalizations.of(context)!.alphabetical,
                       'alphabetical',
                       Icons.sort_by_alpha,
                       theme,
                     ),
                     _buildSortOption(
-                      'Progress',
+                      AppLocalizations.of(context)!.progress,
                       'progress',
                       Icons.trending_up,
                       theme,

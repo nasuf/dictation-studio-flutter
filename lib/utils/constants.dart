@@ -10,6 +10,7 @@ class AppConstants {
   // Languages - Match React UI values
   static const String languageEnglish = 'en';
   static const String languageChinese = 'zh';
+  static const String languageTraditionalChinese = 'zh_TW';
   static const String languageJapanese = 'ja';
   static const String languageKorean = 'ko';
   static const String languageAll = 'all';
@@ -40,6 +41,7 @@ class AppConstants {
     'All': languageAll,
     'English': languageEnglish,
     'Chinese': languageChinese,
+    'Traditional Chinese': languageTraditionalChinese,
     'Japanese': languageJapanese,
     'Korean': languageKorean,
   };
@@ -56,6 +58,7 @@ class LanguageHelper {
   static const Map<String, String> languageNames = {
     AppConstants.languageEnglish: 'English',
     AppConstants.languageChinese: 'Chinese',
+    AppConstants.languageTraditionalChinese: 'Traditional Chinese',
     AppConstants.languageJapanese: 'Japanese',
     AppConstants.languageKorean: 'Korean',
   };

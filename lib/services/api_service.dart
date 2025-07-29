@@ -7,6 +7,7 @@ import '../models/video.dart';
 import '../models/progress.dart';
 import '../models/progress_data.dart' as progress_data;
 import '../models/verification_code.dart';
+import '../models/transcript_item.dart';
 import '../services/token_manager.dart';
 import '../utils/logger.dart';
 import '../utils/constants.dart';
@@ -405,6 +406,125 @@ class ApiService {
       return result;
     } catch (e) {
       AppLogger.error('Get video transcript API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get video transcript items for editing
+  Future<List<TranscriptItem>> getVideoTranscriptItems(
+    String channelId,
+    String videoId,
+  ) async {
+    try {
+      AppLogger.info(
+        'Fetching transcript items for channel: $channelId, video: $videoId',
+      );
+      
+      final response = await getVideoTranscript(channelId, videoId);
+      
+      // Parse the transcript data
+      List<TranscriptItem> transcriptItems = [];
+      
+      if (response.containsKey('transcript') && response['transcript'] is List) {
+        final transcriptList = response['transcript'] as List;
+        AppLogger.info('Found ${transcriptList.length} transcript segments');
+        
+        for (int i = 0; i < transcriptList.length; i++) {
+          final item = transcriptList[i];
+          if (item is Map<String, dynamic>) {
+            try {
+              // Convert API format to TranscriptItem
+              final transcriptItem = TranscriptItem(
+                start: (item['start'] as num?)?.toDouble() ?? 0.0,
+                end: (item['end'] as num?)?.toDouble() ?? 1.0,
+                transcript: (item['text'] ?? item['transcript'] ?? '').toString().trim(),
+                index: i,
+              );
+              transcriptItems.add(transcriptItem);
+            } catch (e) {
+              AppLogger.warning('Failed to parse transcript item $i: $e');
+              // Skip malformed items but continue parsing
+            }
+          }
+        }
+      } else if (response.containsKey('data') && response['data'] is Map) {
+        // Check if data contains transcript array
+        final data = response['data'] as Map<String, dynamic>;
+        if (data.containsKey('transcript') && data['transcript'] is List) {
+          final transcriptList = data['transcript'] as List;
+          AppLogger.info('Found ${transcriptList.length} transcript segments in data');
+          
+          for (int i = 0; i < transcriptList.length; i++) {
+            final item = transcriptList[i];
+            if (item is Map<String, dynamic>) {
+              try {
+                final transcriptItem = TranscriptItem(
+                  start: (item['start'] as num?)?.toDouble() ?? 0.0,
+                  end: (item['end'] as num?)?.toDouble() ?? 1.0,
+                  transcript: (item['text'] ?? item['transcript'] ?? '').toString().trim(),
+                  index: i,
+                );
+                transcriptItems.add(transcriptItem);
+              } catch (e) {
+                AppLogger.warning('Failed to parse transcript item $i: $e');
+              }
+            }
+          }
+        }
+      }
+      
+      if (transcriptItems.isEmpty) {
+        AppLogger.warning('No transcript items found or parsed');
+        // Return empty list instead of throwing error to allow manual transcript creation
+      }
+      
+      AppLogger.info('Successfully parsed ${transcriptItems.length} transcript items');
+      return transcriptItems;
+      
+    } catch (e) {
+      AppLogger.error('Get video transcript items error: $e');
+      // Return empty list to allow manual transcript creation
+      return [];
+    }
+  }
+
+  // Save video full transcript
+  Future<Map<String, dynamic>> saveVideoFullTranscript(
+    String channelId,
+    String videoId,
+    List<TranscriptItem> transcriptItems,
+  ) async {
+    try {
+      AppLogger.info(
+        'Saving full transcript for channel: $channelId, video: $videoId with ${transcriptItems.length} segments',
+      );
+      
+      // Convert transcript items to API format
+      final transcript = transcriptItems.map((item) => {
+        'start': item.start,
+        'end': item.end,
+        'text': item.transcript.trim(),
+      }).toList();
+      
+      final payload = {
+        'transcript': transcript,
+      };
+      
+      AppLogger.info('Transcript payload: ${transcript.length} segments');
+      
+      final result = await _makeRequest<Map<String, dynamic>>(
+        '/service/$channelId/$videoId/full-transcript',
+        (data) => data as Map<String, dynamic>,
+        method: 'PUT',
+        body: payload,
+        requiresAuth: true,
+      );
+      
+      AppLogger.info('Full transcript saved successfully');
+      return result;
+      
+    } catch (e) {
+      AppLogger.error('Save video full transcript error: $e');
       rethrow;
     }
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -7,8 +8,10 @@ import 'providers/channel_provider.dart';
 import 'providers/video_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/admin_provider.dart';
+import 'providers/locale_provider.dart';
 import 'services/theme_service.dart';
 import 'theme/app_theme.dart';
+import 'screens/splash_screen.dart';
 import 'screens/main_screen.dart';
 import 'screens/video_list_screen.dart';
 import 'screens/admin/channel_management_screen.dart';
@@ -17,9 +20,11 @@ import 'screens/admin/user_management_screen.dart';
 import 'screens/admin/analytics_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/dictation_screen.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/deep_link_service.dart';
 import 'services/api_service.dart';
 import 'utils/logger.dart';
+import 'generated/app_localizations.dart';
 
 void main() async {
   try {
@@ -84,7 +89,7 @@ void main() async {
     AppLogger.success('✅ Theme service initialized');
 
     AppLogger.info('🎯 Running app...');
-    runApp(DictationStudioApp());
+    runApp(const DictationStudioApp());
   } catch (e, stackTrace) {
     AppLogger.error('❌ Error during app initialization: $e', e, stackTrace);
     // Run a minimal error app
@@ -109,9 +114,14 @@ void main() async {
   }
 }
 
-class DictationStudioApp extends StatelessWidget {
-  DictationStudioApp({super.key});
-  
+class DictationStudioApp extends StatefulWidget {
+  const DictationStudioApp({super.key});
+
+  @override
+  State<DictationStudioApp> createState() => _DictationStudioAppState();
+}
+
+class _DictationStudioAppState extends State<DictationStudioApp> {
   // Global navigation key for 401 error handling
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
 
@@ -154,15 +164,35 @@ class DictationStudioApp extends StatelessWidget {
         ChangeNotifierProvider.value(
           value: ThemeService.instance,
         ),
+        ChangeNotifierProvider(
+          create: (_) {
+            AppLogger.info('🌍 Creating LocaleProvider...');
+            return LocaleProvider();
+          },
+        ),
       ],
-      child: Consumer<ThemeService>(
-        builder: (context, themeService, child) {
+      child: Consumer2<ThemeService, LocaleProvider>(
+        builder: (context, themeService, localeProvider, child) {
           return MaterialApp.router(
             title: 'Dictation Studio',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme(),
             darkTheme: AppTheme.darkTheme(),
             themeMode: _getThemeMode(themeService.themeMode),
+            locale: localeProvider.locale,
+            localizationsDelegates: [
+              AppLocalizations.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [
+              Locale('en'), // English
+              Locale('zh'), // Simplified Chinese
+              Locale('zh', 'TW'), // Traditional Chinese
+              Locale('ja'), // Japanese
+              Locale('ko'), // Korean
+            ],
             routerConfig: _buildRouter(_navigatorKey),
             builder: (context, child) {
               // Add error boundary
@@ -223,9 +253,29 @@ class DictationStudioApp extends StatelessWidget {
         );
       },
       routes: [
-        // Main Screen with Tabs (Home)
+        // Splash Screen (Entry Point)
         GoRoute(
           path: '/',
+          name: 'splash',
+          pageBuilder: (context, state) {
+            AppLogger.info('🚀 Navigating to splash screen');
+            return MaterialPage(key: state.pageKey, child: const SplashScreen());
+          },
+        ),
+
+        // Onboarding Route
+        GoRoute(
+          path: '/onboarding',
+          name: 'onboarding',
+          pageBuilder: (context, state) {
+            AppLogger.info('👋 Navigating to onboarding screen');
+            return const MaterialPage(child: OnboardingScreen());
+          },
+        ),
+
+        // Main Screen with Tabs
+        GoRoute(
+          path: '/main',
           name: 'main',
           pageBuilder: (context, state) {
             AppLogger.info('🏠 Navigating to main screen');

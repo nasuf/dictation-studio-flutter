@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../utils/logger.dart';
 import '../providers/auth_provider.dart';
+import '../generated/app_localizations.dart';
 import 'channel_list_screen.dart';
 import 'profile_screen.dart';
 import 'admin_screen.dart';
@@ -49,21 +50,21 @@ class _MainScreenState extends State<MainScreen> {
 
         // Build navigation destinations based on user role (Material Design 3)
         final List<NavigationDestination> navDestinations = [
-          const NavigationDestination(
-            icon: Icon(Icons.video_library_outlined),
-            selectedIcon: Icon(Icons.video_library),
-            label: 'Channels',
+          NavigationDestination(
+            icon: const Icon(Icons.video_library_outlined),
+            selectedIcon: const Icon(Icons.video_library),
+            label: AppLocalizations.of(context)!.channels,
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person),
+            label: AppLocalizations.of(context)!.profile,
           ),
           if (isAdmin)
-            const NavigationDestination(
-              icon: Icon(Icons.admin_panel_settings_outlined),
-              selectedIcon: Icon(Icons.admin_panel_settings),
-              label: 'Admin',
+            NavigationDestination(
+              icon: const Icon(Icons.admin_panel_settings_outlined),
+              selectedIcon: const Icon(Icons.admin_panel_settings),
+              label: AppLocalizations.of(context)!.admin,
             ),
         ];
 

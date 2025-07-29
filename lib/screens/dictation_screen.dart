@@ -3,6 +3,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'dart:async';
+import '../generated/app_localizations.dart';
 
 import '../models/transcript_item.dart';
 import '../models/video.dart';
@@ -265,7 +266,7 @@ class _DictationScreenState extends State<DictationScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Failed to save settings: ${e.toString()}'),
+            content: Text('${AppLocalizations.of(context)!.failedToSaveSettings}: ${e.toString()}'),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -321,44 +322,6 @@ class _DictationScreenState extends State<DictationScreen>
     }
   }
 
-  void _checkYouTubePlayerStatus() {
-    // 如果已经准备好或正在登录，不需要检测
-    if (_isVideoReady || _isLoginInProgress || _hasAttemptedLogin) {
-      return;
-    }
-
-    try {
-      final playerState = _youtubeController.value.playerState;
-      final isReady = _youtubeController.value.isReady;
-      
-      AppLogger.info('Checking YouTube Player status: ready=$isReady, state=$playerState');
-      
-      // 检测可能的登录问题状态
-      bool needsLogin = false;
-      
-      if (!isReady && playerState == PlayerState.unknown) {
-        needsLogin = true;
-        AppLogger.warning('Player state is unknown and not ready - likely login issue');
-      } else if (playerState == PlayerState.unStarted && !isReady) {
-        needsLogin = true;
-        AppLogger.warning('Player unstarted and not ready - possible login issue');
-      } else if (!_isVideoReady && !isReady) {
-        // 8秒后仍然不ready，可能是登录问题
-        needsLogin = true;
-        AppLogger.warning('Player still not ready after 8 seconds - showing login');
-      }
-      
-      if (needsLogin) {
-        _showYouTubeLoginPage();
-      } else {
-        AppLogger.info('Player status seems OK, no login needed');
-      }
-    } catch (e) {
-      AppLogger.error('Error checking player status: $e');
-      // 如果无法获取状态，可能是严重问题，尝试登录
-      _showYouTubeLoginPage();
-    }
-  }
 
   void _showYouTubeLoginPage() {
     if (_isLoginInProgress) {
@@ -463,37 +426,37 @@ class _DictationScreenState extends State<DictationScreen>
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Row(
+          title: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.video_library, color: Colors.red, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.video_library, color: Colors.red, size: 20),
+              const SizedBox(width: 8),
               Flexible(
                 child: Text(
-                  'YouTube Login Required',
-                  style: TextStyle(fontSize: 16),
+                  AppLocalizations.of(context)!.youtubeLoginRequired,
+                  style: const TextStyle(fontSize: 16),
                 ),
               ),
             ],
           ),
-          content: const SingleChildScrollView(
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'To watch and practice with YouTube videos, you need to log in to your YouTube/Google account.',
-                  style: TextStyle(fontSize: 14),
+                  AppLocalizations.of(context)!.youtubeLoginDescription1,
+                  style: const TextStyle(fontSize: 14),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
-                  'This allows the app to access video content properly.',
-                  style: TextStyle(fontSize: 14),
+                  AppLocalizations.of(context)!.youtubeLoginDescription2,
+                  style: const TextStyle(fontSize: 14),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
-                  'Would you like to log in now?',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  AppLocalizations.of(context)!.youtubeLoginQuestion,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -509,7 +472,7 @@ class _DictationScreenState extends State<DictationScreen>
                 AppLogger.info('User chose to skip initial login');
                 // 用户选择跳过，可以稍后通过手动登录按钮登录
               },
-              child: const Text('Skip'),
+              child: Text(AppLocalizations.of(context)!.skip),
             ),
             ElevatedButton(
               onPressed: () {
@@ -520,7 +483,7 @@ class _DictationScreenState extends State<DictationScreen>
                 AppLogger.info('User chose to log in immediately');
                 _showYouTubeLoginPage();
               },
-              child: const Text('Log In'),
+              child: Text(AppLocalizations.of(context)!.logIn),
             ),
           ],
         );
@@ -1014,10 +977,10 @@ class _DictationScreenState extends State<DictationScreen>
       // Show progress saving indicator only if notifications are enabled and widget is mounted
       if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
@@ -1025,11 +988,11 @@ class _DictationScreenState extends State<DictationScreen>
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
-                SizedBox(width: 12),
-                Text('Saving progress...'),
+                const SizedBox(width: 12),
+                Text(AppLocalizations.of(context)!.savingProgress),
               ],
             ),
-            duration: Duration(seconds: 1),
+            duration: const Duration(seconds: 1),
             backgroundColor: Colors.blue,
           ),
         );
@@ -1064,15 +1027,15 @@ class _DictationScreenState extends State<DictationScreen>
       // Show success message only if notifications are enabled and widget is mounted
       if (showNotifications && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Progress saved successfully'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(AppLocalizations.of(context)!.progressSavedSuccessfully),
               ],
             ),
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             backgroundColor: Colors.green,
           ),
         );
@@ -1091,7 +1054,7 @@ class _DictationScreenState extends State<DictationScreen>
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('Failed to save progress: ${e.toString()}'),
+                  child: Text('${AppLocalizations.of(context)!.failedToSaveProgress}: ${e.toString()}'),
                 ),
               ],
             ),
@@ -1275,19 +1238,19 @@ class _DictationScreenState extends State<DictationScreen>
   void _showPlaybackErrorSnackBar() {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: const Row(
+        content: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.white),
-            SizedBox(width: 8),
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 8),
             Expanded(
-              child: Text('Video player not ready. Please wait and try again.'),
+              child: Text(AppLocalizations.of(context)!.videoNotReady),
             ),
           ],
         ),
         backgroundColor: Colors.orange,
         duration: const Duration(seconds: 3),
         action: SnackBarAction(
-          label: 'Retry',
+          label: AppLocalizations.of(context)!.retry,
           textColor: Colors.white,
           onPressed: _playCurrentSentence,
         ),
@@ -1413,23 +1376,23 @@ class _DictationScreenState extends State<DictationScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Transcript Not Available'),
+        title: Text(AppLocalizations.of(context)!.transcriptNotAvailable),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(message),
             const SizedBox(height: 16),
-            const Text(
-              'This video may not have transcript data available yet, or there might be a network issue.',
-              style: TextStyle(fontSize: 14),
+            Text(
+              AppLocalizations.of(context)!.transcriptNotAvailableMessage,
+              style: const TextStyle(fontSize: 14),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Back'),
+            child: Text(AppLocalizations.of(context)!.back),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1439,7 +1402,7 @@ class _DictationScreenState extends State<DictationScreen>
               });
               _loadTranscript();
             },
-            child: const Text('Retry'),
+            child: Text(AppLocalizations.of(context)!.retry),
           ),
         ],
       ),
@@ -1454,23 +1417,23 @@ class _DictationScreenState extends State<DictationScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('You have completed this dictation exercise!'),
+            Text(AppLocalizations.of(context)!.youHaveCompleted),
             const SizedBox(height: 16),
-            Text('Accuracy: ${_overallAccuracy.toStringAsFixed(1)}%'),
-            Text('Time: ${(_totalTime / 60).toStringAsFixed(1)} minutes'),
+            Text('${AppLocalizations.of(context)!.accuracy}: ${_overallAccuracy.toStringAsFixed(1)}%'),
+            Text('${AppLocalizations.of(context)!.time}: ${(_totalTime / 60).toStringAsFixed(1)} ${AppLocalizations.of(context)!.minutes}'),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Continue'),
+            child: Text(AppLocalizations.of(context)!.continueButton),
           ),
           ElevatedButton(
             onPressed: () {
               Navigator.of(context).pop();
               Navigator.of(context).pop(); // Return to video list
             },
-            child: const Text('Finish'),
+            child: Text(AppLocalizations.of(context)!.finish),
           ),
         ],
       ),
@@ -1492,7 +1455,7 @@ class _DictationScreenState extends State<DictationScreen>
               ),
               const SizedBox(height: 16),
               Text(
-                'Loading dictation resource...',
+                AppLocalizations.of(context)!.loadingDictation,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   color: Theme.of(
                     context,
@@ -1534,12 +1497,12 @@ class _DictationScreenState extends State<DictationScreen>
                   });
                   _showYouTubeLoginPage();
                 },
-                tooltip: 'Login to YouTube',
+                tooltip: AppLocalizations.of(context)!.loginToYoutube,
               ),
             IconButton(
               icon: const Icon(Icons.restart_alt_outlined),
               onPressed: _showResetConfirmationDialog,
-              tooltip: 'Reset Progress',
+              tooltip: AppLocalizations.of(context)!.resetProgress,
             ),
             IconButton(
               icon: const Icon(Icons.settings),
@@ -1627,12 +1590,12 @@ class _DictationScreenState extends State<DictationScreen>
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Playback Settings'),
+          title: Text(AppLocalizations.of(context)!.playbackSettings),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                title: const Text('Playback Speed'),
+                title: Text(AppLocalizations.of(context)!.playbackSpeed),
                 trailing: DropdownButton<double>(
                   value: tempPlaybackSpeed,
                   items: _supportedPlaybackSpeeds.map((speed) {
@@ -1653,7 +1616,7 @@ class _DictationScreenState extends State<DictationScreen>
                 ),
               ),
               ListTile(
-                title: const Text('Auto Repeat'),
+                title: Text(AppLocalizations.of(context)!.autoRepeat),
                 trailing: Switch(
                   value: tempAutoRepeat,
                   onChanged: isSaving
@@ -1676,13 +1639,13 @@ class _DictationScreenState extends State<DictationScreen>
               ),
               if (tempAutoRepeat)
                 ListTile(
-                  title: const Text('Repeat Count'),
+                  title: Text(AppLocalizations.of(context)!.repeatCount),
                   trailing: DropdownButton<int>(
                     value: tempAutoRepeatCount,
                     items: [1, 2, 3, 4, 5].map((count) {
                       return DropdownMenuItem(
                         value: count,
-                        child: Text('$count time${count > 1 ? 's' : ''}'),
+                        child: Text('$count'),
                       );
                     }).toList(),
                     onChanged: isSaving
@@ -1701,7 +1664,7 @@ class _DictationScreenState extends State<DictationScreen>
           actions: [
             TextButton(
               onPressed: isSaving ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: isSaving
@@ -1744,16 +1707,16 @@ class _DictationScreenState extends State<DictationScreen>
                         // Show success message
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Row(
                                 children: [
-                                  Icon(Icons.check_circle, color: Colors.white),
-                                  SizedBox(width: 8),
-                                  Text('Settings saved successfully'),
+                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(AppLocalizations.of(context)!.settingsSavedSuccessfully),
                                 ],
                               ),
                               backgroundColor: Colors.green,
-                              duration: Duration(seconds: 2),
+                              duration: const Duration(seconds: 2),
                             ),
                           );
                           Navigator.of(context).pop();
@@ -1775,7 +1738,7 @@ class _DictationScreenState extends State<DictationScreen>
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Text('Save'),
+                  : Text(AppLocalizations.of(context)!.save),
             ),
           ],
         ),
@@ -1788,31 +1751,31 @@ class _DictationScreenState extends State<DictationScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.warning_amber_outlined, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Reset Progress'),
+              const Icon(Icons.warning_amber_outlined, color: Colors.orange),
+              const SizedBox(width: 8),
+              Text(AppLocalizations.of(context)!.resetProgress),
             ],
           ),
-          content: const Column(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Are you sure you want to reset your progress for this video?',
-                style: TextStyle(fontSize: 16),
+                AppLocalizations.of(context)!.resetProgressConfirm,
+                style: const TextStyle(fontSize: 16),
               ),
-              SizedBox(height: 12),
-              Text('This will:', style: TextStyle(fontWeight: FontWeight.w600)),
-              SizedBox(height: 4),
-              Text('• Clear all your typed text'),
-              Text('• Reset completion status'),
-              Text('• Return to the first sentence'),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
+              Text(AppLocalizations.of(context)!.thisWill, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 4),
+              Text(AppLocalizations.of(context)!.clearAllInputs),
+              Text(AppLocalizations.of(context)!.resetToBeginning),
+              Text(AppLocalizations.of(context)!.loseAllProgress),
+              const SizedBox(height: 12),
               Text(
-                'This action cannot be undone.',
-                style: TextStyle(
+                AppLocalizations.of(context)!.cannotBeUndone,
+                style: const TextStyle(
                   fontWeight: FontWeight.w600,
                   color: Colors.red,
                 ),
@@ -1822,7 +1785,7 @@ class _DictationScreenState extends State<DictationScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(AppLocalizations.of(context)!.cancel),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -1833,7 +1796,7 @@ class _DictationScreenState extends State<DictationScreen>
                 backgroundColor: Colors.red,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Reset Progress'),
+              child: Text(AppLocalizations.of(context)!.resetProgress),
             ),
           ],
         );
@@ -1846,10 +1809,10 @@ class _DictationScreenState extends State<DictationScreen>
       // Show loading indicator
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                SizedBox(
+                const SizedBox(
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
@@ -1857,11 +1820,11 @@ class _DictationScreenState extends State<DictationScreen>
                     valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                   ),
                 ),
-                SizedBox(width: 12),
-                Text('Resetting...'),
+                const SizedBox(width: 12),
+                Text(AppLocalizations.of(context)!.resetting),
               ],
             ),
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 2),
             backgroundColor: Colors.orange,
           ),
         );
@@ -1899,15 +1862,15 @@ class _DictationScreenState extends State<DictationScreen>
       // Show success message
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Row(
               children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Reset completed'),
+                const Icon(Icons.check_circle, color: Colors.white),
+                const SizedBox(width: 12),
+                Text(AppLocalizations.of(context)!.resetCompleted),
               ],
             ),
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
             backgroundColor: Colors.green,
           ),
         );
@@ -1926,7 +1889,7 @@ class _DictationScreenState extends State<DictationScreen>
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Expanded(child: Text('Reset failed: ${e.toString()}')),
+                Expanded(child: Text('${AppLocalizations.of(context)!.resetFailed}: ${e.toString()}')),
               ],
             ),
             duration: const Duration(seconds: 4),
@@ -1981,7 +1944,7 @@ class _DictationScreenState extends State<DictationScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Sentence ${_currentSentenceIndex + 1} of ${_transcript.length}',
+                  AppLocalizations.of(context)!.sentenceOf(_currentSentenceIndex + 1, _transcript.length),
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
                 IconButton(
@@ -1989,7 +1952,7 @@ class _DictationScreenState extends State<DictationScreen>
                     isRevealed ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: _toggleCurrentSentenceReveal,
-                  tooltip: isRevealed ? 'Hide comparison' : 'Show comparison',
+                  tooltip: isRevealed ? AppLocalizations.of(context)!.hideComparison : AppLocalizations.of(context)!.showComparison,
                   iconSize: 20,
                 ),
               ],
@@ -2016,7 +1979,7 @@ class _DictationScreenState extends State<DictationScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Original:',
+                      AppLocalizations.of(context)!.original,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         color: Theme.of(context).colorScheme.primary,
@@ -2053,7 +2016,7 @@ class _DictationScreenState extends State<DictationScreen>
         maxLines: 3,
         textInputAction: TextInputAction.done,
         decoration: InputDecoration(
-          hintText: 'Type what you hear...',
+          hintText: AppLocalizations.of(context)!.typeWhatYouHear,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,

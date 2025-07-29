@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../models/video.dart';
 import '../../models/channel.dart';
+import '../../models/transcript_item.dart';
 import '../../services/api_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/constants.dart';
+import 'video_transcript_editor_screen.dart';
 import 'dart:async';
 
 class VideoManagementScreen extends StatefulWidget {
@@ -214,38 +216,62 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     });
   }
 
-  // Show transcript modal
-  void _showTranscriptModal(Video video) {
-    setState(() {
-      // _transcriptVideo = video; // Removed unused field
-    });
-    _loadTranscript(video);
-  }
-
-  // Load transcript for video
-  Future<void> _loadTranscript(Video video) async {
+  // Show transcript editor
+  void _showTranscriptEditor(Video video) async {
     if (_selectedChannelId == null) return;
 
     try {
-      // TODO: Implement transcript loading when API is available
-      AppLogger.info('Loading transcript for video: ${video.videoId}');
-
-      // Placeholder - simulate loading transcript
-      await Future.delayed(const Duration(seconds: 1));
+      AppLogger.info('Opening transcript editor for video: ${video.videoId}');
+      
+      // Load or create initial transcript
+      final transcript = await _loadTranscript(video);
+      
       if (mounted) {
-        setState(() {
-          // _currentTranscript = [ // Removed unused field
-          //   TranscriptItem(
-          //     start: 0.0,
-          //     end: 5.0,
-          //     transcript: 'Transcript loading feature coming soon...',
-          //   ),
-          // ];
-        });
+        final result = await Navigator.of(context).push<List<TranscriptItem>>(
+          MaterialPageRoute(
+            builder: (context) => VideoTranscriptEditorScreen(
+              video: video,
+              channelId: _selectedChannelId!,
+              initialTranscript: transcript,
+            ),
+          ),
+        );
+        
+        if (result != null) {
+          // Transcript was saved, show success message
+          _showSuccessSnackBar('Transcript updated with ${result.length} segments');
+        }
       }
     } catch (e) {
+      AppLogger.error('Error opening transcript editor: $e');
+      _showErrorSnackBar('Failed to open transcript editor: $e');
+    }
+  }
+
+  // Load transcript for video
+  Future<List<TranscriptItem>> _loadTranscript(Video video) async {
+    try {
+      AppLogger.info('Loading transcript for video: ${video.videoId}');
+
+      // Use real API to load transcript
+      final transcriptItems = await _apiService.getVideoTranscriptItems(
+        _selectedChannelId!,
+        video.videoId,
+      );
+      
+      AppLogger.info('Loaded ${transcriptItems.length} transcript items');
+      return transcriptItems;
+      
+    } catch (e) {
       AppLogger.error('Error loading transcript: $e');
-      _showErrorSnackBar('Failed to load transcript: $e');
+      
+      // Show error to user
+      if (mounted) {
+        _showErrorSnackBar('Failed to load transcript: ${e.toString()}');
+      }
+      
+      // Return empty list to allow manual transcript creation
+      return [];
     }
   }
 
@@ -542,6 +568,12 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
               onChanged: _onSearchChanged,
             ),
           ),
+          
+          // Channel statistics (only show when channel is selected and videos are loaded)
+          if (_selectedChannelId != null && !_isLoading && _error == null) ...[
+            const SizedBox(height: 12),
+            _buildChannelStats(theme),
+          ],
         ],
       ),
     );
@@ -752,10 +784,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
             ),
             const SizedBox(height: 12),
 
-            // Video metadata
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
+            // Video metadata - simplified
+            Row(
               children: [
                 Chip(
                   label: Text(
@@ -767,22 +797,21 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                       : theme.colorScheme.secondary.withOpacity(0.2),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
+                const SizedBox(width: 8),
+                // Refined status chip
                 Chip(
                   label: Text(
-                    _formatDate(video.createdDate),
+                    video.isRefined ? 'REFINED' : 'UNREFINED',
                     style: const TextStyle(fontSize: 10),
                   ),
+                  backgroundColor: video.isRefined 
+                    ? theme.colorScheme.surface.withOpacity(0.8)
+                    : theme.colorScheme.error.withOpacity(0.2),
+                  side: video.isRefined 
+                    ? BorderSide(color: theme.colorScheme.outline)
+                    : null,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                if (video.link.isNotEmpty)
-                  Chip(
-                    label: const Text(
-                      'HAS LINK',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                    backgroundColor: theme.colorScheme.tertiary.withOpacity(0.2),
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
               ],
             ),
           ],
@@ -795,7 +824,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   void _handleVideoAction(Video video, String action) {
     switch (action) {
       case 'view_transcript':
-        _showTranscriptModal(video);
+        _showTranscriptEditor(video);
         break;
       case 'edit':
         _showEditVideoModal(video);
@@ -843,6 +872,68 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
           const SizedBox(height: 16),
           const Text('Settings feature coming soon'),
         ],
+      ),
+    );
+  }
+
+  // Build channel statistics display
+  Widget _buildChannelStats(ThemeData theme) {
+    final totalVideos = _videos.length;
+    final refinedVideos = _videos.where((video) => video.isRefined).length;
+    final unrefinedVideos = totalVideos - refinedVideos;
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: theme.colorScheme.primary.withOpacity(0.2),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.bar_chart,
+            size: 14,
+            color: theme.colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            'Stats:',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: theme.colorScheme.primary,
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(width: 8),
+          _buildCompactStatChip(theme, totalVideos.toString(), theme.colorScheme.primary),
+          const SizedBox(width: 4),
+          _buildCompactStatChip(theme, refinedVideos.toString(), theme.colorScheme.tertiary),
+          const SizedBox(width: 4),
+          _buildCompactStatChip(theme, unrefinedVideos.toString(), theme.colorScheme.error),
+        ],
+      ),
+    );
+  }
+
+  // Build compact stat chip
+  Widget _buildCompactStatChip(ThemeData theme, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        value,
+        style: theme.textTheme.bodySmall?.copyWith(
+          fontSize: 10,
+          color: theme.colorScheme.surface,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

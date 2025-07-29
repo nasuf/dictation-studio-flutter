@@ -8,6 +8,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/channel_provider.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
+import '../generated/app_localizations.dart';
 
 class ChannelListScreen extends StatefulWidget {
   const ChannelListScreen({super.key});
@@ -91,7 +92,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                               builder: (context, provider, child) {
                                 final totalChannels = provider.channels.length;
                                 return Text(
-                                  '$totalChannels channels',
+                                  AppLocalizations.of(context)!.channelsCount(totalChannels),
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                                   ),
@@ -147,7 +148,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               size: 20,
             ),
             onPressed: () => _showLanguageFilter(context),
-            tooltip: 'Language Filter',
+            tooltip: AppLocalizations.of(context)!.languageFilter,
           ),
         ),
         const SizedBox(width: 8),
@@ -166,7 +167,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               context.read<ChannelProvider>().fetchChannels();
               HapticFeedback.lightImpact();
             },
-            tooltip: 'Refresh',
+            tooltip: AppLocalizations.of(context)!.refresh,
           ),
         ),
       ],
@@ -187,7 +188,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Search channels...',
+          hintText: AppLocalizations.of(context)!.searchChannels,
           hintStyle: TextStyle(
             color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 14,
@@ -246,7 +247,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  LanguageHelper.getLanguageName(_selectedLanguage),
+                  _getLocalizedLanguageName(context, _selectedLanguage),
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.primary,
                     fontWeight: FontWeight.w500,
@@ -522,7 +523,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            'Loading channels...',
+            AppLocalizations.of(context)!.loadingChannels,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
             ),
@@ -546,7 +547,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Unable to load channels',
+              AppLocalizations.of(context)!.unableToLoadChannels,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -563,7 +564,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
             FilledButton.icon(
               onPressed: () => context.read<ChannelProvider>().fetchChannels(),
               icon: const Icon(Icons.refresh),
-              label: const Text('Try Again'),
+              label: Text(AppLocalizations.of(context)!.tryAgain),
             ),
           ],
         ),
@@ -585,14 +586,14 @@ class _ChannelListScreenState extends State<ChannelListScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'No channels available',
+              AppLocalizations.of(context)!.noChannelsAvailable,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Check back later for new content',
+              AppLocalizations.of(context)!.checkBackLater,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
@@ -617,14 +618,14 @@ class _ChannelListScreenState extends State<ChannelListScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'No results found',
+              AppLocalizations.of(context)!.noResultsFound,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Try adjusting your search or filter',
+              AppLocalizations.of(context)!.tryAdjustingSearch,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
@@ -639,7 +640,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                 });
                 context.read<ChannelProvider>().setLanguageFilter(AppConstants.languageAll);
               },
-              child: const Text('Clear filters'),
+              child: Text(AppLocalizations.of(context)!.clearFilters),
             ),
           ],
         ),
@@ -679,7 +680,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Filter by Language',
+                      AppLocalizations.of(context)!.filterByLanguage,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -690,7 +691,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                     _buildLanguageOption(
                       context,
                       theme,
-                      'All Languages',
+                      AppLocalizations.of(context)!.allLanguages,
                       AppConstants.languageAll,
                       Icons.all_inclusive,
                       theme.colorScheme.primary,
@@ -701,7 +702,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                       (language) => _buildLanguageOption(
                         context,
                         theme,
-                        LanguageHelper.getLanguageName(language),
+                        _getLocalizedLanguageName(context, language),
                         language,
                         Icons.language,
                         _getLanguageColor(language),
@@ -777,6 +778,22 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         ),
       ),
     );
+  }
+
+  // Get localized language name
+  String _getLocalizedLanguageName(BuildContext context, String language) {
+    switch (language) {
+      case AppConstants.languageEnglish:
+        return AppLocalizations.of(context)!.english;
+      case AppConstants.languageChinese:
+        return AppLocalizations.of(context)!.chinese;
+      case AppConstants.languageJapanese:
+        return AppLocalizations.of(context)!.japanese;
+      case AppConstants.languageKorean:
+        return AppLocalizations.of(context)!.korean;
+      default:
+        return language.toUpperCase();
+    }
   }
 
   // Get language color for visual distinction with green theme

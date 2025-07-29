@@ -544,12 +544,15 @@ class VideoPlaybackUtils {
     return extractVideoId(url) != null;
   }
 
-  /// Formats time in seconds to MM:SS format
+  /// Formats time in seconds to MM:SS.xx format with centisecond precision
   static String formatTime(double seconds) {
-    final duration = Duration(seconds: seconds.round());
-    final minutes = duration.inMinutes;
-    final remainingSeconds = duration.inSeconds % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
+    final totalMilliseconds = (seconds * 1000).round();
+    final minutes = totalMilliseconds ~/ 60000;
+    final remainingMilliseconds = totalMilliseconds % 60000;
+    final wholeSeconds = remainingMilliseconds ~/ 1000;
+    final centiseconds = (remainingMilliseconds % 1000) ~/ 10; // Get centiseconds (hundredths)
+    
+    return '${minutes.toString().padLeft(2, '0')}:${wholeSeconds.toString().padLeft(2, '0')}.${centiseconds.toString().padLeft(2, '0')}';
   }
 
   /// Calculates optimal segment duration for merging

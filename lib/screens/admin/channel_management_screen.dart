@@ -34,39 +34,16 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
   String _formLanguage = 'en';
   String _formVisibility = 'public';
 
-  // Animation controllers
-  late AnimationController _fadeController;
-  late AnimationController _slideController;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  // Tab controller for unified design
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-
-    // Initialize animations
-    _fadeController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-    _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _fadeController, curve: Curves.easeInOut),
-    );
-
-    _slideAnimation =
-        Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-          CurvedAnimation(parent: _slideController, curve: Curves.easeOutCubic),
-        );
+    _tabController = TabController(length: 3, vsync: this);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadChannels();
-      _fadeController.forward();
-      _slideController.forward();
     });
   }
 
@@ -77,8 +54,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     _idController.dispose();
     _imageUrlController.dispose();
     _linkController.dispose();
-    _fadeController.dispose();
-    _slideController.dispose();
+    _tabController.dispose();
     super.dispose();
   }
 
@@ -153,219 +129,247 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     final theme = Theme.of(context);
     return Scaffold(
       backgroundColor: theme.colorScheme.surface,
-      appBar: _buildAppBar(),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: Consumer<ChannelProvider>(
-            builder: (context, channelProvider, child) {
-              final filteredChannels = _getFilteredChannels(
-                channelProvider.channels,
-              );
-
-              return Column(
-                children: [
-                  _buildSearchAndFilters(),
-                  Expanded(
-                    child: channelProvider.isLoading
-                        ? _buildLoadingState()
-                        : _buildChannelList(filteredChannels, channelProvider),
-                  ),
-                ],
-              );
-            },
-          ),
+      appBar: AppBar(
+        title: const Text('Channel Management'),
+        backgroundColor: theme.colorScheme.surface,
+        foregroundColor: theme.colorScheme.onSurface,
+        elevation: 1,
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: theme.colorScheme.primary,
+          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+          indicatorColor: theme.colorScheme.primary,
+          tabs: const [
+            Tab(text: 'Channels', icon: Icon(Icons.video_library)),
+            Tab(text: 'Analytics', icon: Icon(Icons.analytics)),
+            Tab(text: 'Settings', icon: Icon(Icons.settings)),
+          ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadChannels,
+            tooltip: 'Refresh',
+          ),
+        ],
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildChannelsTab(),
+          _buildAnalyticsTab(),
+          _buildSettingsTab(),
+        ],
       ),
       floatingActionButton: (_isAddModalOpen || _isEditModalOpen)
           ? null
-          : _buildFloatingActionButton(),
+          : FloatingActionButton.extended(
+              onPressed: _showAddChannelModal,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Channel'),
+            ),
       bottomSheet: (_isAddModalOpen || _isEditModalOpen)
           ? _buildChannelFormModal()
           : null,
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
-    final theme = Theme.of(context);
-    return AppBar(
-      backgroundColor: theme.colorScheme.surface,
-      elevation: 2,
-      shadowColor: theme.colorScheme.shadow,
-      title: Row(
-        children: [
-          const SizedBox(width: 12),
-          Text(
-            'Channel Management',
-            style: theme.textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.w600,
+  // Build channels tab
+  Widget _buildChannelsTab() {
+    return Consumer<ChannelProvider>(
+      builder: (context, channelProvider, child) {
+        final filteredChannels = _getFilteredChannels(
+          channelProvider.channels,
+        );
+
+        return Column(
+          children: [
+            // Filters section
+            _buildFiltersSection(),
+            
+            // Content area
+            Expanded(
+              child: channelProvider.isLoading
+                  ? _buildLoadingState()
+                  : _buildChannelList(filteredChannels, channelProvider),
             ),
-          ),
-        ],
-      ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.only(right: 16),
-          child: Consumer<ChannelProvider>(
-            builder: (context, provider, child) {
-              return GestureDetector(
-                onTap: provider.isLoading ? null : _loadChannels,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: provider.isLoading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              theme.colorScheme.primary,
-                            ),
-                          ),
-                        )
-                      : Icon(
-                          Icons.refresh,
-                          color: theme.colorScheme.primary,
-                          size: 20,
-                        ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildSearchAndFilters() {
+  // Build analytics tab (placeholder)
+  Widget _buildAnalyticsTab() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.analytics, size: 48, color: theme.colorScheme.outline),
+          const SizedBox(height: 16),
+          const Text('Analytics feature coming soon'),
+        ],
+      ),
+    );
+  }
+
+  // Build settings tab (placeholder)
+  Widget _buildSettingsTab() {
+    final theme = Theme.of(context);
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.settings, size: 48, color: theme.colorScheme.outline),
+          const SizedBox(height: 16),
+          const Text('Settings feature coming soon'),
+        ],
+      ),
+    );
+  }
+
+  // Build filters section
+  Widget _buildFiltersSection() {
     final theme = Theme.of(context);
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
+        color: theme.colorScheme.surfaceContainerHighest,
         boxShadow: [
           BoxShadow(
             color: theme.colorScheme.shadow.withOpacity(0.1),
-            blurRadius: 10,
-            spreadRadius: 0,
+            blurRadius: 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Search Bar
-          Container(
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
-            ),
+          // Language and visibility selection row
+          Row(
+            children: [
+              // Language dropdown
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedLanguage,
+                  decoration: const InputDecoration(
+                    labelText: 'Language',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: AppConstants.languageOptions.entries
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.value,
+                          child: Text(
+                            entry.key,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedLanguage = value;
+                      });
+                      _loadChannels();
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Visibility dropdown
+              Expanded(
+                flex: 2,
+                child: DropdownButtonFormField<String>(
+                  value: _selectedVisibility,
+                  decoration: const InputDecoration(
+                    labelText: 'Visibility',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 8,
+                    ),
+                    isDense: true,
+                  ),
+                  isExpanded: true,
+                  items: AppConstants.visibilityOptions.entries
+                      .map(
+                        (entry) => DropdownMenuItem(
+                          value: entry.value,
+                          child: Text(
+                            entry.key,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    if (value != null) {
+                      setState(() {
+                        _selectedVisibility = value;
+                      });
+                      _loadChannels();
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Search bar
+          SizedBox(
+            width: double.infinity,
             child: TextField(
               controller: _searchController,
+              decoration: InputDecoration(
+                labelText: 'Search channels...',
+                hintText: 'Enter channel name or ID',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _searchQuery = '';
+                          });
+                        },
+                      )
+                    : null,
+                border: const OutlineInputBorder(),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 12,
+                ),
+                isDense: true,
+              ),
+              style: const TextStyle(fontSize: 14),
               onChanged: (value) {
                 setState(() {
                   _searchQuery = value;
                 });
               },
-              style: TextStyle(color: theme.colorScheme.onSurface),
-              decoration: InputDecoration(
-                hintText: 'Search channels by name or ID...',
-                hintStyle: TextStyle(color: theme.colorScheme.onSurfaceVariant),
-                prefixIcon: Icon(Icons.search, color: theme.colorScheme.onSurfaceVariant),
-                border: InputBorder.none,
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-              ),
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Filters
-          Row(
-            children: [
-              Expanded(
-                child: _buildFilterDropdown(
-                  'Language',
-                  _selectedLanguage,
-                  AppConstants.languageOptions,
-                  (value) {
-                    setState(() {
-                      _selectedLanguage = value;
-                    });
-                    _loadChannels();
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildFilterDropdown(
-                  'Visibility',
-                  _selectedVisibility,
-                  AppConstants.visibilityOptions,
-                  (value) {
-                    setState(() {
-                      _selectedVisibility = value;
-                    });
-                    _loadChannels();
-                  },
-                ),
-              ),
-            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildFilterDropdown(
-    String label,
-    String value,
-    Map<String, String> options,
-    Function(String) onChanged,
-  ) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: value,
-          onChanged: (newValue) {
-            if (newValue != null) {
-              onChanged(newValue);
-            }
-          },
-          style: TextStyle(color: theme.colorScheme.onSurface),
-          dropdownColor: theme.colorScheme.surface,
-          icon: Icon(Icons.keyboard_arrow_down, color: theme.colorScheme.onSurfaceVariant),
-          items: options.entries.map((entry) {
-            return DropdownMenuItem<String>(
-              value: entry.value,
-              child: Text(
-                entry.key,
-                style: TextStyle(color: theme.colorScheme.onSurface),
-              ),
-            );
-          }).toList(),
-        ),
-      ),
-    );
-  }
 
   Widget _buildLoadingState() {
     final theme = Theme.of(context);
@@ -395,32 +399,17 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
-              ),
-              child: Icon(
-                Icons.video_library_outlined,
-                size: 64,
-                color: theme.colorScheme.outline,
-              ),
+            Icon(
+              Icons.video_library_outlined, 
+              size: 48, 
+              color: theme.colorScheme.outline
             ),
             const SizedBox(height: 16),
-            Text(
-              'No channels found',
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w500,
-              ),
-            ),
+            const Text('No channels found'),
             const SizedBox(height: 8),
             Text(
               'Try adjusting your search or filters',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
+              style: TextStyle(color: theme.colorScheme.outline),
             ),
           ],
         ),
@@ -428,131 +417,113 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.all(16),
       itemCount: channels.length,
       itemBuilder: (context, index) {
         final channel = channels[index];
-        return _buildChannelCard(channel, provider);
+        return _buildChannelCard(channel);
       },
     );
   }
 
-  Widget _buildChannelCard(Channel channel, ChannelProvider provider) {
+  Widget _buildChannelCard(Channel channel) {
     final theme = Theme.of(context);
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Channel Image
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3), width: 2),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10),
-                child: Image.network(
-                  channel.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(
-                        Icons.video_library,
-                        color: theme.colorScheme.onPrimary,
-                        size: 24,
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-
-            // Channel Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    channel.name,
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'ID: ${channel.id}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Videos: ${channel.videoCount}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Tags
-                  Row(
+            // Channel name and actions
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildTag(
-                        channel.displayLanguage,
-                        theme.colorScheme.primary,
+                      Text(
+                        channel.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 8),
-                      _buildTag(
-                        channel.isPublic ? 'PUBLIC' : 'PRIVATE',
-                        channel.isPublic
-                            ? theme.colorScheme.primary
-                            : theme.colorScheme.secondary,
+                      const SizedBox(height: 4),
+                      Text(
+                        'ID: ${channel.id}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: theme.colorScheme.outline,
+                          fontFamily: 'monospace',
+                        ),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            // Actions
-            Column(
-              children: [
-                _buildActionButton(
-                  Icons.edit,
-                  'Edit',
-                  () => _showEditChannelModal(channel),
-                  const Color(0xFF3B82F6),
                 ),
-                const SizedBox(height: 8),
-                _buildActionButton(
-                  Icons.open_in_new,
-                  'View',
-                  () => _openChannelLink(channel.link),
-                  theme.colorScheme.secondary,
+                PopupMenuButton<String>(
+                  onSelected: (value) => _handleChannelAction(channel, value),
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit),
+                          SizedBox(width: 8),
+                          Text('Edit Channel'),
+                        ],
+                      ),
+                    ),
+                    if (channel.link.isNotEmpty)
+                      const PopupMenuItem(
+                        value: 'open_link',
+                        child: Row(
+                          children: [
+                            Icon(Icons.open_in_new),
+                            SizedBox(width: 8),
+                            Text('Open Link'),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Channel metadata
+            Row(
+              children: [
+                Chip(
+                  label: Text(
+                    channel.displayLanguage.toUpperCase(),
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(width: 8),
+                Chip(
+                  label: Text(
+                    channel.isPublic ? 'PUBLIC' : 'PRIVATE',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  backgroundColor: channel.isPublic
+                      ? theme.colorScheme.primary.withOpacity(0.2)
+                      : theme.colorScheme.secondary.withOpacity(0.2),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                const SizedBox(width: 8),
+                Chip(
+                  label: Text(
+                    '${channel.videoCount} videos',
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  backgroundColor: theme.colorScheme.surface.withOpacity(0.8),
+                  side: BorderSide(color: theme.colorScheme.outline),
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
             ),
@@ -562,68 +533,18 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     );
   }
 
-  Widget _buildTag(String text, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton(
-    IconData icon,
-    String tooltip,
-    VoidCallback onPressed,
-    Color color,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: color, size: 18),
-        onPressed: onPressed,
-        tooltip: tooltip,
-        padding: const EdgeInsets.all(8),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionButton() {
-    final theme = Theme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.primary.withOpacity(0.3),
-            blurRadius: 20,
-            spreadRadius: 0,
-          ),
-        ],
-      ),
-      child: FloatingActionButton(
-        onPressed: _showAddChannelModal,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        child: Icon(Icons.add, color: theme.colorScheme.onPrimary, size: 24),
-      ),
-    );
+  // Handle channel actions
+  void _handleChannelAction(Channel channel, String action) {
+    switch (action) {
+      case 'edit':
+        _showEditChannelModal(channel);
+        break;
+      case 'open_link':
+        if (channel.link.isNotEmpty) {
+          _openChannelLink(channel.link);
+        }
+        break;
+    }
   }
 
   void _openChannelLink(String link) async {

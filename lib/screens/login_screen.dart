@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
+import '../generated/app_localizations.dart';
+import '../services/onboarding_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -91,8 +94,8 @@ class _LoginScreenState extends State<LoginScreen>
 
       if (success && mounted) {
         _showSuccessDialog(
-          'Registration Successful',
-          'Please check your email to verify your account.',
+          AppLocalizations.of(context)!.registrationSuccessful,
+          AppLocalizations.of(context)!.pleaseCheckEmail,
         );
       }
     } else {
@@ -102,7 +105,9 @@ class _LoginScreenState extends State<LoginScreen>
       );
 
       if (success && mounted) {
-        Navigator.of(context).pop(); // Close login screen
+        // Mark onboarding as completed when user successfully logs in
+        await OnboardingService.completeOnboarding();
+        context.go('/main'); // Navigate to main screen
       }
     }
 
@@ -118,9 +123,9 @@ class _LoginScreenState extends State<LoginScreen>
     // Show loading
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Connecting to Google...'),
-          duration: Duration(seconds: 3),
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.connectingToGoogle),
+          duration: const Duration(seconds: 3),
         ),
       );
     }
@@ -134,17 +139,17 @@ class _LoginScreenState extends State<LoginScreen>
         _setupAuthStateListener(authProvider);
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
+          SnackBar(
             content: Text(
-              'Google login initiated successfully. Please complete the login in your browser.',
+              AppLocalizations.of(context)!.googleLoginInitiated,
             ),
-            duration: Duration(seconds: 3),
+            duration: const Duration(seconds: 3),
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(authProvider.error ?? 'Google login failed'),
+            content: Text(authProvider.error ?? AppLocalizations.of(context)!.googleLoginFailed),
             backgroundColor: Colors.red,
           ),
         );
@@ -155,10 +160,12 @@ class _LoginScreenState extends State<LoginScreen>
   // Setup auth state listener to close login screen when user logs in
   void _setupAuthStateListener(AuthProvider authProvider) {
     // Create the listener callback
-    _authStateListener = () {
+    _authStateListener = () async {
       if (authProvider.isLoggedIn && mounted) {
-        // User is now logged in, close the login screen
-        Navigator.of(context).pop();
+        // Mark onboarding as completed when user successfully logs in via Google
+        await OnboardingService.completeOnboarding();
+        // User is now logged in, navigate to main screen
+        context.go('/main');
         // Remove the listener after use
         authProvider.removeListener(_authStateListener!);
         _authStateListener = null;
@@ -173,12 +180,12 @@ class _LoginScreenState extends State<LoginScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Error'),
+        title: Text(AppLocalizations.of(context)!.error),
         content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context)!.ok),
           ),
         ],
       ),
@@ -199,7 +206,7 @@ class _LoginScreenState extends State<LoginScreen>
                 _isRegistering = false;
               });
             },
-            child: const Text('OK'),
+            child: Text(AppLocalizations.of(context)!.ok),
           ),
         ],
       ),
@@ -210,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Choose Avatar'),
+        title: Text(AppLocalizations.of(context)!.chooseAvatar),
         content: SizedBox(
           width: 300,
           height: 200,
@@ -252,7 +259,7 @@ class _LoginScreenState extends State<LoginScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: Text(AppLocalizations.of(context)!.cancel),
           ),
         ],
       ),
@@ -305,8 +312,8 @@ class _LoginScreenState extends State<LoginScreen>
                         const SizedBox(height: 8),
                         Text(
                           _isRegistering
-                              ? 'Create your account'
-                              : 'Welcome back',
+                              ? AppLocalizations.of(context)!.createAccount
+                              : AppLocalizations.of(context)!.welcomeBack,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(color: Colors.grey[600]),
                         ),
@@ -356,7 +363,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 TextFormField(
                                   controller: _nameController,
                                   decoration: InputDecoration(
-                                    labelText: 'Full Name',
+                                    labelText: AppLocalizations.of(context)!.fullName,
                                     prefixIcon: const Icon(Icons.person),
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -364,7 +371,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   validator: (value) {
                                     if (value == null || value.trim().isEmpty) {
-                                      return 'Please enter your full name';
+                                      return AppLocalizations.of(context)!.pleaseEnterFullName;
                                     }
                                     return null;
                                   },
@@ -377,7 +384,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 controller: _emailController,
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
-                                  labelText: 'Email',
+                                  labelText: AppLocalizations.of(context)!.email,
                                   prefixIcon: const Icon(Icons.email),
                                   border: OutlineInputBorder(
                                     borderRadius: BorderRadius.circular(12),
@@ -385,12 +392,12 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                                 validator: (value) {
                                   if (value == null || value.trim().isEmpty) {
-                                    return 'Please enter your email';
+                                    return AppLocalizations.of(context)!.pleaseEnterEmail;
                                   }
                                   if (!RegExp(
                                     r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                                   ).hasMatch(value)) {
-                                    return 'Please enter a valid email';
+                                    return AppLocalizations.of(context)!.pleaseEnterValidEmail;
                                   }
                                   return null;
                                 },
@@ -402,7 +409,7 @@ class _LoginScreenState extends State<LoginScreen>
                                 controller: _passwordController,
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
-                                  labelText: 'Password',
+                                  labelText: AppLocalizations.of(context)!.password,
                                   prefixIcon: const Icon(Icons.lock),
                                   suffixIcon: IconButton(
                                     icon: Icon(
@@ -422,10 +429,10 @@ class _LoginScreenState extends State<LoginScreen>
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
-                                    return 'Please enter your password';
+                                    return AppLocalizations.of(context)!.pleaseEnterPassword;
                                   }
                                   if (_isRegistering && value.length < 6) {
-                                    return 'Password must be at least 6 characters';
+                                    return AppLocalizations.of(context)!.passwordMinLength;
                                   }
                                   return null;
                                 },
@@ -438,7 +445,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   controller: _confirmPasswordController,
                                   obscureText: _obscureConfirmPassword,
                                   decoration: InputDecoration(
-                                    labelText: 'Confirm Password',
+                                    labelText: AppLocalizations.of(context)!.confirmPassword,
                                     prefixIcon: const Icon(Icons.lock),
                                     suffixIcon: IconButton(
                                       icon: Icon(
@@ -459,10 +466,10 @@ class _LoginScreenState extends State<LoginScreen>
                                   ),
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please confirm your password';
+                                      return AppLocalizations.of(context)!.pleaseConfirmPassword;
                                     }
                                     if (value != _passwordController.text) {
-                                      return 'Passwords do not match';
+                                      return AppLocalizations.of(context)!.passwordsDoNotMatch;
                                     }
                                     return null;
                                   },
@@ -504,8 +511,8 @@ class _LoginScreenState extends State<LoginScreen>
                                             )
                                           : Text(
                                               _isRegistering
-                                                  ? 'Sign Up'
-                                                  : 'Sign In',
+                                                  ? AppLocalizations.of(context)!.signUp
+                                                  : AppLocalizations.of(context)!.signIn,
                                               style: const TextStyle(
                                                 fontSize: 16,
                                                 fontWeight: FontWeight.w600,
@@ -528,7 +535,7 @@ class _LoginScreenState extends State<LoginScreen>
                                         horizontal: 16,
                                       ),
                                       child: Text(
-                                        'OR',
+                                        AppLocalizations.of(context)!.or,
                                         style: TextStyle(
                                           color: Colors.grey[600],
                                         ),
@@ -554,9 +561,9 @@ class _LoginScreenState extends State<LoginScreen>
                                           height: 18,
                                           width: 18,
                                         ),
-                                        label: const Text(
-                                          'Continue with Google',
-                                          style: TextStyle(
+                                        label: Text(
+                                          AppLocalizations.of(context)!.continueWithGoogle,
+                                          style: const TextStyle(
                                             fontSize: 16,
                                             fontWeight: FontWeight.w600,
                                           ),
@@ -585,14 +592,14 @@ class _LoginScreenState extends State<LoginScreen>
                                 children: [
                                   Text(
                                     _isRegistering
-                                        ? 'Already have an account? '
-                                        : "Don't have an account? ",
+                                        ? AppLocalizations.of(context)!.alreadyHaveAccount
+                                        : AppLocalizations.of(context)!.dontHaveAccount,
                                     style: TextStyle(color: Colors.grey[600]),
                                   ),
                                   GestureDetector(
                                     onTap: _toggleForm,
                                     child: Text(
-                                      _isRegistering ? 'Sign In' : 'Sign Up',
+                                      _isRegistering ? AppLocalizations.of(context)!.signIn : AppLocalizations.of(context)!.signUp,
                                       style: const TextStyle(
                                         color: Color(0xFF4CAF50),
                                         fontWeight: FontWeight.w600,

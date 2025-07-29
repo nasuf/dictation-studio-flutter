@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../providers/auth_provider.dart';
+import '../providers/locale_provider.dart';
 import '../services/api_service.dart';
 import '../services/token_manager.dart';
 import '../utils/logger.dart';
+import '../utils/constants.dart';
 import '../widgets/calendar_heatmap.dart';
 import '../widgets/theme_toggle_button.dart';
+import '../generated/app_localizations.dart';
 import 'login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -27,6 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   // Keep the state alive when switching tabs
   @override
   bool get wantKeepAlive => true;
+
 
 
   Future<void> _loadUserDuration({bool forceRefresh = false}) async {
@@ -206,14 +210,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Profile',
+                      AppLocalizations.of(context)!.profile,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: theme.colorScheme.onSurface,
                       ),
                     ),
                     Text(
-                      'Sign in to access your dashboard',
+                      AppLocalizations.of(context)!.signInToAccess,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
@@ -252,7 +256,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      'Welcome to Dictation Studio',
+                      AppLocalizations.of(context)!.welcome,
                       style: theme.textTheme.headlineSmall?.copyWith(
                         color: theme.colorScheme.onSurface,
                         fontWeight: FontWeight.w600,
@@ -261,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Sign in to access your personalized learning dashboard',
+                      AppLocalizations.of(context)!.signInToAccess,
                       style: theme.textTheme.bodyLarge?.copyWith(
                         color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                       ),
@@ -277,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         );
                       },
                       icon: const Icon(Icons.login),
-                      label: const Text('Sign In'),
+                      label: Text(AppLocalizations.of(context)!.signIn),
                     ),
                   ],
                 ),
@@ -398,7 +402,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           children: [
                             Expanded(
                               child: _buildSimpleInfoItem(
-                                'Email',
+                                AppLocalizations.of(context)!.email,
                                 user.email,
                                 Icons.email_outlined,
                                 theme.colorScheme.primary,
@@ -412,7 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                             Expanded(
                               child: _buildSimpleInfoItem(
-                                'Plan',
+                                AppLocalizations.of(context)!.plan,
                                 user.plan.name,
                                 Icons.workspace_premium_outlined,
                                 theme.colorScheme.secondary,
@@ -432,14 +436,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                           children: [
                             Expanded(
                               child: _buildSimpleInfoItem(
-                                'Expires',
+                                AppLocalizations.of(context)!.expires,
                                 user.plan.expireTime != null
                                     ? DateFormat('MMM dd, yyyy').format(
                                         DateTime.fromMillisecondsSinceEpoch(
                                           user.plan.expireTime!,
                                         ),
                                       )
-                                    : 'No Limit',
+                                    : AppLocalizations.of(context)!.noLimit,
                                 Icons.schedule_outlined,
                                 theme.colorScheme.tertiary,
                                 theme,
@@ -452,7 +456,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                             Expanded(
                               child: _buildSimpleInfoItem(
-                                'Total Time',
+                                AppLocalizations.of(context)!.totalTime,
                                 () {
                                   AppLogger.info(
                                     '🎯 UI Display - _loadingDuration: $_loadingDuration',
@@ -461,7 +465,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     '🎯 UI Display - _totalDuration: $_totalDuration',
                                   );
                                   if (_loadingDuration) {
-                                    return 'Loading...';
+                                    return AppLocalizations.of(context)!.loading;
                                   } else if (_totalDuration != null) {
                                     final formatted = _formatDuration(
                                       _totalDuration!,
@@ -521,7 +525,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Dictation Activities',
+                                AppLocalizations.of(context)!.dictationActivities,
                                 style: theme.textTheme.titleLarge?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: theme.colorScheme.onSurface,
@@ -547,7 +551,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                       Icons.refresh,
                                       color: theme.colorScheme.primary,
                                     ),
-                              tooltip: 'Refresh heatmap data',
+                              tooltip: AppLocalizations.of(context)!.refresh,
                               style: IconButton.styleFrom(
                                 backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
                                 shape: RoundedRectangleBorder(
@@ -609,7 +613,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Settings',
+                              AppLocalizations.of(context)!.settings,
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: theme.colorScheme.onSurface,
@@ -619,6 +623,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                       ),
                       const ThemeSettingsListTile(),
+                      _buildLanguageSettingsTile(theme),
                     ],
                   ),
                 ),
@@ -645,7 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           )
                         : Icon(Icons.logout_outlined, color: theme.colorScheme.error),
                     label: Text(
-                      authProvider.isLoading ? 'Signing Out...' : 'Sign Out',
+                      authProvider.isLoading ? AppLocalizations.of(context)!.signingOut : AppLocalizations.of(context)!.signOut,
                       style: TextStyle(color: theme.colorScheme.error),
                     ),
                     style: OutlinedButton.styleFrom(
@@ -682,7 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               ),
               const SizedBox(width: 8),
               Text(
-                'Sign Out',
+                AppLocalizations.of(context)!.signOut,
                 style: theme.textTheme.titleLarge?.copyWith(
                   color: theme.colorScheme.onSurface,
                   fontWeight: FontWeight.w600,
@@ -691,7 +696,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
           content: Text(
-            'Are you sure you want to sign out?',
+            AppLocalizations.of(context)!.areYouSureSignOut,
             style: theme.textTheme.bodyLarge?.copyWith(
               color: theme.colorScheme.onSurface,
             ),
@@ -703,7 +708,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(
-                'Cancel',
+                AppLocalizations.of(context)!.cancel,
                 style: TextStyle(color: theme.colorScheme.primary),
               ),
             ),
@@ -719,7 +724,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              child: const Text('Sign Out'),
+              child: Text(AppLocalizations.of(context)!.signOut),
             ),
           ],
         );
@@ -763,5 +768,214 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
       ],
     );
+  }
+
+  Widget _buildLanguageSettingsTile(ThemeData theme) {
+    return ListTile(
+      leading: Icon(
+        Icons.language_outlined,
+        color: theme.colorScheme.primary,
+        size: 20,
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.language,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Consumer<LocaleProvider>(
+        builder: (context, localeProvider, child) {
+          // Get the correct language code for display
+          String displayLanguageCode;
+          if (localeProvider.locale.languageCode == 'zh' && localeProvider.locale.countryCode == 'TW') {
+            displayLanguageCode = AppConstants.languageTraditionalChinese;
+          } else {
+            displayLanguageCode = localeProvider.locale.languageCode;
+          }
+          
+          return Text(
+            _getLocalizedLanguageName(context, displayLanguageCode),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          );
+        },
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: theme.colorScheme.outline,
+      ),
+      onTap: () => _showLanguageSelection(context, theme),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    );
+  }
+
+  void _showLanguageSelection(BuildContext context, ThemeData theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 8),
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      AppLocalizations.of(context)!.selectLanguage,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Language options
+                    ...LanguageHelper.getSupportedLanguages().map(
+                      (language) => _buildLanguageOption(
+                        context,
+                        theme,
+                        _getLocalizedLanguageName(context, language),
+                        language,
+                        Icons.language,
+                        _getLanguageColor(language),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLanguageOption(
+    BuildContext context,
+    ThemeData theme,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final localeProvider = context.watch<LocaleProvider>();
+    // Handle Traditional Chinese locale matching
+    final isSelected = _isLanguageSelected(localeProvider.locale, value);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      child: InkWell(
+        onTap: () {
+          context.read<LocaleProvider>().setLocale(value);
+          Navigator.pop(context);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: isSelected 
+                ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? theme.colorScheme.primary : color,
+                size: 20,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                    color: isSelected 
+                        ? theme.colorScheme.primary 
+                        : theme.colorScheme.onSurface,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(
+                  Icons.check,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Check if a language is selected, handling Traditional Chinese special case
+  bool _isLanguageSelected(Locale currentLocale, String languageCode) {
+    if (languageCode == AppConstants.languageTraditionalChinese) {
+      // For Traditional Chinese, check both language and country code
+      return currentLocale.languageCode == 'zh' && currentLocale.countryCode == 'TW';
+    } else if (languageCode == AppConstants.languageChinese) {
+      // For Simplified Chinese, ensure it's NOT Traditional Chinese
+      return currentLocale.languageCode == 'zh' && currentLocale.countryCode != 'TW';
+    } else {
+      // For other languages, just check language code
+      return currentLocale.languageCode == languageCode;
+    }
+  }
+
+  // Get localized language name
+  String _getLocalizedLanguageName(BuildContext context, String language) {
+    switch (language) {
+      case AppConstants.languageEnglish:
+        return AppLocalizations.of(context)!.english;
+      case AppConstants.languageChinese:
+        return AppLocalizations.of(context)!.chinese;
+      case AppConstants.languageTraditionalChinese:
+        return AppLocalizations.of(context)!.traditionalChinese;
+      case AppConstants.languageJapanese:
+        return AppLocalizations.of(context)!.japanese;
+      case AppConstants.languageKorean:
+        return AppLocalizations.of(context)!.korean;
+      default:
+        return language.toUpperCase();
+    }
+  }
+
+  // Get language color for visual distinction
+  Color _getLanguageColor(String language) {
+    switch (language) {
+      case AppConstants.languageEnglish:
+        return const Color(0xFF4CAF50); // Green for English
+      case AppConstants.languageChinese:
+        return const Color(0xFF66BB6A); // Light green for Chinese
+      case AppConstants.languageTraditionalChinese:
+        return const Color(0xFF4FC3F7); // Light blue for Traditional Chinese
+      case AppConstants.languageJapanese:
+        return const Color(0xFF81C784); // Soft green for Japanese
+      case AppConstants.languageKorean:
+        return const Color(0xFF009688); // Teal for Korean
+      default:
+        return const Color(0xFF8BC34A); // Lime green for others
+    }
   }
 }

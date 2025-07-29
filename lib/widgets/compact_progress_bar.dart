@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../generated/app_localizations.dart';
 
 class CompactProgressBar extends StatefulWidget {
   final double completion;
@@ -104,7 +105,9 @@ class _CompactProgressBarState extends State<CompactProgressBar>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        widget.isExpanded ? 'Less Details' : 'More Details',
+                        widget.isExpanded 
+                            ? AppLocalizations.of(context)!.hideComparison 
+                            : AppLocalizations.of(context)!.showComparison,
                         style: theme.textTheme.bodySmall?.copyWith(
                           color: theme.colorScheme.onSurface.withOpacity(0.6),
                         ),
@@ -147,21 +150,21 @@ class _CompactProgressBarState extends State<CompactProgressBar>
                       children: [
                         _buildStatItem(
                           context,
-                          'Progress',
+                          AppLocalizations.of(context)!.progress,
                           '${widget.completion.toStringAsFixed(1)}%',
                           progressColor,
                           Icons.trending_up,
                         ),
                         _buildStatItem(
                           context,
-                          'Accuracy',
+                          AppLocalizations.of(context)!.accuracy,
                           '${widget.accuracy.toStringAsFixed(1)}%',
                           accuracyColor,
                           Icons.gps_fixed,
                         ),
                         _buildStatItem(
                           context,
-                          'Time',
+                          AppLocalizations.of(context)!.time,
                           _formatTime(widget.timeSpent),
                           theme.colorScheme.onSurface.withOpacity(0.7),
                           Icons.access_time,
@@ -174,12 +177,12 @@ class _CompactProgressBarState extends State<CompactProgressBar>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         _buildLegendItem(
-                          'Progress',
+                          AppLocalizations.of(context)!.progress,
                           progressColor.withOpacity(0.3),
                         ),
                         const SizedBox(width: 16),
                         _buildLegendItem(
-                          'Accuracy',
+                          AppLocalizations.of(context)!.accuracy,
                           accuracyColor,
                         ),
                       ],
