@@ -437,7 +437,7 @@ class ApiService {
               final transcriptItem = TranscriptItem(
                 start: (item['start'] as num?)?.toDouble() ?? 0.0,
                 end: (item['end'] as num?)?.toDouble() ?? 1.0,
-                transcript: (item['text'] ?? item['transcript'] ?? '').toString().trim(),
+                transcript: (item['transcript'] ?? '').toString().trim(),
                 index: i,
               );
               transcriptItems.add(transcriptItem);
@@ -461,7 +461,7 @@ class ApiService {
                 final transcriptItem = TranscriptItem(
                   start: (item['start'] as num?)?.toDouble() ?? 0.0,
                   end: (item['end'] as num?)?.toDouble() ?? 1.0,
-                  transcript: (item['text'] ?? item['transcript'] ?? '').toString().trim(),
+                  transcript: (item['transcript'] ?? '').toString().trim(),
                   index: i,
                 );
                 transcriptItems.add(transcriptItem);
@@ -503,7 +503,7 @@ class ApiService {
       final transcript = transcriptItems.map((item) => {
         'start': item.start,
         'end': item.end,
-        'text': item.transcript.trim(),
+        'transcript': item.transcript.trim(),
       }).toList();
       
       final payload = {

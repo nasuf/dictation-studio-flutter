@@ -612,14 +612,8 @@ class _DictationScreenState extends State<DictationScreen>
         return TranscriptItem.fromJson({...item, 'index': index});
       }).toList();
 
-      // Auto-merge transcript segments for better playback
-      final mergedTranscript = LanguageUtils.autoMergeTranscriptItems(
-        loadedTranscript,
-        10.0, // Max 10 seconds per segment
-      );
-
       setState(() {
-        _transcript = mergedTranscript;
+        _transcript = loadedTranscript;
         _isLoadingTranscript = false;
       });
 
