@@ -14,6 +14,7 @@ class TranscriptEditorWithController extends StatefulWidget {
   final List<TranscriptItem> initialTranscript;
   final Function(List<TranscriptItem>)? onSave;
   final VoidCallback? onCancel;
+  final Function(int)? onModifiedCountChanged;
 
   const TranscriptEditorWithController({
     super.key,
@@ -22,6 +23,7 @@ class TranscriptEditorWithController extends StatefulWidget {
     required this.initialTranscript,
     this.onSave,
     this.onCancel,
+    this.onModifiedCountChanged,
   });
 
   @override
@@ -38,6 +40,7 @@ class _TranscriptEditorWithControllerState
     super.initState();
     _controller = TranscriptEditorController();
     _controller.initialize(widget.youtubeController);
+    _controller.addListener(_onControllerChange);
     _loadTranscript();
   }
 
@@ -45,8 +48,15 @@ class _TranscriptEditorWithControllerState
     await _controller.loadTranscript(widget.initialTranscript);
   }
 
+  void _onControllerChange() {
+    if (widget.onModifiedCountChanged != null) {
+      widget.onModifiedCountChanged!(_controller.state.userModifiedSegments);
+    }
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_onControllerChange);
     _controller.dispose();
     super.dispose();
   }
@@ -60,6 +70,7 @@ class _TranscriptEditorWithControllerState
         initialTranscript: widget.initialTranscript,
         onSave: widget.onSave,
         onCancel: widget.onCancel,
+        onModifiedCountChanged: widget.onModifiedCountChanged,
       ),
     );
   }
@@ -71,6 +82,7 @@ class TranscriptEditorWidget extends StatefulWidget {
   final List<TranscriptItem> initialTranscript;
   final Function(List<TranscriptItem>)? onSave;
   final VoidCallback? onCancel;
+  final Function(int)? onModifiedCountChanged;
 
   const TranscriptEditorWidget({
     super.key,
@@ -78,6 +90,7 @@ class TranscriptEditorWidget extends StatefulWidget {
     required this.initialTranscript,
     this.onSave,
     this.onCancel,
+    this.onModifiedCountChanged,
   });
 
   @override
@@ -231,23 +244,6 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       ),
       child: Row(
         children: [
-          if (controller.state.userModifiedSegments > 0) ...[
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.secondary.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '${controller.state.userModifiedSegments} modified',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.secondary,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-          ],
           const Spacer(),
 
           // Selection mode and actions

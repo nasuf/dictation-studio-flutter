@@ -32,6 +32,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
   late Video _currentVideo;
   final ApiService _apiService = ApiService();
   bool _hasUnsavedChanges = false;
+  int _modifiedSegmentsCount = 0;
 
   @override
   void initState() {
@@ -261,6 +262,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                       ),
                     ),
                     const SizedBox(width: 6),
+                    // Segment count
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
@@ -274,6 +276,34 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                           color: theme.colorScheme.primary,
                           fontWeight: FontWeight.bold,
                         ),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    // Modified count (will be updated via state management later)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondary.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.edit,
+                            size: 8,
+                            color: theme.colorScheme.secondary,
+                          ),
+                          const SizedBox(width: 2),
+                          Text(
+                            '$_modifiedSegmentsCount',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontSize: 9,
+                              color: theme.colorScheme.secondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -293,7 +323,14 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
       initialTranscript: widget.initialTranscript,
       onSave: _onSaveTranscript,
       onCancel: _onCancel,
+      onModifiedCountChanged: _onModifiedCountChanged,
     );
+  }
+
+  void _onModifiedCountChanged(int count) {
+    setState(() {
+      _modifiedSegmentsCount = count;
+    });
   }
 
   Widget _buildLoadingView(ThemeData theme) {
@@ -601,9 +638,9 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
     final seconds = duration.inSeconds.remainder(60);
     
     if (hours > 0) {
-      return '${hours}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
     } else {
-      return '${minutes}:${seconds.toString().padLeft(2, '0')}';
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
     }
   }
 }
