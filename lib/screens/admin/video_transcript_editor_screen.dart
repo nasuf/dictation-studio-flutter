@@ -483,17 +483,11 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
         SnackBar(
           content: const Text('Transcript saved successfully'),
           backgroundColor: Theme.of(context).colorScheme.primary,
-          action: SnackBarAction(
-            label: 'View',
-            onPressed: () {
-              // Could navigate to a preview or continue editing
-            },
-          ),
+          duration: const Duration(seconds: 3),
         ),
       );
       
-      // Go back to the video management screen
-      Navigator.of(context).pop(updatedTranscript);
+      // Don't exit the page - stay in editor for continued editing
       
     } catch (e) {
       AppLogger.error('Error saving transcript: $e');

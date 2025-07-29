@@ -4,6 +4,8 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../controllers/transcript_editor_controller.dart';
 import '../../models/transcript_item.dart';
 import '../../utils/video_playback_utils.dart';
+import '../../services/api_service.dart';
+import '../../utils/logger.dart';
 
 /// Wrapper widget that connects YouTube controller to transcript editor
 class TranscriptEditorWithController extends StatefulWidget {
@@ -297,7 +299,24 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
             ),
             const SizedBox(width: 8),
 
-            // Cancel and Save buttons in selection mode - smaller size
+            // Restore, Cancel and Save buttons in selection mode - smaller size
+            SizedBox(
+              height: 32,
+              child: OutlinedButton(
+                onPressed: () => _restoreOriginalTranscript(controller),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  textStyle: const TextStyle(fontSize: 12),
+                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                  foregroundColor: theme.colorScheme.secondary,
+                ),
+                child: const Text('Restore'),
+              ),
+            ),
+            const SizedBox(width: 6),
             SizedBox(
               height: 32,
               child: OutlinedButton(
@@ -360,7 +379,24 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
             ),
             const SizedBox(width: 8),
 
-            // Cancel and Save buttons in normal mode - smaller size
+            // Restore, Cancel and Save buttons in normal mode - smaller size
+            SizedBox(
+              height: 32,
+              child: OutlinedButton(
+                onPressed: () => _restoreOriginalTranscript(controller),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 4,
+                  ),
+                  textStyle: const TextStyle(fontSize: 12),
+                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                  foregroundColor: theme.colorScheme.secondary,
+                ),
+                child: const Text('Restore'),
+              ),
+            ),
+            const SizedBox(width: 6),
             SizedBox(
               height: 32,
               child: OutlinedButton(
@@ -555,14 +591,32 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Play segment button
+        // Play/Stop segment button
         IconButton(
-          onPressed: () => controller.playSegment(index),
-          icon: const Icon(Icons.play_arrow),
-          tooltip: 'Play Segment',
+          onPressed: () {
+            if (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying) {
+              // Currently playing this segment, so stop it
+              controller.stopPlayback();
+            } else {
+              // Not playing or playing different segment, so play this segment
+              controller.playSegment(index);
+            }
+          },
+          icon: Icon(
+            (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+                ? Icons.stop
+                : Icons.play_arrow,
+          ),
+          tooltip: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+              ? 'Stop Segment'
+              : 'Play Segment',
           style: IconButton.styleFrom(
-            backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-            foregroundColor: theme.colorScheme.primary,
+            backgroundColor: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+                ? theme.colorScheme.error.withOpacity(0.1)
+                : theme.colorScheme.primary.withOpacity(0.1),
+            foregroundColor: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+                ? theme.colorScheme.error
+                : theme.colorScheme.primary,
           ),
         ),
         const SizedBox(width: 4),
@@ -922,6 +976,111 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
           backgroundColor: result.success
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  /// Handle restore original transcript action
+  void _restoreOriginalTranscript(TranscriptEditorController controller) async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Restore Original Transcript'),
+        content: const Text(
+          'Are you sure you want to restore the original transcript? All current changes will be lost.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.secondary,
+            ),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              SizedBox(width: 12),
+              Text('Restoring original transcript...'),
+            ],
+          ),
+          duration: Duration(seconds: 30),
+        ),
+      );
+
+      // Call restore API
+      final result = await ApiService().restoreOriginalTranscript(widget.videoId);
+      
+      AppLogger.info('Restore transcript API response: $result');
+
+      // Clear loading indicator
+      ScaffoldMessenger.of(context).clearSnackBars();
+
+      // Parse and reload transcript data
+      if (result.containsKey('transcript') && result['transcript'] is List) {
+        final transcriptList = result['transcript'] as List;
+        final restoredItems = <TranscriptItem>[];
+        
+        for (int i = 0; i < transcriptList.length; i++) {
+          final item = transcriptList[i];
+          if (item is Map<String, dynamic>) {
+            final transcriptItem = TranscriptItem(
+              start: (item['start'] as num?)?.toDouble() ?? 0.0,
+              end: (item['end'] as num?)?.toDouble() ?? 1.0,
+              transcript: (item['transcript'] ?? '').toString().trim(),
+              index: i,
+            );
+            restoredItems.add(transcriptItem);
+          }
+        }
+
+        // Reload the transcript in the controller
+        await controller.loadTranscript(restoredItems);
+
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Original transcript restored successfully'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      } else {
+        throw Exception('Invalid response format from restore API');
+      }
+
+    } catch (e) {
+      AppLogger.error('Error restoring original transcript: $e');
+      
+      // Clear loading indicator
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to restore original transcript: ${e.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 5),
         ),
       );
     }

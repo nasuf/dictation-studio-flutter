@@ -529,6 +529,27 @@ class ApiService {
     }
   }
 
+  // Restore original transcript
+  Future<Map<String, dynamic>> restoreOriginalTranscript(
+    String videoId,
+  ) async {
+    try {
+      AppLogger.info(
+        'Restoring original transcript for video: $videoId',
+      );
+      
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/deep_look/$videoId/restore-transcript',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Restore original transcript API error: $e');
+      rethrow;
+    }
+  }
+
   // Save user progress
   Future<Map<String, dynamic>> saveUserProgress(
     ProgressData progressData,
