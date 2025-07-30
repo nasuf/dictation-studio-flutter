@@ -813,57 +813,38 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showLanguageSelection(BuildContext context, ThemeData theme) {
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      backgroundColor: Colors.transparent,
       builder: (BuildContext context) {
-        return Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surface,
-            borderRadius: BorderRadius.circular(20),
+        return AlertDialog(
+          title: Text(
+            AppLocalizations.of(context)!.selectLanguage,
+            style: theme.textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
-          child: Column(
+          content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 8),
-                width: 32,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppLocalizations.of(context)!.selectLanguage,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    // Language options
-                    ...LanguageHelper.getSupportedLanguages().map(
-                      (language) => _buildLanguageOption(
-                        context,
-                        theme,
-                        _getLocalizedLanguageName(context, language),
-                        language,
-                        Icons.language,
-                        _getLanguageColor(language),
-                      ),
-                    ),
-                  ],
+              // Language options
+              ...LanguageHelper.getSupportedLanguages().map(
+                (language) => _buildLanguageOption(
+                  context,
+                  theme,
+                  _getLocalizedLanguageName(context, language),
+                  language,
+                  Icons.language,
+                  _getLanguageColor(language),
                 ),
               ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(AppLocalizations.of(context)!.cancel),
+            ),
+          ],
         );
       },
     );

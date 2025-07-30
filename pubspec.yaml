@@ -54,6 +54,9 @@ dependencies:
   app_links: ^6.3.2
   dart_jsonwebtoken: ^3.2.0
 
+  # File picker for SRT uploads
+  file_picker: ^8.0.0+1
+
   # Logging framework
   logging: ^1.2.0
 

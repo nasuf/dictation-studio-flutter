@@ -139,16 +139,33 @@ class ThemeSettingsListTile extends StatelessWidget {
           leading: Icon(
             isDark ? Icons.dark_mode : Icons.light_mode,
             color: Theme.of(context).colorScheme.primary,
+            size: 20,
           ),
-          title: Text(AppLocalizations.of(context)!.themeMode),
-          subtitle: Text(themeService.themeMode.displayName),
-          trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+          title: Text(
+            AppLocalizations.of(context)!.themeMode,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+          subtitle: Text(
+            themeService.themeMode.displayName,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            size: 16,
+            color: Theme.of(context).colorScheme.outline,
+          ),
           onTap: () {
             showDialog(
               context: context,
               builder: (context) => const ThemeSettingsDialog(),
             );
           },
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16),
         );
       },
     );

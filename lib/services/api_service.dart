@@ -35,6 +35,22 @@ class ApiService {
     _navigatorKey = key;
   }
 
+  // Getter for base URL
+  String get baseUrl => _baseUrl;
+
+  // Get auth token for API requests
+  Future<String?> getAuthToken() async {
+    String? accessToken = await TokenManager.getAccessToken();
+    if (accessToken != null) {
+      // Check if token is expiring soon and refresh if needed
+      if (await TokenManager.isTokenExpiringSoon()) {
+        AppLogger.info('🔄 Token expiring soon, attempting refresh...');
+        accessToken = await TokenManager.refreshAccessToken();
+      }
+    }
+    return accessToken;
+  }
+
   static void _handle401Error() {
     if (_navigatorKey?.currentContext != null) {
       final context = _navigatorKey!.currentContext!;

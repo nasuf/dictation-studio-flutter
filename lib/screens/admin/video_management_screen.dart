@@ -7,6 +7,7 @@ import '../../services/api_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/constants.dart';
 import 'video_transcript_editor_screen.dart';
+import 'add_video_screen.dart';
 import 'dart:async';
 
 class VideoManagementScreen extends StatefulWidget {
@@ -198,15 +199,23 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     }
   }
 
-  // Show add video modal
-  void _showAddVideoModal() {
+  // Navigate to add video screen
+  void _showAddVideoModal() async {
     if (_selectedChannelId == null) {
       _showErrorSnackBar('Please select a channel first');
       return;
     }
-    setState(() {
-      // _isAddVideoModalOpen = true; // Removed unused field
-    });
+    
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => AddVideoScreen(channelId: _selectedChannelId!),
+      ),
+    );
+    
+    // If videos were successfully added, refresh the list
+    if (result == true) {
+      _loadVideos();
+    }
   }
 
   // Show edit video modal
