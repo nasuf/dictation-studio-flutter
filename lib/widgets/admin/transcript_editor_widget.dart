@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
+import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../../controllers/transcript_editor_controller.dart';
@@ -807,28 +810,8 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
     int index,
     bool isEditing,
   ) {
-    if (isEditing) {
-      return TextFormField(
-        initialValue: item.transcript,
-        maxLines: 3,
-        autofocus: true,
-        decoration: InputDecoration(
-          labelText: 'Transcript Text',
-          border: const OutlineInputBorder(),
-          filled: true,
-          fillColor: theme.colorScheme.surfaceContainerHighest,
-        ),
-        onFieldSubmitted: (value) {
-          controller.editTranscriptText(index, value);
-        },
-        onEditingComplete: () {
-          controller.stopEditing();
-        },
-      );
-    }
-
     return GestureDetector(
-      onDoubleTap: () => controller.startEditing(index),
+      onDoubleTap: () => _showEditModal(controller, item, index),
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(12),
@@ -890,7 +873,8 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
   ) {
     switch (action) {
       case 'edit':
-        controller.startEditing(index);
+        final item = controller.state.transcriptItems[index];
+        _showEditModal(controller, item, index);
         break;
       case 'add_after':
         controller.addSegment(afterIndex: index);
@@ -1080,5 +1064,180 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         ),
       );
     }
+  }
+
+  /// Show modal dialog for editing transcript text
+  void _showEditModal(TranscriptEditorController controller, TranscriptItem item, int index) {
+    final TextEditingController textController = TextEditingController(text: item.transcript);
+    
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return Dialog(
+              insetPadding: const EdgeInsets.all(16),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.8,
+                  maxWidth: MediaQuery.of(context).size.width - 32,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header with title and timing info
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(12),
+                          topRight: Radius.circular(12),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Transcript - Segment ${index + 1}',
+                            style: Theme.of(context).textTheme.titleLarge,
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Time: ${VideoPlaybackUtils.formatTime(item.start)} - ${VideoPlaybackUtils.formatTime(item.end)}',
+                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    
+                    // Text input area
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: TextFormField(
+                          controller: textController,
+                          maxLines: null,
+                          expands: true,
+                          autofocus: true,
+                          textAlignVertical: TextAlignVertical.top,
+                          enableInteractiveSelection: true,
+                          selectionControls: Platform.isIOS 
+                              ? cupertinoTextSelectionControls 
+                              : materialTextSelectionControls,
+                          contextMenuBuilder: (context, editableTextState) {
+                            return _buildCustomContextMenu(context, editableTextState, textController);
+                          },
+                          decoration: InputDecoration(
+                            labelText: 'Transcript Text',
+                            alignLabelWithHint: true,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            contentPadding: const EdgeInsets.all(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    
+                    // Fixed bottom button bar
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        border: Border(
+                          top: BorderSide(
+                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          // Undo button on the left
+                          TextButton.icon(
+                            onPressed: () {
+                              textController.text = item.transcript;
+                              textController.selection = TextSelection.collapsed(
+                                offset: textController.text.length,
+                              );
+                            },
+                            icon: const Icon(Icons.undo),
+                            label: const Text('Undo'),
+                          ),
+                          const Spacer(),
+                          // Cancel and Save buttons on the right
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(),
+                            child: const Text('Cancel'),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            onPressed: () {
+                              final newText = textController.text.trim();
+                              controller.editTranscriptText(index, newText);
+                              Navigator.of(context).pop();
+                            },
+                            child: const Text('Save'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Build custom context menu with enhanced options
+  Widget _buildCustomContextMenu(BuildContext context, EditableTextState editableTextState, TextEditingController textController) {
+    final List<ContextMenuButtonItem> buttonItems = [
+      // Standard cut/copy/paste items
+      if (editableTextState.cutEnabled)
+        ContextMenuButtonItem(
+          onPressed: () {
+            editableTextState.cutSelection(SelectionChangedCause.toolbar);
+          },
+          type: ContextMenuButtonType.cut,
+        ),
+      if (editableTextState.copyEnabled)
+        ContextMenuButtonItem(
+          onPressed: () {
+            editableTextState.copySelection(SelectionChangedCause.toolbar);
+          },
+          type: ContextMenuButtonType.copy,
+        ),
+      if (editableTextState.pasteEnabled)
+        ContextMenuButtonItem(
+          onPressed: () {
+            editableTextState.pasteText(SelectionChangedCause.toolbar);
+          },
+          type: ContextMenuButtonType.paste,
+        ),
+      if (editableTextState.selectAllEnabled)
+        ContextMenuButtonItem(
+          onPressed: () {
+            editableTextState.selectAll(SelectionChangedCause.toolbar);
+          },
+          type: ContextMenuButtonType.selectAll,
+        ),
+    ];
+
+    return AdaptiveTextSelectionToolbar.buttonItems(
+      anchors: editableTextState.contextMenuAnchors,
+      buttonItems: buttonItems,
+    );
   }
 }
