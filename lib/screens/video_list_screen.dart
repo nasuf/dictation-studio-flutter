@@ -25,6 +25,7 @@ class _VideoListScreenState extends State<VideoListScreen>
   String _searchQuery = '';
   String _sortBy = 'recent'; // recent, alphabetical, progress
   String _progressFilter = 'all'; // all, done, in_progress, not_started
+  bool _isRefreshing = false;
 
   @override
   void initState() {
@@ -354,8 +355,19 @@ class _VideoListScreenState extends State<VideoListScreen>
               color: theme.colorScheme.primary,
               size: 18,
             ),
-            onPressed: () {
-              context.read<VideoProvider>().fetchVideos(widget.channelId);
+            onPressed: () async {
+              setState(() {
+                _isRefreshing = true;
+              });
+              try {
+                await context.read<VideoProvider>().fetchVideos(widget.channelId);
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isRefreshing = false;
+                  });
+                }
+              }
               HapticFeedback.lightImpact();
             },
             padding: const EdgeInsets.all(6),
@@ -537,7 +549,7 @@ class _VideoListScreenState extends State<VideoListScreen>
   Widget _buildVideoContent(ThemeData theme) {
     return Consumer<VideoProvider>(
       builder: (context, videoProvider, child) {
-        if (videoProvider.isLoading && videoProvider.videos.isEmpty) {
+        if ((videoProvider.isLoading && videoProvider.videos.isEmpty) || _isRefreshing) {
           return _buildLoadingState(theme);
         }
 

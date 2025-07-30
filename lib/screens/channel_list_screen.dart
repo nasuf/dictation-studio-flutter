@@ -23,6 +23,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
   bool _hasInitialized = false;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  bool _isRefreshing = false;
   late AnimationController _animationController;
 
   @override
@@ -163,8 +164,19 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               color: theme.colorScheme.primary,
               size: 20,
             ),
-            onPressed: () {
-              context.read<ChannelProvider>().fetchChannels();
+            onPressed: () async {
+              setState(() {
+                _isRefreshing = true;
+              });
+              try {
+                await context.read<ChannelProvider>().fetchChannels(forceRefresh: true);
+              } finally {
+                if (mounted) {
+                  setState(() {
+                    _isRefreshing = false;
+                  });
+                }
+              }
               HapticFeedback.lightImpact();
             },
             tooltip: AppLocalizations.of(context)!.refresh,
@@ -279,7 +291,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
   Widget _buildChannelContent(ThemeData theme) {
     return Consumer<ChannelProvider>(
       builder: (context, channelProvider, child) {
-        if (channelProvider.isLoading && channelProvider.channels.isEmpty) {
+        if ((channelProvider.isLoading && channelProvider.channels.isEmpty) || _isRefreshing) {
           return _buildLoadingState(theme);
         }
 
