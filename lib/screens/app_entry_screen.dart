@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../services/onboarding_service.dart';
-import '../screens/onboarding_screen.dart';
-import '../screens/main_screen.dart';
 
 class AppEntryScreen extends StatefulWidget {
   const AppEntryScreen({super.key});
@@ -12,8 +10,6 @@ class AppEntryScreen extends StatefulWidget {
 }
 
 class _AppEntryScreenState extends State<AppEntryScreen> {
-  bool? _isOnboardingCompleted;
-
   @override
   void initState() {
     super.initState();
@@ -23,10 +19,6 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
   Future<void> _checkOnboardingStatus() async {
     final isCompleted = await OnboardingService.isOnboardingCompleted();
     if (mounted) {
-      setState(() {
-        _isOnboardingCompleted = isCompleted;
-      });
-      
       // Navigate to appropriate screen based on onboarding status
       if (isCompleted) {
         // User has completed onboarding, go to main screen

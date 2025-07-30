@@ -9,7 +9,6 @@ import '../models/transcript_item.dart';
 import '../models/video.dart';
 import '../models/progress.dart';
 import '../utils/video_playback_utils.dart';
-import '../utils/language_utils.dart';
 import '../utils/logger.dart';
 import '../services/api_service.dart';
 import '../providers/auth_provider.dart';
@@ -117,7 +116,7 @@ class _DictationScreenState extends State<DictationScreen>
     _initializeComponents();
     _loadTranscript();
     _startTimers();
-    
+
     // 异步加载登录状态并检查
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadAndCheckLoginStatus();
@@ -157,14 +156,16 @@ class _DictationScreenState extends State<DictationScreen>
     // Initialize YouTube controller with improved configuration
     final extractedVideoId = YoutubePlayer.convertUrlToId(widget.video.link);
     final videoId = extractedVideoId ?? widget.video.videoId;
-    
+
     // Ensure videoId is a String (defensive programming)
     final safeVideoId = videoId.toString();
-    
+
     AppLogger.info('Initializing video player with video ID: $safeVideoId');
     AppLogger.info('Video link: ${widget.video.link}');
-    AppLogger.info('Extracted ID: $extractedVideoId, Original ID: ${widget.video.videoId}');
-    
+    AppLogger.info(
+      'Extracted ID: $extractedVideoId, Original ID: ${widget.video.videoId}',
+    );
+
     // Try YouTube Player first, fallback to WebView if it fails
     _initializeYouTubePlayer(safeVideoId);
 
@@ -266,7 +267,9 @@ class _DictationScreenState extends State<DictationScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${AppLocalizations.of(context)!.failedToSaveSettings}: ${e.toString()}'),
+            content: Text(
+              '${AppLocalizations.of(context)!.failedToSaveSettings}: ${e.toString()}',
+            ),
             backgroundColor: Colors.red,
             duration: const Duration(seconds: 3),
           ),
@@ -277,8 +280,10 @@ class _DictationScreenState extends State<DictationScreen>
 
   void _initializeYouTubePlayer(String videoId) {
     try {
-      AppLogger.info('Attempting to initialize YouTube Player with ID: $videoId');
-      
+      AppLogger.info(
+        'Attempting to initialize YouTube Player with ID: $videoId',
+      );
+
       _youtubeController = YoutubePlayerController(
         initialVideoId: videoId,
         flags: const YoutubePlayerFlags(
@@ -312,9 +317,9 @@ class _DictationScreenState extends State<DictationScreen>
           enableLogging: true,
         ),
       );
-      
+
       // 移除初始化时的登录检测，改为在播放失败时检测
-      
+
       AppLogger.info('YouTube Player initialized successfully');
     } catch (e) {
       AppLogger.error('YouTube Player initialization failed: $e');
@@ -322,79 +327,87 @@ class _DictationScreenState extends State<DictationScreen>
     }
   }
 
-
   void _showYouTubeLoginPage() {
     if (_isLoginInProgress) {
       AppLogger.info('Login already in progress, skipping');
       return;
     }
-    
+
     AppLogger.info('Showing YouTube login page...');
     setState(() {
       _isLoginInProgress = true;
     });
-    
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (BuildContext context) {
-          return YouTubeLoginWebView(
-            onLoginSuccess: () {
-              AppLogger.info('Login successful, retrying YouTube Player...');
-              
-              // 先关闭登录页面
-              Navigator.of(context).pop();
-              
-              // 异步处理后续操作，避免Navigator锁定
-              Future.microtask(() async {
-                if (!mounted) return;
-                
-                // 保存当前进度
-                try {
-                  await _saveProgress();
-                  AppLogger.info('Progress saved before YouTube Player restart');
-                } catch (e) {
-                  AppLogger.warning('Failed to save progress before restart: $e');
-                }
-                
-                // 更新状态标志
-                setState(() {
-                  _hasAttemptedLogin = true;
-                  _isLoginInProgress = false;
-                });
-                
-                // 设置全局登录状态
-                await YouTubeLoginService.instance.setLoginStatus(true);
-                
-                AppLogger.info('Login state updated successfully');
-              });
-            },
-            onCancel: () {
-              Navigator.of(context).pop();
-              AppLogger.info('Login cancelled by user');
-              setState(() {
-                _isLoginInProgress = false;
-              });
-            },
-          );
-        },
-        fullscreenDialog: true,
-      ),
-    ).then((_) {
-      // 确保状态正确重置
-      setState(() {
-        _isLoginInProgress = false;
-      });
-    });
-  }
 
+    Navigator.of(context)
+        .push(
+          MaterialPageRoute<void>(
+            builder: (BuildContext context) {
+              return YouTubeLoginWebView(
+                onLoginSuccess: () {
+                  AppLogger.info(
+                    'Login successful, retrying YouTube Player...',
+                  );
+
+                  // 先关闭登录页面
+                  Navigator.of(context).pop();
+
+                  // 异步处理后续操作，避免Navigator锁定
+                  Future.microtask(() async {
+                    if (!mounted) return;
+
+                    // 保存当前进度
+                    try {
+                      await _saveProgress();
+                      AppLogger.info(
+                        'Progress saved before YouTube Player restart',
+                      );
+                    } catch (e) {
+                      AppLogger.warning(
+                        'Failed to save progress before restart: $e',
+                      );
+                    }
+
+                    // 更新状态标志
+                    setState(() {
+                      _hasAttemptedLogin = true;
+                      _isLoginInProgress = false;
+                    });
+
+                    // 设置全局登录状态
+                    await YouTubeLoginService.instance.setLoginStatus(true);
+
+                    AppLogger.info('Login state updated successfully');
+                  });
+                },
+                onCancel: () {
+                  Navigator.of(context).pop();
+                  AppLogger.info('Login cancelled by user');
+                  setState(() {
+                    _isLoginInProgress = false;
+                  });
+                },
+              );
+            },
+            fullscreenDialog: true,
+          ),
+        )
+        .then((_) {
+          // 确保状态正确重置
+          setState(() {
+            _isLoginInProgress = false;
+          });
+        });
+  }
 
   /// 加载并检查登录状态
   Future<void> _loadAndCheckLoginStatus() async {
     // 加载全局登录状态
     await YouTubeLoginService.instance.loadLoginStatus();
-    
-    AppLogger.info('Global YouTube login status: ${YouTubeLoginService.instance.isLoggedIn}');
-    
+
+    AppLogger.info(
+      'Global YouTube login status: ${YouTubeLoginService.instance.isLoggedIn}',
+    );
+
     // 如果已经登录，触发UI更新
     if (YouTubeLoginService.instance.isLoggedIn && mounted) {
       setState(() {
@@ -403,7 +416,9 @@ class _DictationScreenState extends State<DictationScreen>
       AppLogger.info('Login button hidden due to existing login status');
     } else if (!_hasAttemptedLogin && !_isLoginInProgress) {
       // 如果未登录且未尝试过登录，短暂延迟后显示登录提示确保页面完全加载
-      AppLogger.info('User not logged in, showing login prompt after short delay');
+      AppLogger.info(
+        'User not logged in, showing login prompt after short delay',
+      );
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted && !_hasAttemptedLogin && !_isLoginInProgress) {
           _showInitialLoginPrompt();
@@ -411,16 +426,16 @@ class _DictationScreenState extends State<DictationScreen>
       });
     }
   }
-  
+
   /// 显示初始登录提示对话框
   void _showInitialLoginPrompt() {
     if (!mounted || _isLoginInProgress) return;
-    
+
     // 标记正在显示登录相关UI，防止重复弹出
     setState(() {
       _isLoginInProgress = true;
     });
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -456,7 +471,10 @@ class _DictationScreenState extends State<DictationScreen>
                 const SizedBox(height: 12),
                 Text(
                   AppLocalizations.of(context)!.youtubeLoginQuestion,
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ],
             ),
@@ -491,8 +509,6 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
-
-
   void _onYouTubePlayerStateChange() {
     final playerState = _youtubeController.value.playerState;
     final isReady = _youtubeController.value.isReady;
@@ -514,12 +530,14 @@ class _DictationScreenState extends State<DictationScreen>
         _isVideoLoading = false;
         AppLogger.info('Video loading state cleared - now playing');
       }
-      
+
       // 只有在实际播放时才确认登录成功，避免误判
       if (isReady && isPlaying) {
         if (!YouTubeLoginService.instance.isLoggedIn) {
           YouTubeLoginService.instance.setLoginStatus(true);
-          AppLogger.info('Confirmed successful YouTube login through actual playback - hiding login button');
+          AppLogger.info(
+            'Confirmed successful YouTube login through actual playback - hiding login button',
+          );
         }
       }
     });
@@ -805,16 +823,21 @@ class _DictationScreenState extends State<DictationScreen>
 
   void _onPlaybackFailure(String reason) {
     AppLogger.warning('Playback failure detected: $reason');
-    
+
     // 只有在全局登录状态为false且没有正在登录时才显示登录页面
-    if (reason == 'login_required' && 
-        !YouTubeLoginService.instance.isLoggedIn && 
-        !_hasAttemptedLogin && 
+    if (reason == 'login_required' &&
+        !YouTubeLoginService.instance.isLoggedIn &&
+        !_hasAttemptedLogin &&
         !_isLoginInProgress) {
-      AppLogger.info('Login issue detected during playback, showing login page');
+      AppLogger.info(
+        'Login issue detected during playback, showing login page',
+      );
       _showYouTubeLoginPage();
-    } else if (reason == 'login_required' && YouTubeLoginService.instance.isLoggedIn) {
-      AppLogger.warning('Login required detected but global status shows logged in - ignoring');
+    } else if (reason == 'login_required' &&
+        YouTubeLoginService.instance.isLoggedIn) {
+      AppLogger.warning(
+        'Login required detected but global status shows logged in - ignoring',
+      );
     }
   }
 
@@ -1048,7 +1071,9 @@ class _DictationScreenState extends State<DictationScreen>
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text('${AppLocalizations.of(context)!.failedToSaveProgress}: ${e.toString()}'),
+                  child: Text(
+                    '${AppLocalizations.of(context)!.failedToSaveProgress}: ${e.toString()}',
+                  ),
                 ),
               ],
             ),
@@ -1236,9 +1261,7 @@ class _DictationScreenState extends State<DictationScreen>
           children: [
             const Icon(Icons.warning_amber_rounded, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(AppLocalizations.of(context)!.videoNotReady),
-            ),
+            Expanded(child: Text(AppLocalizations.of(context)!.videoNotReady)),
           ],
         ),
         backgroundColor: Colors.orange,
@@ -1413,8 +1436,12 @@ class _DictationScreenState extends State<DictationScreen>
           children: [
             Text(AppLocalizations.of(context)!.youHaveCompleted),
             const SizedBox(height: 16),
-            Text('${AppLocalizations.of(context)!.accuracy}: ${_overallAccuracy.toStringAsFixed(1)}%'),
-            Text('${AppLocalizations.of(context)!.time}: ${(_totalTime / 60).toStringAsFixed(1)} ${AppLocalizations.of(context)!.minutes}'),
+            Text(
+              '${AppLocalizations.of(context)!.accuracy}: ${_overallAccuracy.toStringAsFixed(1)}%',
+            ),
+            Text(
+              '${AppLocalizations.of(context)!.time}: ${(_totalTime / 60).toStringAsFixed(1)} ${AppLocalizations.of(context)!.minutes}',
+            ),
           ],
         ),
         actions: [
@@ -1508,22 +1535,22 @@ class _DictationScreenState extends State<DictationScreen>
           children: [
             // Video player with integrated controls
             YoutubePlayerBuilder(
-                  player: YoutubePlayer(
-                    controller: _youtubeController,
-                    showVideoProgressIndicator: false,
-                    onReady: () {
-                      AppLogger.info(
-                        'YouTube player ready - updating video ready state',
-                      );
-                      setState(() {
-                        _isVideoReady = true;
-                      });
-                    },
-                    onEnded: (metaData) {
-                      AppLogger.info('YouTube video ended');
-                    },
-                  ),
-                  builder: (context, player) {
+              player: YoutubePlayer(
+                controller: _youtubeController,
+                showVideoProgressIndicator: false,
+                onReady: () {
+                  AppLogger.info(
+                    'YouTube player ready - updating video ready state',
+                  );
+                  setState(() {
+                    _isVideoReady = true;
+                  });
+                },
+                onEnded: (metaData) {
+                  AppLogger.info('YouTube video ended');
+                },
+              ),
+              builder: (context, player) {
                 return VideoPlayerWithControls(
                   youtubeController: _youtubeController,
                   playbackController: _playbackController,
@@ -1704,9 +1731,16 @@ class _DictationScreenState extends State<DictationScreen>
                             SnackBar(
                               content: Row(
                                 children: [
-                                  const Icon(Icons.check_circle, color: Colors.white),
+                                  const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.white,
+                                  ),
                                   const SizedBox(width: 8),
-                                  Text(AppLocalizations.of(context)!.settingsSavedSuccessfully),
+                                  Text(
+                                    AppLocalizations.of(
+                                      context,
+                                    )!.settingsSavedSuccessfully,
+                                  ),
                                 ],
                               ),
                               backgroundColor: Colors.green,
@@ -1761,7 +1795,10 @@ class _DictationScreenState extends State<DictationScreen>
                 style: const TextStyle(fontSize: 16),
               ),
               const SizedBox(height: 12),
-              Text(AppLocalizations.of(context)!.thisWill, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                AppLocalizations.of(context)!.thisWill,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
               const SizedBox(height: 4),
               Text(AppLocalizations.of(context)!.clearAllInputs),
               Text(AppLocalizations.of(context)!.resetToBeginning),
@@ -1883,7 +1920,11 @@ class _DictationScreenState extends State<DictationScreen>
               children: [
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 12),
-                Expanded(child: Text('${AppLocalizations.of(context)!.resetFailed}: ${e.toString()}')),
+                Expanded(
+                  child: Text(
+                    '${AppLocalizations.of(context)!.resetFailed}: ${e.toString()}',
+                  ),
+                ),
               ],
             ),
             duration: const Duration(seconds: 4),
@@ -1938,7 +1979,9 @@ class _DictationScreenState extends State<DictationScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  AppLocalizations.of(context)!.sentenceOf(_currentSentenceIndex + 1, _transcript.length),
+                  AppLocalizations.of(
+                    context,
+                  )!.sentenceOf(_currentSentenceIndex + 1, _transcript.length),
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
                 IconButton(
@@ -1946,7 +1989,9 @@ class _DictationScreenState extends State<DictationScreen>
                     isRevealed ? Icons.visibility_off : Icons.visibility,
                   ),
                   onPressed: _toggleCurrentSentenceReveal,
-                  tooltip: isRevealed ? AppLocalizations.of(context)!.hideComparison : AppLocalizations.of(context)!.showComparison,
+                  tooltip: isRevealed
+                      ? AppLocalizations.of(context)!.hideComparison
+                      : AppLocalizations.of(context)!.showComparison,
                   iconSize: 20,
                 ),
               ],

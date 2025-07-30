@@ -222,10 +222,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
 
     try {
       AppLogger.info('Opening transcript editor for video: ${video.videoId}');
-      
+
       // Load or create initial transcript
       final transcript = await _loadTranscript(video);
-      
+
       if (mounted) {
         final result = await Navigator.of(context).push<List<TranscriptItem>>(
           MaterialPageRoute(
@@ -236,10 +236,12 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
             ),
           ),
         );
-        
+
         if (result != null) {
           // Transcript was saved, show success message
-          _showSuccessSnackBar('Transcript updated with ${result.length} segments');
+          _showSuccessSnackBar(
+            'Transcript updated with ${result.length} segments',
+          );
         }
       }
     } catch (e) {
@@ -258,18 +260,17 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         _selectedChannelId!,
         video.videoId,
       );
-      
+
       AppLogger.info('Loaded ${transcriptItems.length} transcript items');
       return transcriptItems;
-      
     } catch (e) {
       AppLogger.error('Error loading transcript: $e');
-      
+
       // Show error to user
       if (mounted) {
         _showErrorSnackBar('Failed to load transcript: ${e.toString()}');
       }
-      
+
       // Return empty list to allow manual transcript creation
       return [];
     }
@@ -568,7 +569,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
               onChanged: _onSearchChanged,
             ),
           ),
-          
+
           // Channel statistics (only show when channel is selected and videos are loaded)
           if (_selectedChannelId != null && !_isLoading && _error == null) ...[
             const SizedBox(height: 12),
@@ -615,7 +616,11 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.video_library_outlined, size: 48, color: theme.colorScheme.outline),
+            Icon(
+              Icons.video_library_outlined,
+              size: 48,
+              color: theme.colorScheme.outline,
+            ),
             const SizedBox(height: 16),
             const Text('Select a channel to manage videos'),
           ],
@@ -774,7 +779,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                         children: [
                           Icon(Icons.delete, color: theme.colorScheme.error),
                           const SizedBox(width: 8),
-                          Text('Delete', style: TextStyle(color: theme.colorScheme.error)),
+                          Text(
+                            'Delete',
+                            style: TextStyle(color: theme.colorScheme.error),
+                          ),
                         ],
                       ),
                     ),
@@ -804,12 +812,12 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                     video.isRefined ? 'REFINED' : 'UNREFINED',
                     style: const TextStyle(fontSize: 10),
                   ),
-                  backgroundColor: video.isRefined 
-                    ? theme.colorScheme.surface.withOpacity(0.8)
-                    : theme.colorScheme.error.withOpacity(0.2),
-                  side: video.isRefined 
-                    ? BorderSide(color: theme.colorScheme.outline)
-                    : null,
+                  backgroundColor: video.isRefined
+                      ? theme.colorScheme.surface.withOpacity(0.8)
+                      : theme.colorScheme.error.withOpacity(0.2),
+                  side: video.isRefined
+                      ? BorderSide(color: theme.colorScheme.outline)
+                      : null,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
               ],
@@ -881,24 +889,18 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     final totalVideos = _videos.length;
     final refinedVideos = _videos.where((video) => video.isRefined).length;
     final unrefinedVideos = totalVideos - refinedVideos;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: theme.colorScheme.primaryContainer.withOpacity(0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.colorScheme.primary.withOpacity(0.2),
-        ),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            Icons.bar_chart,
-            size: 14,
-            color: theme.colorScheme.primary,
-          ),
+          Icon(Icons.bar_chart, size: 14, color: theme.colorScheme.primary),
           const SizedBox(width: 6),
           Text(
             'Stats:',
@@ -909,11 +911,23 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
             ),
           ),
           const SizedBox(width: 8),
-          _buildCompactStatChip(theme, totalVideos.toString(), theme.colorScheme.primary),
+          _buildCompactStatChip(
+            theme,
+            totalVideos.toString(),
+            theme.colorScheme.primary,
+          ),
           const SizedBox(width: 4),
-          _buildCompactStatChip(theme, refinedVideos.toString(), theme.colorScheme.tertiary),
+          _buildCompactStatChip(
+            theme,
+            refinedVideos.toString(),
+            theme.colorScheme.tertiary,
+          ),
           const SizedBox(width: 4),
-          _buildCompactStatChip(theme, unrefinedVideos.toString(), theme.colorScheme.error),
+          _buildCompactStatChip(
+            theme,
+            unrefinedVideos.toString(),
+            theme.colorScheme.error,
+          ),
         ],
       ),
     );
@@ -936,10 +950,5 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         ),
       ),
     );
-  }
-
-  // Format date
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 }
