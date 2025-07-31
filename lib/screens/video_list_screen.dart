@@ -119,48 +119,20 @@ class _VideoListScreenState extends State<VideoListScreen>
                 // Header Row - more compact
                 Row(
                   children: [
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: isDark
-                          ? const LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFF2A2A2F),
-                                Color(0xFF1F1F24),
-                              ],
-                            )
-                          : null,
-                        color: isDark ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12),
-                        border: isDark ? Border.all(
-                          color: const Color(0xFF3A3A3F).withValues(alpha: 0.6),
-                          width: 0.5,
-                        ) : null,
-                        boxShadow: isDark ? [
-                          const BoxShadow(
-                            color: Color(0xFF000000),
-                            offset: Offset(0, 1),
-                            blurRadius: 3,
-                            spreadRadius: 0,
-                          ),
-                        ] : null,
+                    IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new,
+                        color: theme.colorScheme.primary,
+                        size: 20,
                       ),
-                      child: IconButton(
-                        icon: Icon(
-                          Icons.arrow_back_ios_new,
-                          color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
-                          size: 18,
-                        ),
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          context.pop();
-                        },
-                        padding: const EdgeInsets.all(8),
-                        constraints: const BoxConstraints(
-                          minWidth: 32,
-                          minHeight: 32,
-                        ),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.pop();
+                      },
+                      padding: const EdgeInsets.all(8),
+                      constraints: const BoxConstraints(
+                        minWidth: 36,
+                        minHeight: 36,
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -259,26 +231,20 @@ class _VideoListScreenState extends State<VideoListScreen>
             ),
             child: Row(
               children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-                    borderRadius: BorderRadius.circular(10),
+                IconButton(
+                  icon: Icon(
+                    Icons.arrow_back_ios_new,
+                    color: theme.colorScheme.primary,
+                    size: 20,
                   ),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.arrow_back_ios_new,
-                      color: theme.colorScheme.primary,
-                      size: 18,
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      context.pop();
-                    },
-                    padding: const EdgeInsets.all(8),
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.pop();
+                  },
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(
+                    minWidth: 36,
+                    minHeight: 36,
                   ),
                 ),
                 const SizedBox(width: 10),

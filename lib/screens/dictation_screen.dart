@@ -53,7 +53,6 @@ class _DictationScreenState extends State<DictationScreen>
   final Set<int> _revealedSentences = {};
   final Set<int> _playedSentences = {}; // 跟踪已经播放过的句子
   final Set<int> _completedSentences = {}; // 跟踪已经完成输入的句子
-  bool _isProgressExpanded = false;
 
   bool _isLoadingTranscript = true;
   bool _isCompleted = false;
@@ -1378,16 +1377,6 @@ class _DictationScreenState extends State<DictationScreen>
     });
   }
 
-  void _toggleProgressExpanded() {
-    setState(() {
-      _isProgressExpanded = !_isProgressExpanded;
-    });
-
-    // Hide keyboard when expanding progress
-    if (_isProgressExpanded) {
-      _textFocusNode.unfocus();
-    }
-  }
 
   void _showTranscriptErrorDialog(String message) {
     showDialog(
@@ -1600,8 +1589,6 @@ class _DictationScreenState extends State<DictationScreen>
               completion: _overallCompletion,
               accuracy: _overallAccuracy,
               timeSpent: _totalTime,
-              isExpanded: _isProgressExpanded,
-              onToggleExpanded: _toggleProgressExpanded,
             ),
 
             // Main content - optimized for mobile keyboard
@@ -1979,37 +1966,58 @@ class _DictationScreenState extends State<DictationScreen>
     final currentTranscript = _transcript[_currentSentenceIndex].transcript;
     final isRevealed = _revealedSentences.contains(_currentSentenceIndex);
     final comparison = _comparisonResults[_currentSentenceIndex];
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Card(
-      color: Theme.of(context).colorScheme.primaryContainer,
+      elevation: isDark ? 8 : 2,
+      color: isDark ? const Color(0xFF1C1C1E) : theme.colorScheme.primaryContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: isDark ? BorderSide(
+          color: const Color(0xFF3A3A3F).withValues(alpha: 0.3),
+          width: 0.5,
+        ) : BorderSide.none,
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(20.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Header with sentence info and toggle
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  AppLocalizations.of(
-                    context,
-                  )!.sentenceOf(_currentSentenceIndex + 1, _transcript.length),
-                  style: Theme.of(context).textTheme.labelMedium,
+                Expanded(
+                  child: Text(
+                    AppLocalizations.of(
+                      context,
+                    )!.sentenceOf(_currentSentenceIndex + 1, _transcript.length),
+                    style: theme.textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? const Color(0xFF9E9EA3) : theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
                 ),
+                // Simple toggle button with original green color
                 IconButton(
                   icon: Icon(
                     isRevealed ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
                   ),
                   onPressed: _toggleCurrentSentenceReveal,
-                  tooltip: isRevealed
-                      ? AppLocalizations.of(context)!.hideComparison
-                      : AppLocalizations.of(context)!.showComparison,
-                  iconSize: 20,
+                  color: const Color(0xFF4CAF50), // Original deep green color
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    elevation: 0,
+                    shadowColor: Colors.transparent,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-
+            const SizedBox(height: 16),
+            
+            // Comparison content with better styling
             if (comparison != null && !comparison.isEmpty) ...[
               SimpleComparisonWidget(
                 comparison: comparison,
@@ -2019,25 +2027,53 @@ class _DictationScreenState extends State<DictationScreen>
             ] else if (isRevealed) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
+                  gradient: isDark ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF2A2A2F), Color(0xFF25252A)],
+                  ) : null,
+                  color: isDark ? null : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: isDark ? Border.all(
+                    color: const Color(0xFF3A3A3F).withValues(alpha: 0.4),
+                    width: 0.5,
+                  ) : Border.all(
+                    color: theme.colorScheme.outline.withValues(alpha: 0.15),
+                    width: 1,
+                  ),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.text_snippet_outlined,
+                          size: 16,
+                          color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          AppLocalizations.of(context)!.original,
+                          style: theme.textTheme.labelMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
                     Text(
-                      AppLocalizations.of(context)!.original,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
+                      currentTranscript,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        height: 1.5,
+                        color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+                        fontSize: 15,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(currentTranscript),
                   ],
                 ),
               ),
