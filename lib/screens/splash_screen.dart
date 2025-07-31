@@ -42,45 +42,122 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF4CAF50), // Green
-              Color(0xFF66BB6A), // Light green
-              Color(0xFF81C784), // Soft green
-            ],
-            stops: [0.0, 0.5, 1.0],
-          ),
+        decoration: BoxDecoration(
+          gradient: isDark 
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF1A1A1D), // Darker at top
+                  Color(0xFF0A0A0B), // Darkest at bottom
+                ],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF4CAF50), // Green
+                  Color(0xFF66BB6A), // Light green
+                  Color(0xFF81C784), // Soft green
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
         ),
-        child: const Center(
+        child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // App icon
-              Icon(
-                Icons.audiotrack,
-                size: 80,
-                color: Colors.white,
-              ),
-              SizedBox(height: 24),
-              // App title
-              Text(
-                'Dictation Studio',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              // App icon with enhanced styling
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: isDark
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          Color(0xFF007AFF),
+                          Color(0xFF0056CC),
+                        ],
+                      )
+                    : null,
+                  color: isDark ? null : Colors.white.withValues(alpha: 0.2),
+                  boxShadow: isDark ? [
+                    const BoxShadow(
+                      color: Color(0xFF000000),
+                      blurRadius: 20,
+                      offset: Offset(0, 4),
+                      spreadRadius: 0,
+                    ),
+                  ] : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 20,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.audiotrack,
+                  size: 60,
                   color: Colors.white,
                 ),
               ),
-              SizedBox(height: 40),
-              // Loading indicator
-              CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                strokeWidth: 2,
+              const SizedBox(height: 32),
+              // App title with tech styling
+              Text(
+                'Dictation Studio',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? const Color(0xFFE8E8EA) : Colors.white,
+                  letterSpacing: -1.0,
+                  shadows: isDark ? [
+                    const Shadow(
+                      color: Color(0xFF000000),
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ] : [
+                    const Shadow(
+                      color: Colors.black26,
+                      offset: Offset(0, 2),
+                      blurRadius: 8,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 48),
+              // Loading indicator with tech styling
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isDark 
+                    ? const Color(0xFF1C1C1E).withValues(alpha: 0.8)
+                    : Colors.white.withValues(alpha: 0.2),
+                  border: Border.all(
+                    color: isDark 
+                      ? const Color(0xFF3A3A3F).withValues(alpha: 0.5)
+                      : Colors.white.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    isDark ? const Color(0xFF007AFF) : Colors.white,
+                  ),
+                  strokeWidth: 3,
+                  backgroundColor: isDark 
+                    ? const Color(0xFF3A3A3F).withValues(alpha: 0.3)
+                    : Colors.white.withValues(alpha: 0.3),
+                ),
               ),
             ],
           ),

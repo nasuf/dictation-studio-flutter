@@ -53,21 +53,29 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     if (_isSubmitting) {
       return Scaffold(
-        backgroundColor: theme.colorScheme.surface,
+        backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
         body: _buildUploadProgress(),
       );
     }
     
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Add Videos'),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
-        elevation: 1,
+        title: Text(
+          'Add Videos',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? const Color(0xFFE8E8EA) : null,
+            letterSpacing: -0.5,
+          ),
+        ),
+        backgroundColor: isDark ? const Color(0xFF1A1A1D) : theme.colorScheme.surface,
+        foregroundColor: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+        elevation: isDark ? 0 : 1,
         actions: [
           TextButton(
             onPressed: _canSubmit() ? _submitVideos : null,

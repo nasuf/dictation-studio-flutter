@@ -33,7 +33,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
       duration: const Duration(milliseconds: 600),
       vsync: this,
     );
-    
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!_hasInitialized) {
         _hasInitialized = true;
@@ -54,167 +54,236 @@ class _ChannelListScreenState extends State<ChannelListScreen>
   Widget build(BuildContext context) {
     AppLogger.info('ChannelListScreen build called');
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark
+          ? const Color(0xFF0A0A0B)
+          : theme.colorScheme.surface,
       body: Column(
         children: [
-          // Header section - extends into status bar area
+          // Header section - enhanced for dark mode
           Container(
-            padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 2, 12, 8),
-              decoration: BoxDecoration(
-                color: theme.colorScheme.primaryContainer, // Solid light green matching status bar
-                border: Border(
-                  bottom: BorderSide(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                    width: 1,
-                  ),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.of(context).padding.top + 4,
+              16,
+              12,
+            ),
+            decoration: BoxDecoration(
+              gradient: isDark
+                  ? const LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF1A1A1D), // Darker at top
+                        Color(0xFF16161A), // Slightly lighter at bottom
+                      ],
+                    )
+                  : LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        theme.colorScheme.primaryContainer,
+                        theme.colorScheme.primaryContainer.withValues(
+                          alpha: 0.8,
+                        ),
+                      ],
+                    ),
+              border: Border(
+                bottom: BorderSide(
+                  color: isDark
+                      ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
+                      : theme.colorScheme.outline.withValues(alpha: 0.1),
+                  width: 0.5,
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Title and Actions Row - more compact
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Dictation Studio',
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                              ),
-                            ),
-                            Consumer<ChannelProvider>(
-                              builder: (context, provider, child) {
-                                final totalChannels = provider.channels.length;
-                                return Text(
-                                  AppLocalizations.of(context)!.channelsCount(totalChannels),
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
+              boxShadow: isDark
+                  ? [
+                      const BoxShadow(
+                        color: Color(0xFF000000),
+                        offset: Offset(0, 2),
+                        blurRadius: 8,
+                        spreadRadius: 0,
                       ),
-                      _buildActionButtons(theme),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 8),
-                  
-                  // Search Bar
-                  _buildSearchBar(theme),
-                  
-                  // Language Filter (only show if selected)
-                  if (_selectedLanguage != AppConstants.languageAll) ...[
-                    const SizedBox(height: 6),
-                    _buildLanguageFilter(theme),
+                    ]
+                  : null,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Title and Actions Row - more compact
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Dictation Studio',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: isDark
+                                  ? const Color(0xFFE8E8EA)
+                                  : theme.colorScheme.onSurface,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          Consumer<ChannelProvider>(
+                            builder: (context, provider, child) {
+                              final totalChannels = provider.channels.length;
+                              return Text(
+                                AppLocalizations.of(
+                                  context,
+                                )!.channelsCount(totalChannels),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: isDark
+                                      ? const Color(0xFF9E9EA3)
+                                      : theme.colorScheme.onSurface.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    _buildActionButtons(theme),
                   ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Search Bar
+                _buildSearchBar(theme),
+
+                // Language Filter (only show if selected)
+                if (_selectedLanguage != AppConstants.languageAll) ...[
+                  const SizedBox(height: 6),
+                  _buildLanguageFilter(theme),
                 ],
-              ),
+              ],
             ),
-            
-            // Main Content - takes remaining space with SafeArea for bottom only
-            Expanded(
-              child: SafeArea(
-                top: false, // Don't add safe area at top since we handle it manually
-                child: _buildChannelContent(theme),
-              ),
+          ),
+
+          // Main Content - takes remaining space with SafeArea for bottom only
+          Expanded(
+            child: SafeArea(
+              top:
+                  false, // Don't add safe area at top since we handle it manually
+              child: _buildChannelContent(theme),
             ),
-          ],
-        ),
-      );
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildActionButtons(ThemeData theme) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(12),
+        IconButton(
+          icon: Icon(
+            Icons.language_outlined,
+            color: theme.colorScheme.primary,
+            size: 20,
           ),
-          child: IconButton(
-            icon: Icon(
-              Icons.language_outlined,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
-            onPressed: () => _showLanguageFilter(context),
-            tooltip: AppLocalizations.of(context)!.languageFilter,
-          ),
+          onPressed: () => _showLanguageFilter(context),
+          tooltip: AppLocalizations.of(context)!.languageFilter,
         ),
-        const SizedBox(width: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(12),
+        const SizedBox(width: 10),
+        IconButton(
+          icon: Icon(
+            Icons.refresh_outlined,
+            color: theme.colorScheme.primary,
+            size: 20,
           ),
-          child: IconButton(
-            icon: Icon(
-              Icons.refresh_outlined,
-              color: theme.colorScheme.primary,
-              size: 20,
-            ),
-            onPressed: () async {
-              setState(() {
-                _isRefreshing = true;
-              });
-              try {
-                await context.read<ChannelProvider>().fetchChannels(forceRefresh: true);
-              } finally {
-                if (mounted) {
-                  setState(() {
-                    _isRefreshing = false;
-                  });
-                }
+          onPressed: () async {
+            setState(() {
+              _isRefreshing = true;
+            });
+            try {
+              await context.read<ChannelProvider>().fetchChannels(
+                forceRefresh: true,
+              );
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isRefreshing = false;
+                });
               }
-              HapticFeedback.lightImpact();
-            },
-            tooltip: AppLocalizations.of(context)!.refresh,
-          ),
+            }
+            HapticFeedback.lightImpact();
+          },
+          tooltip: AppLocalizations.of(context)!.refresh,
         ),
       ],
     );
   }
 
   Widget _buildSearchBar(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return Container(
-      height: 36,
+      height: 38,
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(20),
+        gradient: isDark
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF2A2A2F), Color(0xFF1F1F24)],
+              )
+            : null,
+        color: isDark
+            ? null
+            : theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: theme.colorScheme.outline.withValues(alpha: 0.2),
-          width: 1,
+          color: isDark
+              ? const Color(0xFF3A3A3F).withValues(alpha: 0.8)
+              : theme.colorScheme.outline.withValues(alpha: 0.2),
+          width: 0.5,
         ),
+        boxShadow: isDark
+            ? [
+                const BoxShadow(
+                  color: Color(0xFF000000),
+                  offset: Offset(0, 1),
+                  blurRadius: 4,
+                  spreadRadius: 0,
+                ),
+              ]
+            : null,
       ),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
           hintText: AppLocalizations.of(context)!.searchChannels,
           hintStyle: TextStyle(
-            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+            color: isDark
+                ? const Color(0xFF8E8E93)
+                : theme.colorScheme.onSurface.withValues(alpha: 0.6),
             fontSize: 14,
+            fontWeight: FontWeight.w400,
           ),
           prefixIcon: Icon(
             Icons.search_outlined,
-            color: theme.colorScheme.primary.withValues(alpha: 0.7),
+            color: isDark
+                ? const Color(0xFF007AFF).withValues(alpha: 0.8)
+                : theme.colorScheme.primary.withValues(alpha: 0.7),
             size: 18,
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
                   icon: Icon(
                     Icons.clear,
-                    color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                    color: isDark
+                        ? const Color(0xFF8E8E93)
+                        : theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     size: 16,
                   ),
                   onPressed: () {
@@ -226,11 +295,15 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                 )
               : null,
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 10,
+          ),
         ),
         style: TextStyle(
-          color: theme.colorScheme.onSurface,
+          color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
           fontSize: 14,
+          fontWeight: FontWeight.w500,
         ),
         onChanged: (value) {
           setState(() {
@@ -272,7 +345,9 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                     setState(() {
                       _selectedLanguage = AppConstants.languageAll;
                     });
-                    context.read<ChannelProvider>().setLanguageFilter(AppConstants.languageAll);
+                    context.read<ChannelProvider>().setLanguageFilter(
+                      AppConstants.languageAll,
+                    );
                   },
                   child: Icon(
                     Icons.close,
@@ -291,7 +366,8 @@ class _ChannelListScreenState extends State<ChannelListScreen>
   Widget _buildChannelContent(ThemeData theme) {
     return Consumer<ChannelProvider>(
       builder: (context, channelProvider, child) {
-        if ((channelProvider.isLoading && channelProvider.channels.isEmpty) || _isRefreshing) {
+        if ((channelProvider.isLoading && channelProvider.channels.isEmpty) ||
+            _isRefreshing) {
           return _buildLoadingState(theme);
         }
 
@@ -319,9 +395,11 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         // Also ensure only public channels are shown (additional safety layer)
         final filteredChannels = channelProvider.channels.where((channel) {
           final isPublic = channel.visibility == AppConstants.visibilityPublic;
-          final matchesLanguage = _selectedLanguage == AppConstants.languageAll ||
+          final matchesLanguage =
+              _selectedLanguage == AppConstants.languageAll ||
               channel.language == _selectedLanguage;
-          final matchesSearch = _searchQuery.isEmpty ||
+          final matchesSearch =
+              _searchQuery.isEmpty ||
               channel.name.toLowerCase().contains(_searchQuery.toLowerCase());
           return isPublic && matchesLanguage && matchesSearch;
         }).toList();
@@ -329,7 +407,8 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         if (filteredChannels.isEmpty) {
           // If only search query is active, show "No results found"
           // If only language filter or both are active, show "No channels available"
-          if (_searchQuery.isNotEmpty && _selectedLanguage == AppConstants.languageAll) {
+          if (_searchQuery.isNotEmpty &&
+              _selectedLanguage == AppConstants.languageAll) {
             return _buildNoResultsState(theme);
           } else {
             return _buildEmptyState(theme);
@@ -343,7 +422,9 @@ class _ChannelListScreenState extends State<ChannelListScreen>
           },
           child: MasonryGridView.count(
             padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             crossAxisCount: 2,
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
@@ -362,19 +443,19 @@ class _ChannelListScreenState extends State<ChannelListScreen>
     return AnimatedBuilder(
       animation: _animationController,
       builder: (context, child) {
-        final animationValue = Tween<double>(
-          begin: 0.0,
-          end: 1.0,
-        ).animate(
-          CurvedAnimation(
-            parent: _animationController,
-            curve: Interval(
-              (index * 0.05).clamp(0.0, 0.8),
-              ((index * 0.05) + 0.2).clamp(0.2, 1.0),
-              curve: Curves.easeOut,
-            ),
-          ),
-        ).value.clamp(0.0, 1.0);
+        final animationValue = Tween<double>(begin: 0.0, end: 1.0)
+            .animate(
+              CurvedAnimation(
+                parent: _animationController,
+                curve: Interval(
+                  (index * 0.05).clamp(0.0, 0.8),
+                  ((index * 0.05) + 0.2).clamp(0.2, 1.0),
+                  curve: Curves.easeOut,
+                ),
+              ),
+            )
+            .value
+            .clamp(0.0, 1.0);
 
         return Transform.scale(
           scale: (animationValue * 0.2 + 0.8).clamp(0.8, 1.0),
@@ -390,18 +471,47 @@ class _ChannelListScreenState extends State<ChannelListScreen>
               },
               child: Container(
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.surface,
-                  borderRadius: BorderRadius.circular(16),
+                  gradient: theme.brightness == Brightness.dark
+                      ? const LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [Color(0xFF1C1C1E), Color(0xFF2C2C2E)],
+                        )
+                      : null,
+                  color: theme.brightness == Brightness.dark
+                      ? null
+                      : theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                    color: theme.brightness == Brightness.dark
+                        ? const Color(0xFF3A3A3F).withValues(alpha: 0.4)
+                        : theme.colorScheme.outline.withValues(alpha: 0.1),
+                    width: 0.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.colorScheme.shadow.withValues(alpha: 0.08),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
+                  boxShadow: theme.brightness == Brightness.dark
+                      ? [
+                          const BoxShadow(
+                            color: Color(0xFF000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 4),
+                            spreadRadius: 0,
+                          ),
+                          const BoxShadow(
+                            color: Color(0xFF000000),
+                            blurRadius: 4,
+                            offset: Offset(0, 1),
+                            spreadRadius: 0,
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: theme.colorScheme.shadow.withValues(
+                              alpha: 0.08,
+                            ),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -411,18 +521,26 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                       height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(18),
+                        ),
                         gradient: LinearGradient(
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                           colors: [
-                            _getLanguageColor(channel.language).withValues(alpha: 0.8),
-                            _getLanguageColor(channel.language).withValues(alpha: 0.6),
+                            _getLanguageColor(
+                              channel.language,
+                            ).withValues(alpha: 0.8),
+                            _getLanguageColor(
+                              channel.language,
+                            ).withValues(alpha: 0.6),
                           ],
                         ),
                       ),
                       child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(18),
+                        ),
                         child: Stack(
                           children: [
                             // Channel Image
@@ -433,13 +551,18 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                                 height: double.infinity,
                                 fit: BoxFit.cover,
                                 placeholder: (context, url) => Container(
-                                  color: _getLanguageColor(channel.language).withValues(alpha: 0.3),
+                                  color: _getLanguageColor(
+                                    channel.language,
+                                  ).withValues(alpha: 0.3),
                                 ),
-                                errorWidget: (context, error, stackTrace) => Container(
-                                  color: _getLanguageColor(channel.language).withValues(alpha: 0.3),
-                                ),
+                                errorWidget: (context, error, stackTrace) =>
+                                    Container(
+                                      color: _getLanguageColor(
+                                        channel.language,
+                                      ).withValues(alpha: 0.3),
+                                    ),
                               ),
-                            
+
                             // Gradient Overlay
                             Container(
                               decoration: BoxDecoration(
@@ -453,13 +576,16 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                                 ),
                               ),
                             ),
-                            
+
                             // Video Count Badge
                             Positioned(
                               top: 8,
                               right: 8,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.7),
                                   borderRadius: BorderRadius.circular(10),
@@ -474,13 +600,16 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                                 ),
                               ),
                             ),
-                            
+
                             // Language Badge
                             Positioned(
                               bottom: 8,
                               left: 8,
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
                                 decoration: BoxDecoration(
                                   color: _getLanguageColor(channel.language),
                                   borderRadius: BorderRadius.circular(10),
@@ -499,7 +628,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                         ),
                       ),
                     ),
-                    
+
                     // Channel Info
                     Padding(
                       padding: const EdgeInsets.all(12),
@@ -507,7 +636,9 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                         channel.name,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: theme.colorScheme.onSurface,
+                          color: theme.brightness == Brightness.dark
+                              ? const Color(0xFFE8E8EA)
+                              : theme.colorScheme.onSurface,
                           height: 1.2,
                         ),
                         maxLines: 2,
@@ -525,19 +656,24 @@ class _ChannelListScreenState extends State<ChannelListScreen>
   }
 
   Widget _buildLoadingState(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SpinKitPulse(
-            color: theme.colorScheme.primary,
+            color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
             size: 50,
           ),
           const SizedBox(height: 16),
           Text(
             AppLocalizations.of(context)!.loadingChannels,
             style: theme.textTheme.bodyLarge?.copyWith(
-              color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              color: isDark
+                  ? const Color(0xFF9E9EA3)
+                  : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -552,11 +688,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: theme.colorScheme.error,
-            ),
+            Icon(Icons.error_outline, size: 64, color: theme.colorScheme.error),
             const SizedBox(height: 16),
             Text(
               AppLocalizations.of(context)!.unableToLoadChannels,
@@ -650,7 +782,9 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                   _searchQuery = '';
                   _selectedLanguage = AppConstants.languageAll;
                 });
-                context.read<ChannelProvider>().setLanguageFilter(AppConstants.languageAll);
+                context.read<ChannelProvider>().setLanguageFilter(
+                  AppConstants.languageAll,
+                );
               },
               child: Text(AppLocalizations.of(context)!.clearFilters),
             ),
@@ -685,7 +819,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              
+
               Padding(
                 padding: const EdgeInsets.all(20),
                 child: Column(
@@ -698,7 +832,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
+
                     // All Languages option
                     _buildLanguageOption(
                       context,
@@ -708,7 +842,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                       Icons.all_inclusive,
                       theme.colorScheme.primary,
                     ),
-                    
+
                     // Language options
                     ...LanguageHelper.getSupportedLanguages().map(
                       (language) => _buildLanguageOption(
@@ -739,7 +873,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
     Color color,
   ) {
     final isSelected = _selectedLanguage == value;
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -755,7 +889,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -773,18 +907,14 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected 
-                        ? theme.colorScheme.primary 
+                    color: isSelected
+                        ? theme.colorScheme.primary
                         : theme.colorScheme.onSurface,
                   ),
                 ),
               ),
               if (isSelected)
-                Icon(
-                  Icons.check,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
+                Icon(Icons.check, color: theme.colorScheme.primary, size: 20),
             ],
           ),
         ),

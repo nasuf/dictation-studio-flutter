@@ -1463,24 +1463,33 @@ class _DictationScreenState extends State<DictationScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     if (_isLoadingTranscript) {
       return Scaffold(
-        appBar: AppBar(title: Text(widget.video.title)),
+        backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
+        appBar: AppBar(
+          title: Text(widget.video.title),
+          backgroundColor: isDark ? const Color(0xFF1A1A1D) : null,
+          foregroundColor: isDark ? const Color(0xFFE8E8EA) : null,
+        ),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SpinKitPulse(
-                color: Theme.of(context).colorScheme.primary,
+                color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
                 size: 50,
               ),
               const SizedBox(height: 16),
               Text(
                 AppLocalizations.of(context)!.loadingDictation,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.onSurface.withValues(alpha: 0.7),
+                style: theme.textTheme.bodyLarge?.copyWith(
+                  color: isDark 
+                    ? const Color(0xFF9E9EA3) 
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -1503,8 +1512,11 @@ class _DictationScreenState extends State<DictationScreen>
         }
       },
       child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
         appBar: AppBar(
           title: Text(widget.video.title),
+          backgroundColor: isDark ? const Color(0xFF1A1A1D) : null,
+          foregroundColor: isDark ? const Color(0xFFE8E8EA) : null,
           actions: [
             // YouTube login button (只在未登录时显示)
             if (!YouTubeLoginService.instance.isLoggedIn)

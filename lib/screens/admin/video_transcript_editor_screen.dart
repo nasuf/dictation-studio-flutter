@@ -572,32 +572,84 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
     );
   }
   
-  void _toggleRefinedStatus() {
-    // TODO: Implement API call to update refined status
-    setState(() {
-      _currentVideo = Video(
-        videoId: _currentVideo.videoId,
-        title: _currentVideo.title,
-        link: _currentVideo.link,
-        visibility: _currentVideo.visibility,
-        createdAt: _currentVideo.createdAt,
-        updatedAt: _currentVideo.updatedAt,
-        isRefined: !_currentVideo.isRefined,
-        refinedAt: _currentVideo.refinedAt,
-      );
-    });
+  void _toggleRefinedStatus() async {
+    final newRefinedStatus = !_currentVideo.isRefined;
     
-    // Show feedback
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          _currentVideo.isRefined 
-            ? 'Video marked as refined' 
-            : 'Video marked as not refined'
+    try {
+      // Show loading indicator
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                newRefinedStatus 
+                  ? 'Marking video as refined...' 
+                  : 'Marking video as unrefined...'
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 10),
         ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+      
+      // Call API to update refined status
+      await _apiService.markVideoRefined(
+        widget.channelId,
+        _currentVideo.videoId,
+        newRefinedStatus,
+      );
+      
+      // Clear loading indicator
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      // Update local state
+      setState(() {
+        _currentVideo = Video(
+          videoId: _currentVideo.videoId,
+          title: _currentVideo.title,
+          link: _currentVideo.link,
+          visibility: _currentVideo.visibility,
+          createdAt: _currentVideo.createdAt,
+          updatedAt: _currentVideo.updatedAt,
+          isRefined: newRefinedStatus,
+          refinedAt: _currentVideo.refinedAt,
+        );
+      });
+      
+      // Show success feedback
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _currentVideo.isRefined 
+              ? 'Video marked as refined' 
+              : 'Video marked as unrefined'
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+      
+    } catch (e) {
+      AppLogger.error('Error updating refined status: $e');
+      
+      // Clear loading indicator
+      ScaffoldMessenger.of(context).clearSnackBars();
+      
+      // Show error message
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update refined status: ${e.toString()}'),
+          backgroundColor: Theme.of(context).colorScheme.error,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _handleBackPress() {

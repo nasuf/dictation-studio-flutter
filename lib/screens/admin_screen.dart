@@ -30,12 +30,24 @@ class _AdminScreenState extends State<AdminScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
       appBar: AppBar(
-        title: const Text('Admin Panel'),
+        title: Text(
+          'Admin Panel',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? const Color(0xFFE8E8EA) : null,
+            letterSpacing: -0.5,
+          ),
+        ),
         centerTitle: true,
         automaticallyImplyLeading: false,
+        backgroundColor: isDark ? const Color(0xFF1A1A1D) : null,
+        foregroundColor: isDark ? const Color(0xFFE8E8EA) : null,
         actions: [
           // Refresh button
           Consumer<AdminProvider>(

@@ -82,7 +82,11 @@ class _MainScreenState extends State<MainScreen> {
           });
         }
 
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        
         return Scaffold(
+          backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
           body: PageView(
             controller: _pageController,
             onPageChanged: (index) {
@@ -106,9 +110,11 @@ class _MainScreenState extends State<MainScreen> {
               );
             },
             destinations: navDestinations,
-            elevation: 2,
-            shadowColor: Theme.of(context).colorScheme.shadow,
-            surfaceTintColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            elevation: isDark ? 0 : 2,
+            backgroundColor: isDark ? const Color(0xFF1C1C1E) : null,
+            shadowColor: isDark ? Colors.transparent : theme.colorScheme.shadow,
+            surfaceTintColor: isDark ? Colors.transparent : theme.colorScheme.surfaceContainerHighest,
+            indicatorColor: isDark ? const Color(0xFF007AFF).withValues(alpha: 0.2) : null,
           ),
         );
       },

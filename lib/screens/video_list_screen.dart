@@ -56,6 +56,7 @@ class _VideoListScreenState extends State<VideoListScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
@@ -65,27 +66,51 @@ class _VideoListScreenState extends State<VideoListScreen>
         }
 
         return Scaffold(
-          backgroundColor: theme.colorScheme.surface,
+          backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
           body: Column(
             children: [
-          // Header section - extends into status bar area
+          // Header section - enhanced for dark mode
           Container(
             padding: EdgeInsets.fromLTRB(
+              16,
+              MediaQuery.of(context).padding.top + 4,
+              16,
               12,
-              MediaQuery.of(context).padding.top + 2,
-              12,
-              8,
             ),
             decoration: BoxDecoration(
-              color: theme
-                  .colorScheme
-                  .primaryContainer, // Solid light green matching status bar
+              gradient: isDark 
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xFF1A1A1D),
+                      Color(0xFF16161A),
+                    ],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.primaryContainer,
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    ],
+                  ),
               border: Border(
                 bottom: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                  width: 1,
+                  color: isDark 
+                    ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
+                    : theme.colorScheme.outline.withValues(alpha: 0.1),
+                  width: 0.5,
                 ),
               ),
+              boxShadow: isDark ? [
+                const BoxShadow(
+                  color: Color(0xFF000000),
+                  offset: Offset(0, 2),
+                  blurRadius: 8,
+                  spreadRadius: 0,
+                ),
+              ] : null,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,15 +121,35 @@ class _VideoListScreenState extends State<VideoListScreen>
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primaryContainer.withValues(
-                          alpha: 0.7,
-                        ),
-                        borderRadius: BorderRadius.circular(10),
+                        gradient: isDark
+                          ? const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFF2A2A2F),
+                                Color(0xFF1F1F24),
+                              ],
+                            )
+                          : null,
+                        color: isDark ? null : theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12),
+                        border: isDark ? Border.all(
+                          color: const Color(0xFF3A3A3F).withValues(alpha: 0.6),
+                          width: 0.5,
+                        ) : null,
+                        boxShadow: isDark ? [
+                          const BoxShadow(
+                            color: Color(0xFF000000),
+                            offset: Offset(0, 1),
+                            blurRadius: 3,
+                            spreadRadius: 0,
+                          ),
+                        ] : null,
                       ),
                       child: IconButton(
                         icon: Icon(
                           Icons.arrow_back_ios_new,
-                          color: theme.colorScheme.primary,
+                          color: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
                           size: 18,
                         ),
                         onPressed: () {
@@ -126,8 +171,9 @@ class _VideoListScreenState extends State<VideoListScreen>
                           Text(
                             widget.channelName ?? AppLocalizations.of(context)!.videos,
                             style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: theme.colorScheme.onSurface,
+                              fontWeight: FontWeight.w700,
+                              color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+                              letterSpacing: -0.5,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -140,9 +186,10 @@ class _VideoListScreenState extends State<VideoListScreen>
                               return Text(
                                 AppLocalizations.of(context)!.videosCount(videos.length),
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: theme.colorScheme.onSurface.withValues(
-                                    alpha: 0.7,
-                                  ),
+                                  color: isDark 
+                                    ? const Color(0xFF9E9EA3) 
+                                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                  fontWeight: FontWeight.w500,
                                 ),
                               );
                             },
@@ -327,52 +374,40 @@ class _VideoListScreenState extends State<VideoListScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(10),
+        IconButton(
+          icon: Icon(
+            Icons.sort_outlined,
+            color: theme.colorScheme.primary,
+            size: 18,
           ),
-          child: IconButton(
-            icon: Icon(
-              Icons.sort_outlined,
-              color: theme.colorScheme.primary,
-              size: 18,
-            ),
-            onPressed: () => _showSortOptions(context),
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-          ),
+          onPressed: () => _showSortOptions(context),
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
         ),
         const SizedBox(width: 6),
-        Container(
-          decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-            borderRadius: BorderRadius.circular(10),
+        IconButton(
+          icon: Icon(
+            Icons.refresh_outlined,
+            color: theme.colorScheme.primary,
+            size: 18,
           ),
-          child: IconButton(
-            icon: Icon(
-              Icons.refresh_outlined,
-              color: theme.colorScheme.primary,
-              size: 18,
-            ),
-            onPressed: () async {
-              setState(() {
-                _isRefreshing = true;
-              });
-              try {
-                await context.read<VideoProvider>().fetchVideos(widget.channelId);
-              } finally {
-                if (mounted) {
-                  setState(() {
-                    _isRefreshing = false;
-                  });
-                }
+          onPressed: () async {
+            setState(() {
+              _isRefreshing = true;
+            });
+            try {
+              await context.read<VideoProvider>().fetchVideos(widget.channelId);
+            } finally {
+              if (mounted) {
+                setState(() {
+                  _isRefreshing = false;
+                });
               }
-              HapticFeedback.lightImpact();
-            },
-            padding: const EdgeInsets.all(6),
-            constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-          ),
+            }
+            HapticFeedback.lightImpact();
+          },
+          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
         ),
       ],
     );

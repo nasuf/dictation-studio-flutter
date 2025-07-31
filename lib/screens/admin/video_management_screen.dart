@@ -399,18 +399,30 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
       appBar: AppBar(
-        title: const Text('Video Management'),
-        backgroundColor: theme.colorScheme.surface,
-        foregroundColor: theme.colorScheme.onSurface,
-        elevation: 1,
+        title: Text(
+          'Video Management',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: isDark ? const Color(0xFFE8E8EA) : null,
+            letterSpacing: -0.5,
+          ),
+        ),
+        backgroundColor: isDark ? const Color(0xFF1A1A1D) : theme.colorScheme.surface,
+        foregroundColor: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+        elevation: isDark ? 0 : 1,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: theme.colorScheme.primary,
-          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-          indicatorColor: theme.colorScheme.primary,
+          labelColor: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
+          unselectedLabelColor: isDark 
+            ? const Color(0xFF8E8E93)
+            : theme.colorScheme.onSurfaceVariant,
+          indicatorColor: isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
+          dividerColor: isDark ? const Color(0xFF3A3A3F).withValues(alpha: 0.3) : null,
           tabs: const [
             Tab(text: 'Videos', icon: Icon(Icons.video_library)),
             Tab(text: 'Analytics', icon: Icon(Icons.analytics)),

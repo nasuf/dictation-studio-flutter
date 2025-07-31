@@ -138,9 +138,10 @@ class _ProfileScreenState extends State<ProfileScreen>
     super.build(context); // Required for AutomaticKeepAliveClientMixin
     AppLogger.info('ProfileScreen build called');
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           AppLogger.info(
@@ -188,20 +189,47 @@ class _ProfileScreenState extends State<ProfileScreen>
     AuthProvider authProvider,
   ) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Column(
       children: [
         // Header section matching channel_list_screen design
         Container(
-          padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 4, 12, 12),
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 4, 16, 12),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
+            gradient: isDark 
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF1A1A1D),
+                    Color(0xFF16161A),
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                  ],
+                ),
             border: Border(
               bottom: BorderSide(
-                color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                width: 1,
+                color: isDark 
+                  ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
+                  : theme.colorScheme.outline.withValues(alpha: 0.1),
+                width: 0.5,
               ),
             ),
+            boxShadow: isDark ? [
+              const BoxShadow(
+                color: Color(0xFF000000),
+                offset: Offset(0, 2),
+                blurRadius: 8,
+                spreadRadius: 0,
+              ),
+            ] : null,
           ),
           child: Row(
             children: [
@@ -212,14 +240,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                     Text(
                       AppLocalizations.of(context)!.profile,
                       style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                        color: theme.colorScheme.onSurface,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+                        letterSpacing: -0.5,
                       ),
                     ),
                     Text(
                       AppLocalizations.of(context)!.signInToAccess,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: isDark 
+                          ? const Color(0xFF9E9EA3) 
+                          : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ],
@@ -300,20 +332,47 @@ class _ProfileScreenState extends State<ProfileScreen>
   ) {
     AppLogger.info('Building user profile view for user: ${user.username}');
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     return Column(
       children: [
         // Header section matching channel_list_screen design
         Container(
-          padding: EdgeInsets.fromLTRB(12, MediaQuery.of(context).padding.top + 4, 12, 20),
+          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 4, 16, 20),
           decoration: BoxDecoration(
-            color: theme.colorScheme.primaryContainer,
+            gradient: isDark 
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0xFF1A1A1D),
+                    Color(0xFF16161A),
+                  ],
+                )
+              : LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    theme.colorScheme.primaryContainer,
+                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                  ],
+                ),
             border: Border(
               bottom: BorderSide(
-                color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                width: 1,
+                color: isDark 
+                  ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
+                  : theme.colorScheme.outline.withValues(alpha: 0.1),
+                width: 0.5,
               ),
             ),
+            boxShadow: isDark ? [
+              const BoxShadow(
+                color: Color(0xFF000000),
+                offset: Offset(0, 2),
+                blurRadius: 8,
+                spreadRadius: 0,
+              ),
+            ] : null,
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

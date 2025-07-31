@@ -40,16 +40,51 @@ class _AppEntryScreenState extends State<AppEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     // Show loading indicator while checking onboarding status
-    return const Scaffold(
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text('Loading...'),
-          ],
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: isDark 
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF1A1A1D), // Darker at top
+                  Color(0xFF0A0A0B), // Darkest at bottom
+                ],
+              )
+            : null,
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isDark ? const Color(0xFF007AFF) : theme.colorScheme.primary,
+                ),
+                strokeWidth: 3,
+                backgroundColor: isDark 
+                  ? const Color(0xFF3A3A3F).withValues(alpha: 0.3)
+                  : null,
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Loading...',
+                style: TextStyle(
+                  color: isDark 
+                    ? const Color(0xFF9E9EA3) 
+                    : theme.colorScheme.onSurface,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

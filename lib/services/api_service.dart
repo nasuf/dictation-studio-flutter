@@ -1033,6 +1033,30 @@ class ApiService {
       rethrow;
     }
   }
+
+  // Mark video as refined/unrefined
+  Future<Map<String, dynamic>> markVideoRefined(
+    String channelId,
+    String videoId,
+    bool isRefined,
+  ) async {
+    try {
+      AppLogger.info(
+        'Marking video as ${isRefined ? 'refined' : 'unrefined'}: $channelId/$videoId',
+      );
+      
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/$channelId/$videoId/mark-refined',
+        (data) => data as Map<String, dynamic>,
+        method: 'POST',
+        body: {'is_refined': isRefined},
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Mark video refined API error: $e');
+      rethrow;
+    }
+  }
 }
 
 // Singleton instance

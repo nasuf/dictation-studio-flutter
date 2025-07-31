@@ -50,20 +50,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF4CAF50), // Green
-              Color(0xFF66BB6A), // Light green
-              Color(0xFF81C784), // Soft green
-            ],
-            stops: [0.0, 0.5, 1.0],
-          ),
+        decoration: BoxDecoration(
+          gradient: isDark 
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color(0xFF1A1A1D), // Darker at top
+                  Color(0xFF0A0A0B), // Darkest at bottom
+                ],
+              )
+            : const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color(0xFF4CAF50), // Green
+                  Color(0xFF66BB6A), // Light green
+                  Color(0xFF81C784), // Soft green
+                ],
+                stops: [0.0, 0.5, 1.0],
+              ),
         ),
         child: SafeArea(
           child: Column(
@@ -192,16 +202,30 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildLanguageSelector(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Consumer<LocaleProvider>(
       builder: (context, localeProvider, child) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: isDark 
+              ? const Color(0xFF1C1C1E).withValues(alpha: 0.8)
+              : Colors.white.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: isDark 
+                ? const Color(0xFF3A3A3F).withValues(alpha: 0.5)
+                : Colors.white.withValues(alpha: 0.3),
             ),
+            boxShadow: isDark ? [
+              const BoxShadow(
+                color: Color(0xFF000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+                spreadRadius: 0,
+              ),
+            ] : null,
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -211,18 +235,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 color: Colors.white,
                 size: 20,
               ),
-              dropdownColor: Colors.white,
-              style: const TextStyle(
-                color: Colors.white,
+              dropdownColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+              style: TextStyle(
+                color: isDark ? const Color(0xFFE8E8EA) : Colors.white,
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
               ),
-              items: const [
-                DropdownMenuItem(value: 'en', child: Text('English', style: TextStyle(color: Colors.black87))),
-                DropdownMenuItem(value: 'zh', child: Text('简体中文', style: TextStyle(color: Colors.black87))),
-                DropdownMenuItem(value: 'zh_TW', child: Text('繁體中文', style: TextStyle(color: Colors.black87))),
-                DropdownMenuItem(value: 'ja', child: Text('日本語', style: TextStyle(color: Colors.black87))),
-                DropdownMenuItem(value: 'ko', child: Text('한국어', style: TextStyle(color: Colors.black87))),
+              items: [
+                DropdownMenuItem(value: 'en', child: Text('English', style: TextStyle(color: isDark ? const Color(0xFFE8E8EA) : Colors.black87))),
+                DropdownMenuItem(value: 'zh', child: Text('简体中文', style: TextStyle(color: isDark ? const Color(0xFFE8E8EA) : Colors.black87))),
+                DropdownMenuItem(value: 'zh_TW', child: Text('繁體中文', style: TextStyle(color: isDark ? const Color(0xFFE8E8EA) : Colors.black87))),
+                DropdownMenuItem(value: 'ja', child: Text('日本語', style: TextStyle(color: isDark ? const Color(0xFFE8E8EA) : Colors.black87))),
+                DropdownMenuItem(value: 'ko', child: Text('한국어', style: TextStyle(color: isDark ? const Color(0xFFE8E8EA) : Colors.black87))),
               ],
               onChanged: (String? newValue) {
                 if (newValue != null) {
@@ -237,22 +261,44 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildWelcomePage(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.all(32.0),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // App icon
+          // App icon with enhanced styling
           Container(
             width: 120,
             height: 120,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              gradient: isDark
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF007AFF),
+                      Color(0xFF0056CC),
+                    ],
+                  )
+                : null,
+              color: isDark ? null : Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
+                color: isDark 
+                  ? const Color(0xFF3A3A3F).withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.3),
                 width: 2,
               ),
+              boxShadow: isDark ? [
+                const BoxShadow(
+                  color: Color(0xFF000000),
+                  blurRadius: 20,
+                  offset: Offset(0, 4),
+                  spreadRadius: 0,
+                ),
+              ] : null,
             ),
             child: const Icon(
               Icons.audiotrack,
@@ -263,13 +309,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           
           const SizedBox(height: 40),
           
-          // App title
-          const Text(
+          // App title with enhanced styling
+          Text(
             'Dictation Studio',
             style: TextStyle(
               fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              color: isDark ? const Color(0xFFE8E8EA) : Colors.white,
+              letterSpacing: -1.0,
+              shadows: isDark ? [
+                const Shadow(
+                  color: Color(0xFF000000),
+                  offset: Offset(0, 2),
+                  blurRadius: 4,
+                ),
+              ] : [
+                const Shadow(
+                  color: Colors.black26,
+                  offset: Offset(0, 2),
+                  blurRadius: 8,
+                ),
+              ],
             ),
             textAlign: TextAlign.center,
           ),
@@ -281,7 +341,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             AppLocalizations.of(context)!.welcomeMessage,
             style: TextStyle(
               fontSize: 20,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: isDark 
+                ? const Color(0xFF9E9EA3)
+                : Colors.white.withValues(alpha: 0.9),
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
@@ -294,7 +356,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             AppLocalizations.of(context)!.appDescription,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.white.withValues(alpha: 0.8),
+              color: isDark 
+                ? const Color(0xFF8E8E93)
+                : Colors.white.withValues(alpha: 0.8),
               height: 1.5,
             ),
             textAlign: TextAlign.center,

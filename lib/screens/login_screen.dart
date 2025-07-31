@@ -268,13 +268,26 @@ class _LoginScreenState extends State<LoginScreen>
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: isDark ? const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)], // Light green gradient
+            colors: [
+              Color(0xFF1A1A1D),
+              Color(0xFF0A0A0B),
+            ],
+          ),
+        ) : const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
           ),
         ),
         child: SafeArea(
