@@ -27,29 +27,46 @@ class _SplashScreenState extends State<SplashScreen> {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      // Wait a bit more to allow any ongoing auth operations to complete
-      await Future.delayed(const Duration(milliseconds: 500));
+      print('🔍 [SplashScreen] Starting auth check...');
+      print('🔍 [SplashScreen] Manually initializing AuthProvider...');
+      
+      // Manually initialize AuthProvider and wait for completion
+      await authProvider.initialize();
+      
+      print('🔍 [SplashScreen] AuthProvider initialization completed');
+      print('🔍 [SplashScreen] authProvider.isLoading: ${authProvider.isLoading}');
+      print('🔍 [SplashScreen] authProvider.isLoggedIn: ${authProvider.isLoggedIn}');
+      print('🔍 [SplashScreen] authProvider.currentUser: ${authProvider.currentUser?.email ?? 'null'}');
       
       if (!mounted) return;
       
       // Check if user is currently logged in
       if (authProvider.isLoggedIn) {
+        print('✅ [SplashScreen] User is logged in, navigating to /main');
         // User is logged in, go to main screen
         context.go('/main');
         return;
       }
       
+      print('❌ [SplashScreen] User is not logged in, checking onboarding status...');
+      
       // User is not logged in, check onboarding status
       final isOnboardingCompleted = await OnboardingService.isOnboardingCompleted();
+      print('🔍 [SplashScreen] Onboarding completed: $isOnboardingCompleted');
       
       if (!mounted) return;
 
       if (isOnboardingCompleted) {
-        context.go('/main');
+        print('➡️ [SplashScreen] Navigating to /login (onboarding completed, user not logged in)');
+        // User has seen onboarding but is not logged in, go to login
+        context.go('/login');
       } else {
+        print('➡️ [SplashScreen] Navigating to /onboarding (first time user)');
+        // First time user, show onboarding
         context.go('/onboarding');
       }
     } catch (e) {
+      print('❌ [SplashScreen] Error during navigation check: $e');
       // If there's an error, default to onboarding
       if (mounted) {
         context.go('/onboarding');

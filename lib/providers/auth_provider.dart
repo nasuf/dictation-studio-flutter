@@ -15,6 +15,7 @@ class AuthProvider extends ChangeNotifier {
   models.User? _currentUser;
   bool _isLoading = false;
   String? _error;
+  bool _isInitialized = false;
 
   // Getters
   models.User? get currentUser => _currentUser;
@@ -24,32 +25,80 @@ class AuthProvider extends ChangeNotifier {
 
   // Initialize authentication state
   Future<void> initialize() async {
+    // Prevent multiple initializations
+    if (_isInitialized) {
+      print('⚠️ [AuthProvider] Already initialized, skipping...');
+      return;
+    }
+    
     _setLoading(true);
     try {
       AppLogger.info('🔄 Starting AuthProvider initialization...');
+      print('🔄 [AuthProvider] Starting AuthProvider initialization...');
       
       // Check if user is already logged in
       final session = _supabase.auth.currentSession;
+      print('🔍 [AuthProvider] Supabase session check: ${session?.user?.email ?? 'null'}');
+      print('🔍 [AuthProvider] Session expires at: ${session?.expiresAt}');
+      print('🔍 [AuthProvider] Current time: ${DateTime.now().millisecondsSinceEpoch ~/ 1000}');
+      
       if (session?.user != null) {
-        AppLogger.info('👤 Found existing Supabase session, loading user...');
-        await _loadUserFromSession(session!.user);
+        // Check if session is still valid
+        final isSessionValid = session!.expiresAt != null && 
+            DateTime.now().millisecondsSinceEpoch < session.expiresAt! * 1000;
+        
+        print('🔍 [AuthProvider] Session valid: $isSessionValid');
+        
+        if (isSessionValid) {
+          AppLogger.info('👤 Found valid Supabase session, loading user...');
+          print('👤 [AuthProvider] Found valid Supabase session, loading user...');
+          await _loadUserFromSession(session.user);
+        } else {
+          AppLogger.info('⚠️ Supabase session expired, trying to refresh...');
+          print('⚠️ [AuthProvider] Supabase session expired, trying to refresh...');
+          
+          try {
+            // Try to refresh the session
+            final refreshResult = await _supabase.auth.refreshSession();
+            if (refreshResult.session?.user != null) {
+              AppLogger.info('✅ Session refreshed successfully');
+              print('✅ [AuthProvider] Session refreshed successfully');
+              await _loadUserFromSession(refreshResult.session!.user);
+            } else {
+              AppLogger.info('❌ Session refresh failed, checking cached data...');
+              print('❌ [AuthProvider] Session refresh failed, checking cached data...');
+              await _loadCachedUserData();
+            }
+          } catch (e) {
+            AppLogger.warning('⚠️ Session refresh error: $e, checking cached data...');
+            print('⚠️ [AuthProvider] Session refresh error: $e, checking cached data...');
+            await _loadCachedUserData();
+          }
+        }
       } else {
-        // Try to load cached user data
+        AppLogger.info('❌ No Supabase session found, checking cached data...');
+        print('❌ [AuthProvider] No Supabase session found, checking cached data...');
+        // Only load cached data if no session exists at all
         await _loadCachedUserData();
       }
+
+      print('🔍 [AuthProvider] After initialization - isLoggedIn: $isLoggedIn, currentUser: ${_currentUser?.email ?? 'null'}');
 
       // Listen to auth state changes
       _supabase.auth.onAuthStateChange.listen((AuthState state) {
         AppLogger.info('🔄 Auth state changed: ${state.event}');
+        print('🔄 [AuthProvider] Auth state changed: ${state.event}');
         switch (state.event) {
           case AuthChangeEvent.signedIn:
             if (state.session?.user != null) {
               AppLogger.info('✅ User signed in successfully');
+              print('✅ [AuthProvider] User signed in successfully');
               _loadUserFromSession(state.session!.user);
             }
             break;
           case AuthChangeEvent.signedOut:
             AppLogger.info('🚪 User signed out');
+            print('🚪 [AuthProvider] User signed out');
             _currentUser = null;
             _clearUserFromPrefs();
             notifyListeners();
@@ -59,28 +108,50 @@ class AuthProvider extends ChangeNotifier {
         }
       });
       
+      _isInitialized = true;
       AppLogger.info('✅ AuthProvider initialization completed');
+      print('✅ [AuthProvider] AuthProvider initialization completed');
     } catch (e) {
       AppLogger.error('❌ AuthProvider initialize error: $e');
+      print('❌ [AuthProvider] AuthProvider initialize error: $e');
       _setError('Failed to initialize authentication: ${e.toString()}');
     } finally {
       _setLoading(false);
+      print('🏁 [AuthProvider] Loading set to false');
     }
   }
 
-  // Load cached user data as fallback
+  // Load cached user data as fallback (but don't consider user as logged in without valid session)
   Future<void> _loadCachedUserData() async {
     try {
+      print('🔍 [AuthProvider] Attempting to load cached user data...');
       final prefs = await SharedPreferences.getInstance();
       final userJsonString = prefs.getString('current_user');
+      print('🔍 [AuthProvider] Cached user data: ${userJsonString != null ? 'found' : 'not found'}');
       if (userJsonString != null) {
         final userJson = jsonDecode(userJsonString) as Map<String, dynamic>;
-        _currentUser = models.User.fromJson(userJson);
-        notifyListeners();
-        AppLogger.info('✅ Loaded cached user data: ${_currentUser!.username}');
+        
+        // Don't set _currentUser directly - we need to verify the session first
+        // Instead, we'll try to restore the session with cached data
+        print('🔍 [AuthProvider] Found cached user: ${userJson['email']}');
+        
+        // Since we have cached user data but no valid session, the user is not logged in
+        // We should clear the cached data to force re-login
+        print('⚠️ [AuthProvider] Cached user data found but no valid session - clearing cache');
+        await _clearUserFromPrefs();
+        _currentUser = null;
+        
+        AppLogger.info('⚠️ Cached user data cleared due to invalid session');
+      } else {
+        print('❌ [AuthProvider] No cached user data found');
+        _currentUser = null;
       }
+      notifyListeners();
     } catch (e) {
       AppLogger.error('❌ Failed to load cached user data: $e');
+      print('❌ [AuthProvider] Failed to load cached user data: $e');
+      _currentUser = null;
+      notifyListeners();
     }
   }
 

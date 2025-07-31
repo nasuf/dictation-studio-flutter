@@ -138,8 +138,7 @@ class _DictationStudioAppState extends State<DictationStudioApp> {
           create: (_) {
             AppLogger.info('🔐 Creating AuthProvider...');
             final authProvider = AuthProvider();
-            // Initialize auth provider asynchronously to avoid blocking
-            Future.microtask(() => authProvider.initialize());
+            // Don't initialize asynchronously - let SplashScreen handle the timing
             return authProvider;
           },
         ),
