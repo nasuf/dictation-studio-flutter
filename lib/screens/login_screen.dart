@@ -61,10 +61,16 @@ class _LoginScreenState extends State<LoginScreen>
     _nameController.dispose();
     _confirmPasswordController.dispose();
 
-    // Remove auth state listener if it exists
-    if (_authStateListener != null) {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      authProvider.removeListener(_authStateListener!);
+    // Remove auth state listener if it exists - safely handle potential context issues
+    if (_authStateListener != null && mounted) {
+      try {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        authProvider.removeListener(_authStateListener!);
+      } catch (e) {
+        // Context might be null or provider might not be available during dispose
+        // This is safe to ignore as the listener will be removed when the provider is disposed
+      }
+      _authStateListener = null;
     }
 
     super.dispose();
@@ -107,7 +113,8 @@ class _LoginScreenState extends State<LoginScreen>
       if (success && mounted) {
         // Mark onboarding as completed when user successfully logs in
         await OnboardingService.completeOnboarding();
-        context.go('/main'); // Navigate to main screen
+        // Navigate to splash screen, let it handle the proper routing
+        context.go('/');
       }
     }
 
@@ -164,8 +171,8 @@ class _LoginScreenState extends State<LoginScreen>
       if (authProvider.isLoggedIn && mounted) {
         // Mark onboarding as completed when user successfully logs in via Google
         await OnboardingService.completeOnboarding();
-        // User is now logged in, navigate to main screen
-        context.go('/main');
+        // Navigate to splash screen, let it handle the proper routing
+        context.go('/');
         // Remove the listener after use
         authProvider.removeListener(_authStateListener!);
         _authStateListener = null;

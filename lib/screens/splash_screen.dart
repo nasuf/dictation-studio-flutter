@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../services/onboarding_service.dart';
+import '../providers/auth_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -23,6 +25,21 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      
+      // Wait a bit more to allow any ongoing auth operations to complete
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (!mounted) return;
+      
+      // Check if user is currently logged in
+      if (authProvider.isLoggedIn) {
+        // User is logged in, go to main screen
+        context.go('/main');
+        return;
+      }
+      
+      // User is not logged in, check onboarding status
       final isOnboardingCompleted = await OnboardingService.isOnboardingCompleted();
       
       if (!mounted) return;
