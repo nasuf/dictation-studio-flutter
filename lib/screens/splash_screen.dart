@@ -231,39 +231,44 @@ class _SplashScreenState extends State<SplashScreen>
               Container(
                 height: 50,
                 alignment: Alignment.center,
-                child: RichText(
-                  text: TextSpan(
-                    children: [
-                      TextSpan(
-                        text: _displayedText,
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.w700,
-                          color: isDark
-                              ? const Color(0xFFE8E8EA)
-                              : Colors.white,
-                          letterSpacing: -1.0,
-                          shadows: isDark
-                              ? [
-                                  const Shadow(
-                                    color: Color(0xFF000000),
-                                    offset: Offset(0, 2),
-                                    blurRadius: 4,
-                                  ),
-                                ]
-                              : [
-                                  const Shadow(
-                                    color: Colors.black26,
-                                    offset: Offset(0, 2),
-                                    blurRadius: 8,
-                                  ),
-                                ],
-                        ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Text part
+                    Text(
+                      _displayedText,
+                      style: TextStyle(
+                        fontSize: 32,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? const Color(0xFFE8E8EA)
+                            : Colors.white,
+                        letterSpacing: -1.0,
+                        shadows: isDark
+                            ? [
+                                const Shadow(
+                                  color: Color(0xFF000000),
+                                  offset: Offset(0, 2),
+                                  blurRadius: 4,
+                                ),
+                              ]
+                            : [
+                                const Shadow(
+                                  color: Colors.black26,
+                                  offset: Offset(0, 2),
+                                  blurRadius: 8,
+                                ),
+                              ],
                       ),
-                      // Cursor
-                      if (_showCursor)
-                        TextSpan(
-                          text: '|',
+                    ),
+                    // Fixed-width cursor container
+                    SizedBox(
+                      width: 8, // Fixed width for cursor space
+                      child: AnimatedOpacity(
+                        opacity: _showCursor ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 50),
+                        child: Text(
+                          '|',
                           style: TextStyle(
                             fontSize: 32,
                             color: isDark
@@ -272,8 +277,9 @@ class _SplashScreenState extends State<SplashScreen>
                             fontWeight: FontWeight.w300,
                           ),
                         ),
-                    ],
-                  ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 48),
