@@ -45,7 +45,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   final _formKey = GlobalKey<FormState>();
   final ApiService _apiService = ApiService();
   
-  List<VideoEntry> _videoEntries = [VideoEntry()];
+  final List<VideoEntry> _videoEntries = [VideoEntry()];
   bool _isSubmitting = false;
   double _uploadProgress = 0.0;
   String? _uploadStatus;

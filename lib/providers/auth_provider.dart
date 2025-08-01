@@ -38,7 +38,7 @@ class AuthProvider extends ChangeNotifier {
       
       // Check if user is already logged in
       final session = _supabase.auth.currentSession;
-      print('🔍 [AuthProvider] Supabase session check: ${session?.user?.email ?? 'null'}');
+      print('🔍 [AuthProvider] Supabase session check: ${session?.user.email ?? 'null'}');
       print('🔍 [AuthProvider] Session expires at: ${session?.expiresAt}');
       print('🔍 [AuthProvider] Current time: ${DateTime.now().millisecondsSinceEpoch ~/ 1000}');
       

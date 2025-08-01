@@ -1089,7 +1089,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceVariant,
+                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),

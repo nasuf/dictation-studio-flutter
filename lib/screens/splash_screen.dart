@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/onboarding_service.dart';
 import '../providers/auth_provider.dart';
 
@@ -11,16 +12,88 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with TickerProviderStateMixin {
+  late AnimationController _typewriterController;
+  late AnimationController _logoController;
+  String _displayedText = '';
+  final String _fullText = 'Dictation Studio';
+  bool _showCursor = true;
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _typewriterController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
+
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _startAnimations();
     _checkAndNavigate();
   }
 
+  void _startAnimations() async {
+    // Start logo animation
+    _logoController.forward();
+
+    // Wait a bit then start typewriter effect
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    if (mounted) {
+      _startTypewriterEffect();
+      _startCursorBlink();
+    }
+  }
+
+  void _startTypewriterEffect() {
+    int currentIndex = 0;
+
+    void typeNextCharacter() {
+      if (currentIndex <= _fullText.length && mounted) {
+        setState(() {
+          _displayedText = _fullText.substring(0, currentIndex);
+        });
+        currentIndex++;
+
+        if (currentIndex <= _fullText.length) {
+          Future.delayed(const Duration(milliseconds: 100), typeNextCharacter);
+        }
+      }
+    }
+
+    typeNextCharacter();
+  }
+
+  void _startCursorBlink() {
+    void blink() {
+      if (mounted) {
+        setState(() {
+          _showCursor = !_showCursor;
+        });
+        Future.delayed(const Duration(milliseconds: 500), blink);
+      }
+    }
+
+    blink();
+  }
+
+  @override
+  void dispose() {
+    _typewriterController.dispose();
+    _logoController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkAndNavigate() async {
-    // Add a minimum splash time for better UX
-    await Future.delayed(const Duration(milliseconds: 1500));
+    // Add a minimum splash time for better UX and animations
+    await Future.delayed(const Duration(milliseconds: 3000));
     
     if (!mounted) return;
 
@@ -106,97 +179,138 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // App icon with enhanced styling
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: isDark
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Color(0xFF007AFF),
-                          Color(0xFF0056CC),
-                        ],
-                      )
-                    : null,
-                  color: isDark ? null : Colors.white.withValues(alpha: 0.2),
-                  boxShadow: isDark ? [
-                    const BoxShadow(
-                      color: Color(0xFF000000),
-                      blurRadius: 20,
-                      offset: Offset(0, 4),
-                      spreadRadius: 0,
+              // Animated Dictation Logo
+              AnimatedBuilder(
+                animation: _logoController,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: Tween<double>(begin: 0.0, end: 1.0)
+                        .animate(
+                          CurvedAnimation(
+                            parent: _logoController,
+                            curve: Curves.elasticOut,
+                          ),
+                        )
+                        .value,
+                    child: Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: isDark
+                            ? const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF007AFF), Color(0xFF0056CC)],
+                              )
+                            : null,
+                        color: isDark ? null : Colors.white.withOpacity(0.2),
+                        boxShadow: isDark
+                            ? [
+                                const BoxShadow(
+                                  color: Color(0xFF000000),
+                                  blurRadius: 20,
+                                  offset: Offset(0, 4),
+                                  spreadRadius: 0,
+                                ),
+                              ]
+                            : [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                      ),
+                      child: _buildDictationLogo(isDark),
                     ),
-                  ] : [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.audiotrack,
-                  size: 60,
-                  color: Colors.white,
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 32),
-              // App title with tech styling
-              Text(
-                'Dictation Studio',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? const Color(0xFFE8E8EA) : Colors.white,
-                  letterSpacing: -1.0,
-                  shadows: isDark ? [
-                    const Shadow(
-                      color: Color(0xFF000000),
-                      offset: Offset(0, 2),
-                      blurRadius: 4,
-                    ),
-                  ] : [
-                    const Shadow(
-                      color: Colors.black26,
-                      offset: Offset(0, 2),
-                      blurRadius: 8,
-                    ),
-                  ],
+              // Typewriter App Name
+              Container(
+                height: 50,
+                alignment: Alignment.center,
+                child: RichText(
+                  text: TextSpan(
+                    children: [
+                      TextSpan(
+                        text: _displayedText,
+                        style: TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? const Color(0xFFE8E8EA)
+                              : Colors.white,
+                          letterSpacing: -1.0,
+                          shadows: isDark
+                              ? [
+                                  const Shadow(
+                                    color: Color(0xFF000000),
+                                    offset: Offset(0, 2),
+                                    blurRadius: 4,
+                                  ),
+                                ]
+                              : [
+                                  const Shadow(
+                                    color: Colors.black26,
+                                    offset: Offset(0, 2),
+                                    blurRadius: 8,
+                                  ),
+                                ],
+                        ),
+                      ),
+                      // Cursor
+                      if (_showCursor)
+                        TextSpan(
+                          text: '|',
+                          style: TextStyle(
+                            fontSize: 32,
+                            color: isDark
+                                ? const Color(0xFF007AFF)
+                                : Colors.white,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
               const SizedBox(height: 48),
-              // Loading indicator with tech styling
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isDark 
-                    ? const Color(0xFF1C1C1E).withValues(alpha: 0.8)
-                    : Colors.white.withValues(alpha: 0.2),
-                  border: Border.all(
-                    color: isDark 
-                      ? const Color(0xFF3A3A3F).withValues(alpha: 0.5)
-                      : Colors.white.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    isDark ? const Color(0xFF007AFF) : Colors.white,
-                  ),
-                  strokeWidth: 3,
-                  backgroundColor: isDark 
-                    ? const Color(0xFF3A3A3F).withValues(alpha: 0.3)
-                    : Colors.white.withValues(alpha: 0.3),
-                ),
+              // Loading Indicator - consistent with channel_list_screen
+              SpinKitPulse(
+                color: isDark ? const Color(0xFF007AFF) : Colors.white,
+                size: 50,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildDictationLogo(bool isDark) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Microphone base
+        const Icon(Icons.mic, size: 60, color: Colors.white),
+        // Text/typing indicator overlay
+        Positioned(
+          right: -8,
+          top: -8,
+          child: Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF34C759) : const Color(0xFF4CAF50),
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+            ),
+            child: const Icon(Icons.edit, size: 10, color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }

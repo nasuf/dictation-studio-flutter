@@ -31,7 +31,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
   String? _errorMessage;
   late Video _currentVideo;
   final ApiService _apiService = ApiService();
-  bool _hasUnsavedChanges = false;
+  final bool _hasUnsavedChanges = false;
   int _modifiedSegmentsCount = 0;
 
   @override
