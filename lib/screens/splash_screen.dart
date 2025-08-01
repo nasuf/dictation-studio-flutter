@@ -299,21 +299,79 @@ class _SplashScreenState extends State<SplashScreen>
     return Stack(
       alignment: Alignment.center,
       children: [
-        // Microphone base
-        const Icon(Icons.mic, size: 60, color: Colors.white),
-        // Text/typing indicator overlay
-        Positioned(
-          right: -8,
-          top: -8,
-          child: Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF34C759) : const Color(0xFF4CAF50),
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+        // Main microphone icon with gradient
+        Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: isDark
+                  ? [
+                      const Color(0xFFFFFFFF).withOpacity(0.9),
+                      const Color(0xFFE0E0E0).withOpacity(0.8),
+                    ]
+                  : [
+                      Colors.white,
+                      const Color(0xFFF0F0F0),
+                    ],
             ),
-            child: const Icon(Icons.edit, size: 10, color: Colors.white),
+            boxShadow: [
+              BoxShadow(
+                color: isDark 
+                    ? Colors.black.withOpacity(0.3)
+                    : Colors.black.withOpacity(0.1),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Icon(
+            Icons.mic,
+            size: 40,
+            color: isDark ? const Color(0xFF1A1A1D) : const Color(0xFF2E7D32),
+          ),
+        ),
+        
+        // Sound wave indicator - subtle animation effect
+        Positioned(
+          right: 8,
+          top: 12,
+          child: Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        const Color(0xFF007AFF),
+                        const Color(0xFF0056CC),
+                      ]
+                    : [
+                        const Color(0xFF4CAF50),
+                        const Color(0xFF388E3C),
+                      ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: (isDark 
+                      ? const Color(0xFF007AFF) 
+                      : const Color(0xFF4CAF50)).withOpacity(0.3),
+                  blurRadius: 6,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.graphic_eq,
+              size: 12,
+              color: Colors.white,
+            ),
           ),
         ),
       ],
