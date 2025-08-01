@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/services.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -593,7 +592,8 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         // Play/Stop segment button
         IconButton(
           onPressed: () {
-            if (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying) {
+            if (controller.state.currentPlayingIndex == index &&
+                controller.state.isVideoPlaying) {
               // Currently playing this segment, so stop it
               controller.stopPlayback();
             } else {
@@ -602,18 +602,25 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
             }
           },
           icon: Icon(
-            (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+            (controller.state.currentPlayingIndex == index &&
+                    controller.state.isVideoPlaying)
                 ? Icons.stop
                 : Icons.play_arrow,
           ),
-          tooltip: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+          tooltip:
+              (controller.state.currentPlayingIndex == index &&
+                  controller.state.isVideoPlaying)
               ? 'Stop Segment'
               : 'Play Segment',
           style: IconButton.styleFrom(
-            backgroundColor: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+            backgroundColor:
+                (controller.state.currentPlayingIndex == index &&
+                    controller.state.isVideoPlaying)
                 ? theme.colorScheme.error.withOpacity(0.1)
                 : theme.colorScheme.primary.withOpacity(0.1),
-            foregroundColor: (controller.state.currentPlayingIndex == index && controller.state.isVideoPlaying)
+            foregroundColor:
+                (controller.state.currentPlayingIndex == index &&
+                    controller.state.isVideoPlaying)
                 ? theme.colorScheme.error
                 : theme.colorScheme.primary,
           ),
@@ -1009,8 +1016,10 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       );
 
       // Call restore API
-      final result = await ApiService().restoreOriginalTranscript(widget.videoId);
-      
+      final result = await ApiService().restoreOriginalTranscript(
+        widget.videoId,
+      );
+
       AppLogger.info('Restore transcript API response: $result');
 
       // Clear loading indicator
@@ -1020,7 +1029,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       if (result.containsKey('transcript') && result['transcript'] is List) {
         final transcriptList = result['transcript'] as List;
         final restoredItems = <TranscriptItem>[];
-        
+
         for (int i = 0; i < transcriptList.length; i++) {
           final item = transcriptList[i];
           if (item is Map<String, dynamic>) {
@@ -1048,17 +1057,18 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       } else {
         throw Exception('Invalid response format from restore API');
       }
-
     } catch (e) {
       AppLogger.error('Error restoring original transcript: $e');
-      
+
       // Clear loading indicator
       ScaffoldMessenger.of(context).clearSnackBars();
-      
+
       // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to restore original transcript: ${e.toString()}'),
+          content: Text(
+            'Failed to restore original transcript: ${e.toString()}',
+          ),
           backgroundColor: Theme.of(context).colorScheme.error,
           duration: const Duration(seconds: 5),
         ),
@@ -1067,9 +1077,15 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
   }
 
   /// Show modal dialog for editing transcript text
-  void _showEditModal(TranscriptEditorController controller, TranscriptItem item, int index) {
-    final TextEditingController textController = TextEditingController(text: item.transcript);
-    
+  void _showEditModal(
+    TranscriptEditorController controller,
+    TranscriptItem item,
+    int index,
+  ) {
+    final TextEditingController textController = TextEditingController(
+      text: item.transcript,
+    );
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -1089,7 +1105,9 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.surfaceContainerHighest,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(12),
                           topRight: Radius.circular(12),
@@ -1104,22 +1122,30 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                           ),
                           const SizedBox(height: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.1),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.secondary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'Time: ${VideoPlaybackUtils.formatTime(item.start)} - ${VideoPlaybackUtils.formatTime(item.end)}',
-                              style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.secondary,
+                                  ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    
+
                     // Text input area
                     Expanded(
                       child: Padding(
@@ -1131,11 +1157,15 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                           autofocus: true,
                           textAlignVertical: TextAlignVertical.top,
                           enableInteractiveSelection: true,
-                          selectionControls: Platform.isIOS 
-                              ? cupertinoTextSelectionControls 
+                          selectionControls: Platform.isIOS
+                              ? cupertinoTextSelectionControls
                               : materialTextSelectionControls,
                           contextMenuBuilder: (context, editableTextState) {
-                            return _buildCustomContextMenu(context, editableTextState, textController);
+                            return _buildCustomContextMenu(
+                              context,
+                              editableTextState,
+                              textController,
+                            );
                           },
                           decoration: InputDecoration(
                             labelText: 'Transcript Text',
@@ -1148,7 +1178,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                         ),
                       ),
                     ),
-                    
+
                     // Fixed bottom button bar
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -1156,7 +1186,9 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                         color: Theme.of(context).colorScheme.surface,
                         border: Border(
                           top: BorderSide(
-                            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.outline.withValues(alpha: 0.2),
                           ),
                         ),
                       ),
@@ -1166,9 +1198,10 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                           TextButton.icon(
                             onPressed: () {
                               textController.text = item.transcript;
-                              textController.selection = TextSelection.collapsed(
-                                offset: textController.text.length,
-                              );
+                              textController.selection =
+                                  TextSelection.collapsed(
+                                    offset: textController.text.length,
+                                  );
                             },
                             icon: const Icon(Icons.undo),
                             label: const Text('Undo'),
@@ -1202,7 +1235,11 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
   }
 
   /// Build custom context menu with enhanced options
-  Widget _buildCustomContextMenu(BuildContext context, EditableTextState editableTextState, TextEditingController textController) {
+  Widget _buildCustomContextMenu(
+    BuildContext context,
+    EditableTextState editableTextState,
+    TextEditingController textController,
+  ) {
     final List<ContextMenuButtonItem> buttonItems = [
       // Standard cut/copy/paste items
       if (editableTextState.cutEnabled)

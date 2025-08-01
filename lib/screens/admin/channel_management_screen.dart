@@ -93,17 +93,13 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
 
   void _showAddChannelModal() {
     _clearForm();
-    setState(() {
-      _isAddModalOpen = true;
-    });
+    _showChannelDialog(isEdit: false);
   }
 
   void _showEditChannelModal(Channel channel) {
     _fillFormWithChannel(channel);
-    setState(() {
-      _editingChannel = channel;
-      _isEditModalOpen = true;
-    });
+    _editingChannel = channel;
+    _showChannelDialog(isEdit: true);
   }
 
   void _clearForm() {
@@ -167,10 +163,9 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               onPressed: _showAddChannelModal,
               icon: const Icon(Icons.add),
               label: const Text('Add Channel'),
+              backgroundColor: theme.colorScheme.primary,
+              foregroundColor: theme.colorScheme.onPrimary,
             ),
-      bottomSheet: (_isAddModalOpen || _isEditModalOpen)
-          ? _buildChannelFormModal()
-          : null,
     );
   }
 
@@ -673,13 +668,13 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     }
   }
 
-  Future<void> _saveChannel() async {
+  Future<void> _saveChannel({required bool isEdit}) async {
     if (!_formKey.currentState!.validate()) return;
 
     try {
       final channelProvider = context.read<ChannelProvider>();
 
-      if (_isEditModalOpen && _editingChannel != null) {
+      if (isEdit && _editingChannel != null) {
         // Update existing channel
         await channelProvider.updateChannel(
           _editingChannel!.id,
@@ -700,10 +695,8 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
           );
         }
 
-        setState(() {
-          _isEditModalOpen = false;
-          _editingChannel = null;
-        });
+        Navigator.of(context).pop();
+        _editingChannel = null;
       } else {
         // Add new channel
         final newChannel = Channel(
@@ -728,9 +721,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
           );
         }
 
-        setState(() {
-          _isAddModalOpen = false;
-        });
+        Navigator.of(context).pop();
       }
 
       _clearForm();
@@ -749,14 +740,30 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
     }
   }
 
-  Widget _buildChannelFormModal() {
+  void _showChannelDialog({required bool isEdit}) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.all(16),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxWidth: 500,
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+          ),
+          child: _buildChannelFormContent(isEdit: isEdit),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChannelFormContent({required bool isEdit}) {
     final theme = Theme.of(context);
     return Container(
-      height: MediaQuery.of(context).size.height * 0.8,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         children: [
@@ -765,7 +772,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _isEditModalOpen ? 'Edit Channel' : 'Add Channel',
+                isEdit ? 'Edit Channel' : 'Add Channel',
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
@@ -773,11 +780,8 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () {
-                  setState(() {
-                    _isAddModalOpen = false;
-                    _isEditModalOpen = false;
-                    _editingChannel = null;
-                  });
+                  Navigator.of(context).pop();
+                  _editingChannel = null;
                   _clearForm();
                 },
               ),
@@ -813,7 +817,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                         labelText: 'Channel ID *',
                         hintText: 'Enter YouTube channel ID',
                       ),
-                      enabled: !_isEditModalOpen, // Disable editing ID
+                      enabled: !isEdit, // Disable editing ID
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Channel ID is required';
@@ -856,60 +860,63 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                     ),
                     const SizedBox(height: 16),
 
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _formLanguage,
-                            decoration: const InputDecoration(
-                              labelText: 'Language *',
+                    // Language dropdown - full width to prevent overflow
+                    DropdownButtonFormField<String>(
+                      value: _formLanguage,
+                      decoration: const InputDecoration(
+                        labelText: 'Language *',
+                      ),
+                      isExpanded: true,
+                      items: AppConstants.languageOptions.entries
+                          .where(
+                            (entry) =>
+                                entry.value != AppConstants.languageAll,
+                          )
+                          .map(
+                            (entry) => DropdownMenuItem(
+                              value: entry.value,
+                              child: Text(
+                                entry.key,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            items: AppConstants.languageOptions.entries
-                                .where(
-                                  (entry) =>
-                                      entry.value != AppConstants.languageAll,
-                                )
-                                .map(
-                                  (entry) => DropdownMenuItem(
-                                    value: entry.value,
-                                    child: Text(entry.key),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _formLanguage = value!;
-                              });
-                            },
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
-                            value: _formVisibility,
-                            decoration: const InputDecoration(
-                              labelText: 'Visibility *',
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _formLanguage = value!;
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Visibility dropdown - full width to prevent overflow
+                    DropdownButtonFormField<String>(
+                      value: _formVisibility,
+                      decoration: const InputDecoration(
+                        labelText: 'Visibility *',
+                      ),
+                      isExpanded: true,
+                      items: AppConstants.visibilityOptions.entries
+                          .where(
+                            (entry) =>
+                                entry.value != AppConstants.visibilityAll,
+                          )
+                          .map(
+                            (entry) => DropdownMenuItem(
+                              value: entry.value,
+                              child: Text(
+                                entry.key,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                            items: AppConstants.visibilityOptions.entries
-                                .where(
-                                  (entry) =>
-                                      entry.value != AppConstants.visibilityAll,
-                                )
-                                .map(
-                                  (entry) => DropdownMenuItem(
-                                    value: entry.value,
-                                    child: Text(entry.key),
-                                  ),
-                                )
-                                .toList(),
-                            onChanged: (value) {
-                              setState(() {
-                                _formVisibility = value!;
-                              });
-                            },
-                          ),
-                        ),
-                      ],
+                          )
+                          .toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          _formVisibility = value!;
+                        });
+                      },
                     ),
                   ],
                 ),
@@ -924,11 +931,8 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    setState(() {
-                      _isAddModalOpen = false;
-                      _isEditModalOpen = false;
-                      _editingChannel = null;
-                    });
+                    Navigator.of(context).pop();
+                    _editingChannel = null;
                     _clearForm();
                   },
                   child: const Text('Cancel'),
@@ -937,8 +941,8 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
               const SizedBox(width: 16),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: _saveChannel,
-                  child: Text(_isEditModalOpen ? 'Update' : 'Add'),
+                  onPressed: () => _saveChannel(isEdit: isEdit),
+                  child: Text(isEdit ? 'Update' : 'Add'),
                 ),
               ),
             ],
