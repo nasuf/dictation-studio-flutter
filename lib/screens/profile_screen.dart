@@ -11,6 +11,7 @@ import '../widgets/calendar_heatmap.dart';
 import '../widgets/theme_toggle_button.dart';
 import '../generated/app_localizations.dart';
 import 'login_screen.dart';
+import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,11 +28,59 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _previousLoginState = false;
   bool _hasLoadedData = false; // Track if data has been loaded before
 
+  // Scroll controller for header animation
+  final ScrollController _scrollController = ScrollController();
+  double _headerHeight = 180.0; // Initial header height
+  double _headerOpacity = 1.0;
+  double _titleFontSize = 32.0;
+  double _subtitleFontSize = 18.0;
+  double _adminTagFontSize = 11.0;
+  double _adminTagPadding = 8.0;
+  double _adminTagBorderRadius = 12.0;
+
   // Keep the state alive when switching tabs
   @override
   bool get wantKeepAlive => true;
 
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
 
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    const double maxScroll = 140.0; // Maximum scroll distance for animation
+    const double minHeaderHeight =
+        140.0; // Further increased minimum header height to prevent overflow
+    const double maxHeaderHeight = 180.0; // Larger initial header height
+    const double minTitleSize = 18.0; // Larger minimum to keep readable
+    const double maxTitleSize = 32.0; // Larger initial title
+    const double minSubtitleSize = 14.0;
+    const double maxSubtitleSize = 18.0; // Larger initial subtitle
+
+    final double scrollOffset = _scrollController.offset.clamp(0.0, maxScroll);
+    final double progress = scrollOffset / maxScroll;
+
+    setState(() {
+      _headerHeight =
+          maxHeaderHeight - (maxHeaderHeight - minHeaderHeight) * progress;
+      _headerOpacity = 1.0 - (progress * 0.2); // Less opacity change
+      _titleFontSize = maxTitleSize - (maxTitleSize - minTitleSize) * progress;
+      _subtitleFontSize =
+          maxSubtitleSize - (maxSubtitleSize - minSubtitleSize) * progress;
+      // Admin tag scaling
+      _adminTagFontSize = 11.0 - (11.0 - 9.0) * progress;
+      _adminTagPadding = 8.0 - (8.0 - 6.0) * progress;
+      _adminTagBorderRadius = 12.0 - (12.0 - 8.0) * progress;
+    });
+  }
 
   Future<void> _loadUserDuration({bool forceRefresh = false}) async {
     // Only load if we haven't loaded before or if it's a forced refresh
@@ -73,8 +122,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         setState(() {
           // Handle both int and double types from API
           final totalDurationValue = response['totalDuration'];
-          _totalDuration = totalDurationValue != null 
-              ? (totalDurationValue is int ? totalDurationValue : (totalDurationValue as double).toInt())
+          _totalDuration = totalDurationValue != null
+              ? (totalDurationValue is int
+                    ? totalDurationValue
+                    : (totalDurationValue as double).toInt())
               : null;
           AppLogger.info('📈 Total duration: $_totalDuration seconds');
 
@@ -93,7 +144,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
               // Handle both int and double types from API
               final rawValue = entry.value;
-              final value = rawValue is int ? rawValue : (rawValue as double).toInt();
+              final value = rawValue is int
+                  ? rawValue
+                  : (rawValue as double).toInt();
               AppLogger.info('📊 Processing date: $date, value: $value');
               return CalendarHeatmapData(date: date, value: value);
             }).toList();
@@ -139,9 +192,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     AppLogger.info('ProfileScreen build called');
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0A0A0B) : theme.colorScheme.surface,
+      backgroundColor: isDark
+          ? const Color(0xFF0A0A0B)
+          : theme.colorScheme.surface,
       body: Consumer<AuthProvider>(
         builder: (context, authProvider, child) {
           AppLogger.info(
@@ -190,46 +245,50 @@ class _ProfileScreenState extends State<ProfileScreen>
   ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     return Column(
       children: [
         // Header section matching channel_list_screen design
         Container(
-          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 4, 16, 12),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            MediaQuery.of(context).padding.top + 4,
+            16,
+            12,
+          ),
           decoration: BoxDecoration(
-            gradient: isDark 
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF1A1A1D),
-                    Color(0xFF16161A),
-                  ],
-                )
-              : LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primaryContainer,
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-                  ],
-                ),
+            gradient: isDark
+                ? const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xFF1A1A1D), Color(0xFF16161A)],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.primaryContainer,
+                      theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
+                    ],
+                  ),
             border: Border(
               bottom: BorderSide(
-                color: isDark 
-                  ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
-                  : theme.colorScheme.outline.withValues(alpha: 0.1),
+                color: isDark
+                    ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
+                    : theme.colorScheme.outline.withValues(alpha: 0.1),
                 width: 0.5,
               ),
             ),
-            boxShadow: isDark ? [
-              const BoxShadow(
-                color: Color(0xFF000000),
-                offset: Offset(0, 2),
-                blurRadius: 8,
-                spreadRadius: 0,
-              ),
-            ] : null,
+            boxShadow: isDark
+                ? [
+                    const BoxShadow(
+                      color: Color(0xFF000000),
+                      offset: Offset(0, 2),
+                      blurRadius: 8,
+                      spreadRadius: 0,
+                    ),
+                  ]
+                : null,
           ),
           child: Row(
             children: [
@@ -241,16 +300,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                       AppLocalizations.of(context)!.profile,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
+                        color: isDark
+                            ? const Color(0xFFE8E8EA)
+                            : theme.colorScheme.onSurface,
                         letterSpacing: -0.5,
                       ),
                     ),
                     Text(
                       AppLocalizations.of(context)!.signInToAccess,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: isDark 
-                          ? const Color(0xFF9E9EA3) 
-                          : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: isDark
+                            ? const Color(0xFF9E9EA3)
+                            : theme.colorScheme.onSurface.withValues(
+                                alpha: 0.7,
+                              ),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -260,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             ],
           ),
         ),
-        
+
         // Main content
         Expanded(
           child: SafeArea(
@@ -277,7 +340,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         color: theme.colorScheme.primaryContainer,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.1,
+                          ),
                         ),
                       ),
                       child: Icon(
@@ -299,7 +364,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                     Text(
                       AppLocalizations.of(context)!.signInToAccess,
                       style: theme.textTheme.bodyLarge?.copyWith(
-                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                        color: theme.colorScheme.onSurface.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                       textAlign: TextAlign.center,
                     ),
@@ -336,92 +403,112 @@ class _ProfileScreenState extends State<ProfileScreen>
 
     return Column(
       children: [
-        // Header section matching channel_list_screen design
-        Container(
-          padding: EdgeInsets.fromLTRB(16, MediaQuery.of(context).padding.top + 4, 16, 20),
+        // Animated Header
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 100),
+          height: _headerHeight,
+          padding: EdgeInsets.fromLTRB(
+            24,
+            MediaQuery.of(context).padding.top + 16,
+            24,
+            16,
+          ),
           decoration: BoxDecoration(
-            gradient: isDark 
-              ? const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFF1A1A1D),
-                    Color(0xFF16161A),
-                  ],
-                )
-              : LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    theme.colorScheme.primaryContainer,
-                    theme.colorScheme.primaryContainer.withValues(alpha: 0.8),
-                  ],
-                ),
+            gradient: isDark
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFF1A1A1D).withOpacity(_headerOpacity),
+                      const Color(0xFF16161A).withOpacity(_headerOpacity * 0.8),
+                    ],
+                  )
+                : LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      theme.colorScheme.primaryContainer.withOpacity(
+                        _headerOpacity * 0.7,
+                      ),
+                      theme.colorScheme.primaryContainer.withOpacity(
+                        _headerOpacity * 0.4,
+                      ),
+                    ],
+                  ),
             border: Border(
               bottom: BorderSide(
-                color: isDark 
-                  ? const Color(0xFF2A2A2F).withValues(alpha: 0.5)
-                  : theme.colorScheme.outline.withValues(alpha: 0.1),
+                color:
+                    (isDark
+                            ? const Color(0xFF2A2A2F)
+                            : theme.colorScheme.outline)
+                        .withOpacity(0.3),
                 width: 0.5,
               ),
             ),
-            boxShadow: isDark ? [
-              const BoxShadow(
-                color: Color(0xFF000000),
-                offset: Offset(0, 2),
-                blurRadius: 8,
-                spreadRadius: 0,
-              ),
-            ] : null,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment
+                .center, // Keep centered for consistent spacing
+            crossAxisAlignment:
+                CrossAxisAlignment.start, // Left align everything
             children: [
-              // User Avatar
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: theme.colorScheme.outline.withValues(alpha: 0.2),
-                    width: 3,
+              // Username with Admin tag - positioned together
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Username - Large and prominent
+                  Flexible(
+                    child: AnimatedDefaultTextStyle(
+                      duration: const Duration(milliseconds: 200),
+                      style: TextStyle(
+                        fontSize: _titleFontSize,
+                        fontWeight: FontWeight.w700,
+                        color: isDark
+                            ? const Color(0xFFE8E8EA)
+                            : theme.colorScheme.onSurface, // Dark text for light mode
+                        letterSpacing: -0.8,
+                      ),
+                      child: Text(
+                        user.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ),
-                ),
-                child: CircleAvatar(
-                  radius: 32,
-                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  backgroundImage: user.avatar.isNotEmpty
-                      ? NetworkImage(user.avatar)
-                      : null,
-                  child: user.avatar.isEmpty
-                      ? Icon(
-                          Icons.person,
-                          size: 32,
-                          color: theme.colorScheme.primary,
-                        )
-                      : null,
-                ),
-              ),
-              
-              const SizedBox(width: 12),
-              
-              // User Role Badge
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: theme.colorScheme.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Text(
-                  user.role.toUpperCase(),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
+
+                  // Admin Role Badge - Right next to username with scaling animation
+                  if (user.role.toLowerCase() == 'admin')
+                    Container(
+                      margin: const EdgeInsets.only(left: 8), // Close to username
+                      padding: EdgeInsets.symmetric(
+                        horizontal: _adminTagPadding, // Use animated padding
+                        vertical: _adminTagPadding * 0.5, // Proportional vertical padding
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF007AFF).withOpacity(0.2)
+                            : theme.colorScheme.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(_adminTagBorderRadius), // Use animated border radius
+                        border: Border.all(
+                          color: isDark
+                              ? const Color(0xFF007AFF).withOpacity(0.4)
+                              : theme.colorScheme.primary.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        'ADMIN',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFF007AFF)
+                              : theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: _adminTagFontSize, // Use animated font size
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
@@ -432,299 +519,339 @@ class _ProfileScreenState extends State<ProfileScreen>
           child: SafeArea(
             top: false,
             child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(20.0),
               child: Column(
                 children: [
-                // Info Cards
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
+                  // Info Cards
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.1),
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      // First row - Email and Plan
-                      IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildSimpleInfoItem(
-                                AppLocalizations.of(context)!.email,
-                                user.email,
-                                Icons.email_outlined,
-                                theme.colorScheme.primary,
-                                theme,
-                              ),
-                            ),
-                            Container(
-                              width: 1,
-                              color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            Expanded(
-                              child: _buildSimpleInfoItem(
-                                AppLocalizations.of(context)!.plan,
-                                user.plan.name,
-                                Icons.workspace_premium_outlined,
-                                theme.colorScheme.secondary,
-                                theme,
-                              ),
-                            ),
-                          ],
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.08,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // First row - Email and Plan
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _buildSimpleInfoItem(
+                                  AppLocalizations.of(context)!.email,
+                                  user.email,
+                                  Icons.email_outlined,
+                                  theme.colorScheme.primary,
+                                  theme,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                color: theme.colorScheme.outline.withValues(
+                                  alpha: 0.1,
+                                ),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildSimpleInfoItem(
+                                  AppLocalizations.of(context)!.plan,
+                                  user.plan.name,
+                                  Icons.workspace_premium_outlined,
+                                  theme.colorScheme.secondary,
+                                  theme,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        Divider(
+                          height: 32,
+                          color: theme.colorScheme.outline.withValues(
+                            alpha: 0.1,
+                          ),
+                        ),
+
+                        // Second row - Expires and Total Time
+                        IntrinsicHeight(
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: _buildSimpleInfoItem(
+                                  AppLocalizations.of(context)!.expires,
+                                  user.plan.expireTime != null
+                                      ? DateFormat('MMM dd, yyyy').format(
+                                          DateTime.fromMillisecondsSinceEpoch(
+                                            user.plan.expireTime!,
+                                          ),
+                                        )
+                                      : AppLocalizations.of(context)!.noLimit,
+                                  Icons.schedule_outlined,
+                                  theme.colorScheme.tertiary,
+                                  theme,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                color: theme.colorScheme.outline.withValues(
+                                  alpha: 0.1,
+                                ),
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildSimpleInfoItem(
+                                  AppLocalizations.of(context)!.totalTime,
+                                  () {
+                                    AppLogger.info(
+                                      '🎯 UI Display - _loadingDuration: $_loadingDuration',
+                                    );
+                                    AppLogger.info(
+                                      '🎯 UI Display - _totalDuration: $_totalDuration',
+                                    );
+                                    if (_loadingDuration) {
+                                      return AppLocalizations.of(
+                                        context,
+                                      )!.loading;
+                                    } else if (_totalDuration != null) {
+                                      final formatted = _formatDuration(
+                                        _totalDuration!,
+                                      );
+                                      AppLogger.info(
+                                        '🎯 UI Display - formatted duration: $formatted',
+                                      );
+                                      return formatted;
+                                    } else {
+                                      AppLogger.info(
+                                        '🎯 UI Display - showing default 00:00:00',
+                                      );
+                                      return '00:00:00';
+                                    }
+                                  }(),
+                                  Icons.timer_outlined,
+                                  theme.colorScheme.primary,
+                                  theme,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // Calendar Heatmap with Refresh Button
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.1),
                       ),
-
-                      Divider(height: 32, color: theme.colorScheme.outline.withValues(alpha: 0.1)),
-
-                      // Second row - Expires and Total Time
-                      IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildSimpleInfoItem(
-                                AppLocalizations.of(context)!.expires,
-                                user.plan.expireTime != null
-                                    ? DateFormat('MMM dd, yyyy').format(
-                                        DateTime.fromMillisecondsSinceEpoch(
-                                          user.plan.expireTime!,
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.08,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                color: theme.colorScheme.primary,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.dictationActivities,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                              // Refresh Button
+                              IconButton(
+                                onPressed: _loadingDuration
+                                    ? null
+                                    : _refreshData,
+                                icon: _loadingDuration
+                                    ? SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                theme.colorScheme.primary,
+                                              ),
                                         ),
                                       )
-                                    : AppLocalizations.of(context)!.noLimit,
-                                Icons.schedule_outlined,
-                                theme.colorScheme.tertiary,
-                                theme,
+                                    : Icon(
+                                        Icons.refresh,
+                                        color: theme.colorScheme.primary,
+                                      ),
+                                tooltip: AppLocalizations.of(context)!.refresh,
+                                style: IconButton.styleFrom(
+                                  backgroundColor: theme
+                                      .colorScheme
+                                      .primaryContainer
+                                      .withValues(alpha: 0.7),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          if (_loadingDuration)
+                            Center(
+                              child: CircularProgressIndicator(
+                                color: theme.colorScheme.primary,
+                              ),
+                            )
+                          else
+                            CalendarHeatmap.withDefaults(
+                              data: _dailyDurations,
+                              cellSize: 8,
+                              spacing: 2,
+                              baseColor: theme.colorScheme.primary,
+                              emptyColor: theme.colorScheme.outline.withValues(
+                                alpha: 0.3,
                               ),
                             ),
-                            Container(
-                              width: 1,
-                              color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            ),
-                            Expanded(
-                              child: _buildSimpleInfoItem(
-                                AppLocalizations.of(context)!.totalTime,
-                                () {
-                                  AppLogger.info(
-                                    '🎯 UI Display - _loadingDuration: $_loadingDuration',
-                                  );
-                                  AppLogger.info(
-                                    '🎯 UI Display - _totalDuration: $_totalDuration',
-                                  );
-                                  if (_loadingDuration) {
-                                    return AppLocalizations.of(context)!.loading;
-                                  } else if (_totalDuration != null) {
-                                    final formatted = _formatDuration(
-                                      _totalDuration!,
-                                    );
-                                    AppLogger.info(
-                                      '🎯 UI Display - formatted duration: $formatted',
-                                    );
-                                    return formatted;
-                                  } else {
-                                    AppLogger.info(
-                                      '🎯 UI Display - showing default 00:00:00',
-                                    );
-                                    return '00:00:00';
-                                  }
-                                }(),
-                                Icons.timer_outlined,
-                                theme.colorScheme.primary,
-                                theme,
-                              ),
-                            ),
-                          ],
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Calendar Heatmap with Refresh Button
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
+
+                  const SizedBox(height: 24),
+
+                  // Theme Settings Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.08,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.calendar_today,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                AppLocalizations.of(context)!.dictationActivities,
-                                style: theme.textTheme.titleLarge?.copyWith(
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.settings_outlined,
+                                color: theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                AppLocalizations.of(context)!.settings,
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w600,
                                   color: theme.colorScheme.onSurface,
                                 ),
                               ),
-                            ),
-                            // Refresh Button
-                            IconButton(
-                              onPressed: _loadingDuration ? null : _refreshData,
-                              icon: _loadingDuration
-                                  ? SizedBox(
-                                      width: 20,
-                                      height: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                        valueColor:
-                                            AlwaysStoppedAnimation<Color>(
-                                              theme.colorScheme.primary,
-                                            ),
-                                      ),
-                                    )
-                                  : Icon(
-                                      Icons.refresh,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                              tooltip: AppLocalizations.of(context)!.refresh,
-                              style: IconButton.styleFrom(
-                                backgroundColor: theme.colorScheme.primaryContainer.withValues(alpha: 0.7),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        if (_loadingDuration)
-                          Center(
-                            child: CircularProgressIndicator(
-                              color: theme.colorScheme.primary,
-                            ),
-                          )
-                        else
-                          CalendarHeatmap.withDefaults(
-                            data: _dailyDurations,
-                            cellSize: 8,
-                            spacing: 2,
-                            baseColor: theme.colorScheme.primary,
-                            emptyColor: theme.colorScheme.outline.withValues(alpha: 0.3),
+                            ],
                           ),
+                        ),
+                        const ThemeSettingsListTile(),
+                        _buildLanguageSettingsTile(theme),
                       ],
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-                // Theme Settings Section
-                Container(
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.surface,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.colorScheme.outline.withValues(alpha: 0.1),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.colorScheme.shadow.withValues(alpha: 0.08),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.settings_outlined,
-                              color: theme.colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              AppLocalizations.of(context)!.settings,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
+                  // Logout Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: authProvider.isLoading
+                          ? null
+                          : () =>
+                                _showLogoutDialog(context, authProvider, theme),
+                      icon: authProvider.isLoading
+                          ? SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  theme.colorScheme.error,
+                                ),
                               ),
+                            )
+                          : Icon(
+                              Icons.logout_outlined,
+                              color: theme.colorScheme.error,
                             ),
-                          ],
+                      label: Text(
+                        authProvider.isLoading
+                            ? AppLocalizations.of(context)!.signingOut
+                            : AppLocalizations.of(context)!.signOut,
+                        style: TextStyle(color: theme.colorScheme.error),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: theme.colorScheme.error),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
-                      const ThemeSettingsListTile(),
-                      _buildLanguageSettingsTile(theme),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Logout Button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: authProvider.isLoading
-                        ? null
-                        : () => _showLogoutDialog(context, authProvider, theme),
-                    icon: authProvider.isLoading
-                        ? SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.colorScheme.error,
-                              ),
-                            ),
-                          )
-                        : Icon(Icons.logout_outlined, color: theme.colorScheme.error),
-                    label: Text(
-                      authProvider.isLoading ? AppLocalizations.of(context)!.signingOut : AppLocalizations.of(context)!.signOut,
-                      style: TextStyle(color: theme.colorScheme.error),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: theme.colorScheme.error),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
                     ),
                   ),
-                ),
 
-                const SizedBox(height: 32),
-              ],
-            ),
+                  const SizedBox(height: 32),
+                ],
+              ),
             ),
           ),
         ),
@@ -732,7 +859,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _showLogoutDialog(BuildContext context, AuthProvider authProvider, ThemeData theme) {
+  void _showLogoutDialog(
+    BuildContext context,
+    AuthProvider authProvider,
+    ThemeData theme,
+  ) {
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -847,12 +978,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         builder: (context, localeProvider, child) {
           // Get the correct language code for display
           String displayLanguageCode;
-          if (localeProvider.locale.languageCode == 'zh' && localeProvider.locale.countryCode == 'TW') {
+          if (localeProvider.locale.languageCode == 'zh' &&
+              localeProvider.locale.countryCode == 'TW') {
             displayLanguageCode = AppConstants.languageTraditionalChinese;
           } else {
             displayLanguageCode = localeProvider.locale.languageCode;
           }
-          
+
           return Text(
             _getLocalizedLanguageName(context, displayLanguageCode),
             style: theme.textTheme.bodySmall?.copyWith(
@@ -920,7 +1052,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final localeProvider = context.watch<LocaleProvider>();
     // Handle Traditional Chinese locale matching
     final isSelected = _isLanguageSelected(localeProvider.locale, value);
-    
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -932,7 +1064,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           decoration: BoxDecoration(
-            color: isSelected 
+            color: isSelected
                 ? theme.colorScheme.primaryContainer.withValues(alpha: 0.5)
                 : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -950,18 +1082,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                   title,
                   style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                    color: isSelected 
-                        ? theme.colorScheme.primary 
+                    color: isSelected
+                        ? theme.colorScheme.primary
                         : theme.colorScheme.onSurface,
                   ),
                 ),
               ),
               if (isSelected)
-                Icon(
-                  Icons.check,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
+                Icon(Icons.check, color: theme.colorScheme.primary, size: 20),
             ],
           ),
         ),
@@ -973,10 +1101,12 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool _isLanguageSelected(Locale currentLocale, String languageCode) {
     if (languageCode == AppConstants.languageTraditionalChinese) {
       // For Traditional Chinese, check both language and country code
-      return currentLocale.languageCode == 'zh' && currentLocale.countryCode == 'TW';
+      return currentLocale.languageCode == 'zh' &&
+          currentLocale.countryCode == 'TW';
     } else if (languageCode == AppConstants.languageChinese) {
       // For Simplified Chinese, ensure it's NOT Traditional Chinese
-      return currentLocale.languageCode == 'zh' && currentLocale.countryCode != 'TW';
+      return currentLocale.languageCode == 'zh' &&
+          currentLocale.countryCode != 'TW';
     } else {
       // For other languages, just check language code
       return currentLocale.languageCode == languageCode;
@@ -1018,4 +1148,5 @@ class _ProfileScreenState extends State<ProfileScreen>
         return const Color(0xFF8BC34A); // Lime green for others
     }
   }
+
 }
