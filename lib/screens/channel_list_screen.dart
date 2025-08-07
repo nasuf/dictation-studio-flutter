@@ -420,18 +420,33 @@ class _ChannelListScreenState extends State<ChannelListScreen>
             AppLogger.info('User initiated refresh');
             await channelProvider.refreshChannels();
           },
-          child: MasonryGridView.count(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-            physics: const AlwaysScrollableScrollPhysics(
-              parent: BouncingScrollPhysics(),
-            ),
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            itemCount: filteredChannels.length,
-            itemBuilder: (context, index) {
-              final channel = filteredChannels[index];
-              return _buildChannelCard(channel, index, theme);
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Responsive grid based on screen width
+              int crossAxisCount = 2;
+              
+              if (constraints.maxWidth > 900) {
+                // Large tablets and desktops
+                crossAxisCount = 3;
+              } else if (constraints.maxWidth > 600) {
+                // iPad and medium tablets
+                crossAxisCount = 2;
+              }
+              
+              return MasonryGridView.count(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                itemCount: filteredChannels.length,
+                itemBuilder: (context, index) {
+                  final channel = filteredChannels[index];
+                  return _buildChannelCard(channel, index, theme);
+                },
+              );
             },
           ),
         );
@@ -517,116 +532,124 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Channel Image
-                    Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(18),
-                        ),
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            _getLanguageColor(
-                              channel.language,
-                            ).withValues(alpha: 0.8),
-                            _getLanguageColor(
-                              channel.language,
-                            ).withValues(alpha: 0.6),
-                          ],
-                        ),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(18),
-                        ),
-                        child: Stack(
-                          children: [
-                            // Channel Image
-                            if (channel.imageUrl?.isNotEmpty == true)
-                              CachedNetworkImage(
-                                imageUrl: channel.imageUrl!,
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover,
-                                placeholder: (context, url) => Container(
-                                  color: _getLanguageColor(
-                                    channel.language,
-                                  ).withValues(alpha: 0.3),
-                                ),
-                                errorWidget: (context, error, stackTrace) =>
-                                    Container(
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        // Responsive height based on card width
+                        double imageHeight = constraints.maxWidth * 0.75; // 75% of card width
+                        imageHeight = imageHeight.clamp(120.0, 180.0); // Min 120, max 180
+                        
+                        return Container(
+                          height: imageHeight,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18),
+                            ),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                _getLanguageColor(
+                                  channel.language,
+                                ).withValues(alpha: 0.8),
+                                _getLanguageColor(
+                                  channel.language,
+                                ).withValues(alpha: 0.6),
+                              ],
+                            ),
+                          ),
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(18),
+                            ),
+                            child: Stack(
+                              children: [
+                                // Channel Image
+                                if (channel.imageUrl?.isNotEmpty == true)
+                                  CachedNetworkImage(
+                                    imageUrl: channel.imageUrl!,
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover,
+                                    placeholder: (context, url) => Container(
                                       color: _getLanguageColor(
                                         channel.language,
                                       ).withValues(alpha: 0.3),
                                     ),
-                              ),
+                                    errorWidget: (context, error, stackTrace) =>
+                                        Container(
+                                          color: _getLanguageColor(
+                                            channel.language,
+                                          ).withValues(alpha: 0.3),
+                                        ),
+                                  ),
 
-                            // Gradient Overlay
-                            Container(
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  begin: Alignment.topCenter,
-                                  end: Alignment.bottomCenter,
-                                  colors: [
-                                    Colors.transparent,
-                                    Colors.black.withValues(alpha: 0.3),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            // Video Count Badge
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.7),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  '${channel.videoCount}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 10,
+                                // Gradient Overlay
+                                Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.transparent,
+                                        Colors.black.withValues(alpha: 0.3),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
 
-                            // Language Badge
-                            Positioned(
-                              bottom: 8,
-                              left: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 3,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: _getLanguageColor(channel.language),
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  channel.displayLanguage,
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 10,
+                                // Video Count Badge
+                                Positioned(
+                                  top: 8,
+                                  right: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.black.withValues(alpha: 0.7),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '${channel.videoCount}',
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 10,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+
+                                // Language Badge
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: _getLanguageColor(channel.language),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      channel.displayLanguage,
+                                      style: theme.textTheme.bodySmall?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
+                          ),
+                        );
+                      },
                     ),
 
                     // Channel Info

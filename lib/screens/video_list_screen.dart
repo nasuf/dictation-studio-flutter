@@ -564,19 +564,37 @@ class _VideoListScreenState extends State<VideoListScreen>
           return _buildEmptyState(theme);
         }
 
-        return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          physics: const BouncingScrollPhysics(),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.85,
-            crossAxisSpacing: 8,
-            mainAxisSpacing: 8,
-          ),
-          itemCount: filteredVideos.length,
-          itemBuilder: (context, index) {
-            final video = filteredVideos[index];
-            return _buildVideoCard(video, index, theme, videoProvider);
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            // Responsive grid based on screen width
+            int crossAxisCount = 2;
+            double childAspectRatio = 0.85;
+            
+            if (constraints.maxWidth > 768) {
+              // iPad and larger screens
+              crossAxisCount = 3;
+              childAspectRatio = 0.9;
+            } else if (constraints.maxWidth > 600) {
+              // Small tablets
+              crossAxisCount = 3;
+              childAspectRatio = 0.85;
+            }
+            
+            return GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+              physics: const BouncingScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                childAspectRatio: childAspectRatio,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: filteredVideos.length,
+              itemBuilder: (context, index) {
+                final video = filteredVideos[index];
+                return _buildVideoCard(video, index, theme, videoProvider);
+              },
+            );
           },
         );
       },
@@ -764,46 +782,42 @@ class _VideoListScreenState extends State<VideoListScreen>
                       ),
                     ),
                     // Video Info
-                    Expanded(
-                      flex: 2,
-                      child: Padding(
-                        padding: const EdgeInsets.all(8),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                video.title,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w500,
-                                  height: 1.2,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            video.title,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              height: 1.2,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Icon(
-                                  _getStatusIcon(progress),
-                                  size: 12,
-                                  color: _getProgressColor(progress),
-                                ),
-                                const SizedBox(width: 3),
-                                Expanded(
-                                  child: Text(
-                                    _getStatusText(progress),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: _getProgressColor(progress),
-                                      fontSize: 10,
-                                    ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Icon(
+                                _getStatusIcon(progress),
+                                size: 12,
+                                color: _getProgressColor(progress),
+                              ),
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  _getStatusText(progress),
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: _getProgressColor(progress),
+                                    fontSize: 10,
                                   ),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                   ],
