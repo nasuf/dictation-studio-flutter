@@ -13,6 +13,7 @@ class YouTubeLoginService {
   WebViewController? _controller;
   bool _isLoggedIn = false;
   String? _userInfo;
+  bool _hasCalledLoginSuccess = false; // 防止重复调用登录成功回调
   
   // Singleton pattern
   static final YouTubeLoginService _instance = YouTubeLoginService._internal();
@@ -63,6 +64,8 @@ class YouTubeLoginService {
     required VoidCallback onLoginSuccess,
     required Function(String) onLoginError,
   }) {
+    // Reset the callback flag for new login session
+    _hasCalledLoginSuccess = false;
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(Colors.transparent)
@@ -165,7 +168,14 @@ class YouTubeLoginService {
           await _saveCookies();
           
           AppLogger.info('YouTube login successful! User: $_userInfo');
-          onLoginSuccess();
+          
+          // Only call the success callback once per login session
+          if (!_hasCalledLoginSuccess) {
+            _hasCalledLoginSuccess = true;
+            onLoginSuccess();
+          } else {
+            AppLogger.info('Login success callback already called, skipping duplicate call');
+          }
         } else {
           AppLogger.info('User not logged in yet, continuing...');
         }
@@ -258,6 +268,7 @@ class YouTubeLoginService {
   Future<void> markAsLoggedIn({String? userInfo}) async {
     _isLoggedIn = true;
     _userInfo = userInfo ?? 'YouTube User';
+    _hasCalledLoginSuccess = true; // Mark as called to prevent auto-detection from firing
     await _saveLoginState();
     await _saveCookies();
     AppLogger.info('Manually marked as logged in: $_userInfo');

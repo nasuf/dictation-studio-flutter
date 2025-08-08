@@ -126,8 +126,8 @@ class _YouTubeLoginWebViewState extends State<YouTubeLoginWebView> {
               AppLogger.info('YouTube login completed by user via Done button');
               // Mark as logged in manually
               await _loginService.markAsLoggedIn(userInfo: 'YouTube User');
+              // Don't call Navigator.pop() here - let the success callback handle navigation
               widget.onLoginSuccess?.call();
-              Navigator.of(context).pop();
             },
             child: const Text(
               'Done',
@@ -242,8 +242,8 @@ class _YouTubeLoginWebViewState extends State<YouTubeLoginWebView> {
                   AppLogger.info('YouTube login completed via Done & Refresh button');
                   // Mark as logged in manually and refresh player
                   await _loginService.markAsLoggedIn(userInfo: 'YouTube User');
+                  // Don't call Navigator.pop() here - let the success callback handle navigation
                   widget.onLoginSuccess?.call();
-                  Navigator.of(context).pop();
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.green,
