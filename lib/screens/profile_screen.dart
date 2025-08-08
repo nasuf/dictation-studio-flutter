@@ -11,7 +11,6 @@ import '../widgets/calendar_heatmap.dart';
 import '../widgets/theme_toggle_button.dart';
 import '../generated/app_localizations.dart';
 import 'login_screen.dart';
-import 'package:go_router/go_router.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -33,7 +32,6 @@ class _ProfileScreenState extends State<ProfileScreen>
   double _headerHeight = 180.0; // Initial header height
   double _headerOpacity = 1.0;
   double _titleFontSize = 32.0;
-  double _subtitleFontSize = 18.0;
   double _adminTagFontSize = 11.0;
   double _adminTagPadding = 8.0;
   double _adminTagBorderRadius = 12.0;
@@ -62,8 +60,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     const double maxHeaderHeight = 180.0; // Larger initial header height
     const double minTitleSize = 18.0; // Larger minimum to keep readable
     const double maxTitleSize = 32.0; // Larger initial title
-    const double minSubtitleSize = 14.0;
-    const double maxSubtitleSize = 18.0; // Larger initial subtitle
 
     final double scrollOffset = _scrollController.offset.clamp(0.0, maxScroll);
     final double progress = scrollOffset / maxScroll;
@@ -73,8 +69,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           maxHeaderHeight - (maxHeaderHeight - minHeaderHeight) * progress;
       _headerOpacity = 1.0 - (progress * 0.2); // Less opacity change
       _titleFontSize = maxTitleSize - (maxTitleSize - minTitleSize) * progress;
-      _subtitleFontSize =
-          maxSubtitleSize - (maxSubtitleSize - minSubtitleSize) * progress;
       // Admin tag scaling
       _adminTagFontSize = 11.0 - (11.0 - 9.0) * progress;
       _adminTagPadding = 8.0 - (8.0 - 6.0) * progress;
@@ -465,7 +459,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                         fontWeight: FontWeight.w700,
                         color: isDark
                             ? const Color(0xFFE8E8EA)
-                            : theme.colorScheme.onSurface, // Dark text for light mode
+                            : theme
+                                  .colorScheme
+                                  .onSurface, // Dark text for light mode
                         letterSpacing: -0.8,
                       ),
                       child: Text(
@@ -479,16 +475,22 @@ class _ProfileScreenState extends State<ProfileScreen>
                   // Admin Role Badge - Right next to username with scaling animation
                   if (user.role.toLowerCase() == 'admin')
                     Container(
-                      margin: const EdgeInsets.only(left: 8), // Close to username
+                      margin: const EdgeInsets.only(
+                        left: 8,
+                      ), // Close to username
                       padding: EdgeInsets.symmetric(
                         horizontal: _adminTagPadding, // Use animated padding
-                        vertical: _adminTagPadding * 0.5, // Proportional vertical padding
+                        vertical:
+                            _adminTagPadding *
+                            0.5, // Proportional vertical padding
                       ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF007AFF).withOpacity(0.2)
                             : theme.colorScheme.primary.withOpacity(0.15),
-                        borderRadius: BorderRadius.circular(_adminTagBorderRadius), // Use animated border radius
+                        borderRadius: BorderRadius.circular(
+                          _adminTagBorderRadius,
+                        ), // Use animated border radius
                         border: Border.all(
                           color: isDark
                               ? const Color(0xFF007AFF).withOpacity(0.4)
@@ -1148,5 +1150,4 @@ class _ProfileScreenState extends State<ProfileScreen>
         return const Color(0xFF8BC34A); // Lime green for others
     }
   }
-
 }
