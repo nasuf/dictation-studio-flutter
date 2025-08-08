@@ -83,8 +83,14 @@ class _DictationScreenState extends State<DictationScreen>
   // iOS media warm-up flag to bypass first-play user gesture restriction
   bool _iosWarmupDone = false;
 
+  // Android warm-up flag to handle Android-specific playback issues
+  bool _androidWarmupDone = false;
+
   bool get _isIOSDevice =>
       !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  bool get _isAndroidDevice =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   // Supported playback speeds
   static const List<double> _supportedPlaybackSpeeds = [
@@ -726,8 +732,9 @@ class _DictationScreenState extends State<DictationScreen>
       // 重新加载当前视频
       _youtubeController.load(safeVideoId);
 
-      // iOS: perform muted warm-up to satisfy user-gesture policy if not done
-      if (_isIOSDevice && !_iosWarmupDone) {
+      // Platform-specific warm-up for first-time playback issues
+      if ((_isIOSDevice && !_iosWarmupDone) ||
+          (_isAndroidDevice && !_androidWarmupDone)) {
         _warmupPlayerIfNeeded();
       } else {
         // Other platforms or already warmed: just ensure paused
@@ -741,10 +748,11 @@ class _DictationScreenState extends State<DictationScreen>
         });
       }
 
-      // 更新状态
+      // 更新状态 - 确保播放状态重置为暂停
       setState(() {
         _isVideoReady = true;
         _isVideoLoading = false;
+        _isVideoPlaying = false; // 确保刷新后不显示为播放状态
       });
 
       AppLogger.info('✅ YouTube Player refresh completed successfully');
@@ -758,7 +766,14 @@ class _DictationScreenState extends State<DictationScreen>
 
   // iOS-only: mute -> short play -> pause -> unmute, done once
   void _warmupPlayerIfNeeded() {
-    if (!_isIOSDevice || _iosWarmupDone) return;
+    if (_isIOSDevice && !_iosWarmupDone) {
+      _performIOSWarmup();
+    } else if (_isAndroidDevice && !_androidWarmupDone) {
+      _performAndroidWarmup();
+    }
+  }
+
+  void _performIOSWarmup() {
     AppLogger.info('iOS warm-up start: mute -> brief play -> pause -> unmute');
     // Perform a short muted play to satisfy WKWebView first-gesture policy
     Future.microtask(() async {
@@ -774,6 +789,176 @@ class _DictationScreenState extends State<DictationScreen>
         AppLogger.info('iOS warm-up finished successfully');
       } catch (e) {
         AppLogger.warning('iOS warm-up failed: $e');
+      }
+    });
+  }
+
+  void _performAndroidWarmup() {
+    AppLogger.info(
+      'Android warm-up start: enhanced strategy to force PlayerState transition',
+    );
+    Future.microtask(() async {
+      try {
+        AppLogger.info('Android warm-up: step 1 - initial mute');
+        _youtubeController.mute();
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        AppLogger.info('Android warm-up: step 2 - first play attempt (muted)');
+        _youtubeController.play();
+        await Future.delayed(
+          const Duration(milliseconds: 800),
+        ); // Longer wait for state transition
+
+        // Check PlayerState after first play
+        final state1 = _youtubeController.value.playerState;
+        AppLogger.info(
+          'Android warm-up: PlayerState after first play: $state1',
+        );
+
+        AppLogger.info(
+          'Android warm-up: step 3 - seek forward to trigger WebView engine',
+        );
+        _youtubeController.seekTo(const Duration(milliseconds: 500));
+        await Future.delayed(const Duration(milliseconds: 400));
+
+        AppLogger.info('Android warm-up: step 4 - second play attempt');
+        _youtubeController.play();
+        await Future.delayed(const Duration(milliseconds: 600));
+
+        final state2 = _youtubeController.value.playerState;
+        AppLogger.info(
+          'Android warm-up: PlayerState after second play: $state2',
+        );
+
+        AppLogger.info('Android warm-up: step 5 - pause and seek back');
+        _youtubeController.pause();
+        await Future.delayed(const Duration(milliseconds: 300));
+
+        AppLogger.info('Android warm-up: step 6 - seek to middle position');
+        _youtubeController.seekTo(const Duration(milliseconds: 1000));
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        AppLogger.info(
+          'Android warm-up: step 7 - final play attempt to ensure state transition',
+        );
+        _youtubeController.play();
+        await Future.delayed(const Duration(milliseconds: 400));
+
+        final state3 = _youtubeController.value.playerState;
+        AppLogger.info(
+          'Android warm-up: PlayerState after final play: $state3',
+        );
+
+        AppLogger.info('Android warm-up: step 8 - pause and reset position');
+        _youtubeController.pause();
+        await Future.delayed(
+          const Duration(milliseconds: 400),
+        ); // Longer delay for pause to register
+        _youtubeController.seekTo(const Duration(milliseconds: 0));
+
+        await Future.delayed(
+          const Duration(milliseconds: 300),
+        ); // Longer delay before unmute
+        _youtubeController.unMute();
+
+        // Additional delay to ensure all operations complete
+        await Future.delayed(const Duration(milliseconds: 200));
+
+        final finalState = _youtubeController.value.playerState;
+        AppLogger.info('Android warm-up: Final PlayerState: $finalState');
+
+        _androidWarmupDone = true;
+        AppLogger.info(
+          'Android warm-up finished successfully with enhanced state management',
+        );
+
+        // Force UI state to paused after warm-up completion
+        if (mounted) {
+          setState(() {
+            _isVideoPlaying = false;
+            _isVideoLoading = false;
+          });
+          AppLogger.info('Android warm-up: UI state forcibly reset to paused');
+
+          // Log the actual player state for debugging
+          final actualPlayerState = _youtubeController.value.playerState;
+          final actualIsPlaying = _youtubeController.value.isPlaying;
+          AppLogger.info(
+            'Android warm-up: Actual player state=$actualPlayerState, isPlaying=$actualIsPlaying',
+          );
+        }
+
+        // Additional verification: attempt one more state check
+        Future.delayed(const Duration(milliseconds: 500), () {
+          final verificationState = _youtubeController.value.playerState;
+          AppLogger.info(
+            'Android warm-up verification: PlayerState 500ms later: $verificationState',
+          );
+        });
+      } catch (e) {
+        AppLogger.warning('Android warm-up failed: $e');
+
+        // Enhanced fallback: More aggressive approach
+        try {
+          AppLogger.info(
+            'Android warm-up: enhanced fallback - forcing multiple state transitions',
+          );
+
+          await Future.delayed(const Duration(milliseconds: 200));
+          _youtubeController.mute();
+
+          // Multiple play/pause cycles to force state engine initialization
+          for (int i = 0; i < 3; i++) {
+            AppLogger.info('Android fallback: cycle ${i + 1}/3');
+            _youtubeController.play();
+            await Future.delayed(const Duration(milliseconds: 300));
+            _youtubeController.pause();
+            await Future.delayed(const Duration(milliseconds: 200));
+
+            final cycleState = _youtubeController.value.playerState;
+            AppLogger.info(
+              'Android fallback cycle ${i + 1}: PlayerState = $cycleState',
+            );
+
+            if (cycleState != PlayerState.unStarted) {
+              AppLogger.info(
+                'Android fallback: PlayerState progressed beyond unStarted in cycle ${i + 1}',
+              );
+              break;
+            }
+          }
+
+          _youtubeController.seekTo(const Duration(milliseconds: 0));
+          await Future.delayed(const Duration(milliseconds: 100));
+          _youtubeController.unMute();
+
+          _androidWarmupDone = true;
+          AppLogger.info('Android warm-up enhanced fallback completed');
+
+          // Force UI state to paused after fallback completion
+          if (mounted) {
+            setState(() {
+              _isVideoPlaying = false;
+              _isVideoLoading = false;
+            });
+            AppLogger.info(
+              'Android fallback: UI state forcibly reset to paused',
+            );
+
+            // Log the actual player state for debugging
+            final actualPlayerState = _youtubeController.value.playerState;
+            final actualIsPlaying = _youtubeController.value.isPlaying;
+            AppLogger.info(
+              'Android fallback: Actual player state=$actualPlayerState, isPlaying=$actualIsPlaying',
+            );
+          }
+        } catch (fallbackError) {
+          AppLogger.error(
+            'Android warm-up enhanced fallback also failed: $fallbackError',
+          );
+          // Mark as done anyway to prevent infinite retries
+          _androidWarmupDone = true;
+        }
       }
     });
   }
@@ -1062,6 +1247,64 @@ class _DictationScreenState extends State<DictationScreen>
     AppLogger.info(
       'Starting playback task $taskId for sentence ${_currentSentenceIndex + 1}',
     );
+
+    // Android-specific: Check for PlayerState.unStarted and attempt recovery
+    if (_isAndroidDevice) {
+      final currentState = _youtubeController.value.playerState;
+      AppLogger.info(
+        'ℹ️ DictationStudio: Player state check before playback: $currentState',
+      );
+
+      if (currentState == PlayerState.unStarted) {
+        AppLogger.warning(
+          '⚠️ Android PlayerState is unStarted, attempting state recovery',
+        );
+
+        try {
+          // Attempt to force state transition for Android devices
+          AppLogger.info(
+            'Android recovery: attempting muted play to force state transition',
+          );
+          _youtubeController.mute();
+          _youtubeController.play();
+
+          // Wait and check for state transition
+          int attempts = 0;
+          const maxAttempts = 10;
+          PlayerState waitState = PlayerState.unStarted;
+
+          while (attempts < maxAttempts && waitState == PlayerState.unStarted) {
+            await Future.delayed(const Duration(milliseconds: 100));
+            waitState = _youtubeController.value.playerState;
+            final isPlaying = _youtubeController.value.isPlaying;
+            attempts++;
+            AppLogger.info(
+              'ℹ️ DictationStudio: Android waiting for playback... attempt $attempts, state: $waitState, playing: $isPlaying',
+            );
+          }
+
+          _youtubeController.pause();
+          _youtubeController.unMute();
+
+          final recoveredState = _youtubeController.value.playerState;
+          AppLogger.info(
+            'Android recovery result: PlayerState = $recoveredState after $attempts attempts',
+          );
+
+          if (recoveredState == PlayerState.unStarted) {
+            AppLogger.error(
+              '⚠️ Android PlayerState recovery failed, playback may not work properly',
+            );
+          } else {
+            AppLogger.info(
+              '✅ Android PlayerState recovery successful: $recoveredState',
+            );
+          }
+        } catch (e) {
+          AppLogger.error('Android PlayerState recovery failed: $e');
+        }
+      }
+    }
 
     // Always stop any current playback before starting new one (like React version)
     await _playbackController.stop();
@@ -1481,9 +1724,10 @@ class _DictationScreenState extends State<DictationScreen>
                   );
                   _youtubeController.load(safeVideoId);
 
-                  // iOS: perform muted warm-up to satisfy user-gesture policy if not done;
+                  // Platform-specific warm-up for first-time playback issues;
                   // other platforms keep the old immediate pause to prevent auto-play
-                  if (_isIOSDevice && !_iosWarmupDone) {
+                  if ((_isIOSDevice && !_iosWarmupDone) ||
+                      (_isAndroidDevice && !_androidWarmupDone)) {
                     _warmupPlayerIfNeeded();
                   } else {
                     Future.delayed(const Duration(milliseconds: 100), () {
@@ -1505,6 +1749,7 @@ class _DictationScreenState extends State<DictationScreen>
                       setState(() {
                         _isVideoReady = true;
                         _isVideoLoading = false;
+                        _isVideoPlaying = false; // 确保初始化后不显示为播放状态
                       });
                     }
                   });
