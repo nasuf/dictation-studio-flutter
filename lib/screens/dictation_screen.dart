@@ -19,6 +19,8 @@ import '../widgets/compact_progress_bar.dart';
 import '../widgets/video_player_with_controls.dart';
 import '../utils/precise_text_comparison.dart';
 import '../models/simple_comparison_result.dart';
+import '../services/youtube_login_service.dart';
+import '../widgets/youtube_login_webview.dart';
 
 class DictationScreen extends StatefulWidget {
   final String channelId;
@@ -79,6 +81,7 @@ class _DictationScreenState extends State<DictationScreen>
 
   // Services
   final ApiService _apiService = ApiService();
+  final YouTubeLoginService _youtubeLoginService = YouTubeLoginService();
 
   // iOS media warm-up flag to bypass first-play user gesture restriction
   bool _iosWarmupDone = false;
@@ -121,6 +124,7 @@ class _DictationScreenState extends State<DictationScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _initializeYouTubeLoginService();
     _initializeComponents();
     _loadTranscript();
     _startTimers();
@@ -165,6 +169,20 @@ class _DictationScreenState extends State<DictationScreen>
         }
       });
     });
+  }
+
+  /// Initialize YouTube Login Service
+  Future<void> _initializeYouTubeLoginService() async {
+    try {
+      await _youtubeLoginService.initialize();
+      AppLogger.info('YouTube login service initialized. Login status: ${_youtubeLoginService.isLoggedIn}');
+      
+      if (_youtubeLoginService.userInfo != null) {
+        AppLogger.info('YouTube user: ${_youtubeLoginService.userInfo}');
+      }
+    } catch (e) {
+      AppLogger.error('Failed to initialize YouTube login service: $e');
+    }
   }
 
   @override
@@ -340,6 +358,8 @@ class _DictationScreenState extends State<DictationScreen>
           enableCaption: false,
           hideControls: true,
           useHybridComposition: true,
+          // Additional flags that might help with bot detection bypass
+          controlsVisibleAtStart: false,
         ),
       );
 
@@ -374,21 +394,23 @@ class _DictationScreenState extends State<DictationScreen>
   void _showPlayerInitializationError() {
     if (!mounted) return;
 
+    final errorMessage = _isIOSDevice 
+        ? 'Video player initialization failed. If you see a YouTube login prompt, try refreshing the player.'
+        : 'Video player initialization failed. Try using the refresh button.';
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
           children: [
             const Icon(Icons.warning, color: Colors.white),
             const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Video player initialization failed. Try using the refresh button.',
-              ),
+            Expanded(
+              child: Text(errorMessage),
             ),
           ],
         ),
         backgroundColor: Colors.orange,
-        duration: const Duration(seconds: 5),
+        duration: const Duration(seconds: 6),
         action: SnackBarAction(
           label: 'Refresh',
           textColor: Colors.white,
@@ -400,9 +422,128 @@ class _DictationScreenState extends State<DictationScreen>
     );
   }
 
-  // Login status checking methods removed
+  /// Check if YouTube login is required and show login dialog
+  Future<void> _checkAndPromptYouTubeLogin() async {
+    if (_youtubeLoginService.shouldShowLoginPrompt()) {
+      AppLogger.info('YouTube login required - showing login dialog');
+      
+      if (!mounted) return;
+      
+      // Show login dialog
+      await showYouTubeLoginDialog(
+        context,
+        onLoginSuccess: () {
+          AppLogger.info('YouTube login completed successfully');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('YouTube login successful! Refreshing video player...'),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+            
+            // Update UI to reflect login state
+            setState(() {}); // This will update the login button appearance
+            
+            // Refresh the YouTube player to apply login state
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                AppLogger.info('Refreshing YouTube player after successful login');
+                _refreshYouTubePlayer();
+              }
+            });
+          }
+        },
+        onCancel: () {
+          // When user cancels/closes login, stay on dictation screen and refresh player
+          AppLogger.info('YouTube login cancelled - staying on dictation screen and refreshing player');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.white),
+                    SizedBox(width: 8),
+                    Text('Login cancelled. Refreshing player...'),
+                  ],
+                ),
+                backgroundColor: Colors.blue,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            
+            // Refresh the YouTube player even if login was cancelled
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted) {
+                AppLogger.info('Refreshing YouTube player after login cancellation');
+                _refreshYouTubePlayer();
+              }
+            });
+          }
+        },
+        onLoginError: (error) {
+          AppLogger.error('YouTube login failed: $error');
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text('YouTube login failed: $error'),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+              action: SnackBarAction(
+                label: 'Retry',
+                textColor: Colors.white,
+                onPressed: () => _checkAndPromptYouTubeLogin(),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
+      AppLogger.info('YouTube login not required - user is already logged in');
+    }
+  }
 
-  // Login prompt methods removed
+  /// Show YouTube login suggestion as a non-intrusive prompt
+  void _showYouTubeLoginSuggestion() {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.white),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Video player might need YouTube login. Tap the login button in the top-right corner.',
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blue,
+        duration: const Duration(seconds: 5),
+        action: SnackBarAction(
+          label: 'Login Now',
+          textColor: Colors.white,
+          onPressed: () => _checkAndPromptYouTubeLogin(),
+        ),
+      ),
+    );
+  }
 
   void _onYouTubePlayerStateChange() {
     final playerState = _youtubeController.value.playerState;
@@ -737,15 +878,22 @@ class _DictationScreenState extends State<DictationScreen>
           (_isAndroidDevice && !_androidWarmupDone)) {
         _warmupPlayerIfNeeded();
       } else {
-        // Other platforms or already warmed: just ensure paused
-        Future.delayed(const Duration(milliseconds: 100), () {
-          if (mounted) {
-            AppLogger.info(
-              'Pausing video after manual refresh to prevent auto-play',
-            );
-            _youtubeController.pause();
-          }
-        });
+        // For iOS: If already warmed but user manually refreshed, perform another warm-up 
+        // to bypass potential YouTube login prompts
+        if (_isIOSDevice && _iosWarmupDone) {
+          AppLogger.info('iOS: Performing additional warm-up due to manual refresh');
+          _performIOSWarmup();
+        } else {
+          // Other platforms: just ensure paused
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (mounted) {
+              AppLogger.info(
+                'Pausing video after manual refresh to prevent auto-play',
+              );
+              _youtubeController.pause();
+            }
+          });
+        }
       }
 
       // 更新状态 - 确保播放状态重置为暂停
@@ -774,21 +922,48 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   void _performIOSWarmup() {
-    AppLogger.info('iOS warm-up start: mute -> brief play -> pause -> unmute');
-    // Perform a short muted play to satisfy WKWebView first-gesture policy
+    AppLogger.info('iOS warm-up start: enhanced user gesture simulation to bypass YouTube login');
+    // Enhanced warm-up to bypass YouTube's anti-bot protection
     Future.microtask(() async {
       try {
+        AppLogger.info('iOS warm-up: step 1 - mute player for silent initialization');
         _youtubeController.mute();
-        _youtubeController.play();
-        // brief play window
-        await Future.delayed(const Duration(milliseconds: 400));
-        _youtubeController.pause();
+        
+        // Small delay to ensure mute takes effect
         await Future.delayed(const Duration(milliseconds: 100));
+        
+        AppLogger.info('iOS warm-up: step 2 - start playback (simulating user gesture)');
+        _youtubeController.play();
+        
+        // Longer playback window to ensure YouTube recognizes this as legitimate user interaction
+        await Future.delayed(const Duration(milliseconds: 600));
+        
+        AppLogger.info('iOS warm-up: step 3 - pause to complete gesture simulation');
+        _youtubeController.pause();
+        
+        // Allow time for pause to register
+        await Future.delayed(const Duration(milliseconds: 150));
+        
+        AppLogger.info('iOS warm-up: step 4 - unmute for normal operation');
         _youtubeController.unMute();
+        
+        // Final delay to ensure all states are properly set
+        await Future.delayed(const Duration(milliseconds: 100));
+        
         _iosWarmupDone = true;
-        AppLogger.info('iOS warm-up finished successfully');
+        AppLogger.info('iOS warm-up completed - YouTube anti-bot bypass should be active');
+        
+        // Ensure UI state is correctly set to paused after warm-up
+        if (mounted) {
+          setState(() {
+            _isVideoPlaying = false;
+            _isVideoLoading = false;
+          });
+          AppLogger.info('iOS warm-up: UI state reset to paused');
+        }
       } catch (e) {
-        AppLogger.warning('iOS warm-up failed: $e');
+        AppLogger.error('iOS warm-up failed: $e');
+        _iosWarmupDone = true; // Mark as done to prevent infinite retries
       }
     });
   }
@@ -1689,6 +1864,56 @@ class _DictationScreenState extends State<DictationScreen>
           backgroundColor: isDark ? const Color(0xFF1A1A1D) : null,
           foregroundColor: isDark ? const Color(0xFFE8E8EA) : null,
           actions: [
+            // YouTube login button for all platforms
+            IconButton(
+              icon: Icon(
+                _youtubeLoginService.isLoggedIn ? Icons.account_circle : Icons.login,
+                color: _youtubeLoginService.isLoggedIn ? Colors.green : null,
+              ),
+              onPressed: () async {
+                if (_youtubeLoginService.isLoggedIn) {
+                  // Show logout confirmation
+                  final shouldLogout = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('YouTube Logout'),
+                      content: Text(
+                        'Currently logged in as: ${_youtubeLoginService.userInfo ?? "YouTube User"}\n\nDo you want to logout?'
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
+                  );
+                  
+                  if (shouldLogout == true) {
+                    await _youtubeLoginService.logout();
+                    if (mounted) {
+                      setState(() {}); // Refresh UI
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('YouTube logout successful'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  }
+                } else {
+                  // Show login dialog
+                  await _checkAndPromptYouTubeLogin();
+                }
+              },
+              tooltip: _youtubeLoginService.isLoggedIn 
+                  ? 'YouTube Account (${_youtubeLoginService.userInfo ?? "Logged In"})'
+                  : 'Login to YouTube',
+            ),
             IconButton(
               icon: const Icon(Icons.restart_alt_outlined),
               onPressed: _showResetConfirmationDialog,
@@ -1728,6 +1953,7 @@ class _DictationScreenState extends State<DictationScreen>
                   // other platforms keep the old immediate pause to prevent auto-play
                   if ((_isIOSDevice && !_iosWarmupDone) ||
                       (_isAndroidDevice && !_androidWarmupDone)) {
+                    AppLogger.info('Initiating platform-specific warm-up sequence');
                     _warmupPlayerIfNeeded();
                   } else {
                     Future.delayed(const Duration(milliseconds: 100), () {
@@ -1751,6 +1977,19 @@ class _DictationScreenState extends State<DictationScreen>
                         _isVideoLoading = false;
                         _isVideoPlaying = false; // 确保初始化后不显示为播放状态
                       });
+                      
+                      // Check if YouTube login might be needed (iOS specific)
+                      if (_isIOSDevice && !_youtubeLoginService.isLoggedIn) {
+                        Future.delayed(const Duration(seconds: 2), () {
+                          if (mounted) {
+                            final playerState = _youtubeController.value.playerState;
+                            if (playerState == PlayerState.unknown || !_isVideoReady) {
+                              AppLogger.info('iOS: Player might need YouTube login - checking automatically');
+                              _showYouTubeLoginSuggestion();
+                            }
+                          }
+                        });
+                      }
                     }
                   });
                 },
