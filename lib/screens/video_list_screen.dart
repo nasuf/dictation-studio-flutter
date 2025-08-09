@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../providers/video_provider.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/scrollable_text.dart';
 import '../generated/app_localizations.dart';
 
 class VideoListScreen extends StatefulWidget {
@@ -140,15 +141,16 @@ class _VideoListScreenState extends State<VideoListScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
+                          ScrollableText(
                             widget.channelName ?? AppLocalizations.of(context)!.videos,
                             style: theme.textTheme.titleLarge?.copyWith(
                               fontWeight: FontWeight.w700,
                               color: isDark ? const Color(0xFFE8E8EA) : theme.colorScheme.onSurface,
                               letterSpacing: -0.5,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            scrollDuration: const Duration(seconds: 4),
+                            pauseDuration: const Duration(seconds: 2),
+                            scrollSpeed: 30.0,
                           ),
                           Consumer<VideoProvider>(
                             builder: (context, provider, child) {

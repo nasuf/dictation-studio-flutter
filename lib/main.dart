@@ -124,6 +124,9 @@ class DictationStudioApp extends StatefulWidget {
 class _DictationStudioAppState extends State<DictationStudioApp> {
   // Global navigation key for 401 error handling
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
+  
+  // Create router instance once to avoid rebuilding on theme changes
+  late final GoRouter _router = _buildRouter(_navigatorKey);
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +195,7 @@ class _DictationStudioAppState extends State<DictationStudioApp> {
               Locale('ja'), // Japanese
               Locale('ko'), // Korean
             ],
-            routerConfig: _buildRouter(_navigatorKey),
+            routerConfig: _router,
             builder: (context, child) {
               // Add error boundary
               return child ?? const SizedBox();

@@ -21,6 +21,8 @@ import '../utils/precise_text_comparison.dart';
 import '../models/simple_comparison_result.dart';
 import '../services/youtube_login_service.dart';
 import '../widgets/youtube_login_webview.dart';
+import '../widgets/theme_toggle_button.dart';
+import '../widgets/scrollable_text.dart';
 
 class DictationScreen extends StatefulWidget {
   final String channelId;
@@ -1775,7 +1777,7 @@ class _DictationScreenState extends State<DictationScreen>
       child: Scaffold(
         backgroundColor: isDark ? const Color(0xFF0A0A0B) : null,
         appBar: AppBar(
-          title: Text(widget.video.title),
+          title: ScrollableAppBarTitle(widget.video.title),
           backgroundColor: isDark ? const Color(0xFF1A1A1D) : null,
           foregroundColor: isDark ? const Color(0xFFE8E8EA) : null,
           actions: [
@@ -1838,6 +1840,7 @@ class _DictationScreenState extends State<DictationScreen>
               onPressed: _showResetConfirmationDialog,
               tooltip: AppLocalizations.of(context)!.resetProgress,
             ),
+            const ThemeToggleIconButton(),
             IconButton(
               icon: const Icon(Icons.settings),
               onPressed: _showSettingsDialog,
