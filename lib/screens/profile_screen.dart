@@ -1027,7 +1027,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   _getLocalizedLanguageName(context, language),
                   language,
                   Icons.language,
-                  _getLanguageColor(language),
                 ),
               ),
             ],
@@ -1049,7 +1048,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     String title,
     String value,
     IconData icon,
-    Color color,
   ) {
     final localeProvider = context.watch<LocaleProvider>();
     // Handle Traditional Chinese locale matching
@@ -1075,7 +1073,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Icon(
                 icon,
-                color: isSelected ? theme.colorScheme.primary : color,
+                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -1115,39 +1113,22 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
-  // Get localized language name
+  // Get native language name (not localized)
   String _getLocalizedLanguageName(BuildContext context, String language) {
     switch (language) {
       case AppConstants.languageEnglish:
-        return AppLocalizations.of(context)!.english;
+        return 'English';
       case AppConstants.languageChinese:
-        return AppLocalizations.of(context)!.chinese;
+        return '简体中文';
       case AppConstants.languageTraditionalChinese:
-        return AppLocalizations.of(context)!.traditionalChinese;
+        return '繁體中文';
       case AppConstants.languageJapanese:
-        return AppLocalizations.of(context)!.japanese;
+        return '日本語';
       case AppConstants.languageKorean:
-        return AppLocalizations.of(context)!.korean;
+        return '한국어';
       default:
         return language.toUpperCase();
     }
   }
 
-  // Get language color for visual distinction
-  Color _getLanguageColor(String language) {
-    switch (language) {
-      case AppConstants.languageEnglish:
-        return const Color(0xFF4CAF50); // Green for English
-      case AppConstants.languageChinese:
-        return const Color(0xFF66BB6A); // Light green for Chinese
-      case AppConstants.languageTraditionalChinese:
-        return const Color(0xFF4FC3F7); // Light blue for Traditional Chinese
-      case AppConstants.languageJapanese:
-        return const Color(0xFF81C784); // Soft green for Japanese
-      case AppConstants.languageKorean:
-        return const Color(0xFF009688); // Teal for Korean
-      default:
-        return const Color(0xFF8BC34A); // Lime green for others
-    }
-  }
 }
