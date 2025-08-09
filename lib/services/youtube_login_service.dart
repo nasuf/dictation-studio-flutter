@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../utils/logger.dart';
 
 class YouTubeLoginService {
@@ -191,12 +192,40 @@ class YouTubeLoginService {
     if (_controller == null) return;
     
     try {
-      // Get all cookies from the WebView
-      // Save YouTube cookies for sharing with the player
+      // Get cookies using JavaScript execution since getCookies is not available
+      final cookieResult = await _controller!.runJavaScriptReturningResult('document.cookie');
+      final cookieString = cookieResult.toString();
+      
+      AppLogger.info('Retrieved cookie string: $cookieString');
+      
+      // Parse cookie string and extract meaningful cookies
+      final cookies = <Map<String, String>>[];
+      if (cookieString.isNotEmpty && cookieString != 'null') {
+        final cookiePairs = cookieString.split(';');
+        for (final pair in cookiePairs) {
+          final trimmed = pair.trim();
+          if (trimmed.isNotEmpty) {
+            final parts = trimmed.split('=');
+            if (parts.length >= 2) {
+              cookies.add({
+                'name': parts[0],
+                'value': parts.sublist(1).join('='), // Handle values with = in them
+                'domain': '.youtube.com',
+                'path': '/',
+              });
+            }
+          }
+        }
+      }
+      
       final prefs = await SharedPreferences.getInstance();
+      
+      // Save cookie data
+      await prefs.setString('youtube_cookies_data', 
+          const JsonEncoder().convert(cookies));
       await prefs.setString(_cookiesKey, 'youtube_cookies_saved');
       
-      AppLogger.info('YouTube cookies saved for player sharing');
+      AppLogger.info('YouTube cookies saved: ${cookies.length} cookies parsed from cookie string');
     } catch (e) {
       AppLogger.error('Failed to save YouTube cookies: $e');
     }
@@ -210,23 +239,39 @@ class YouTubeLoginService {
         return;
       }
       
+      final prefs = await SharedPreferences.getInstance();
       final cookieManager = WebViewCookieManager();
       
-      // Apply essential YouTube cookies to maintain login state
-      final youtubeCookies = [
-        const WebViewCookie(
-          name: 'youtube_login_shared',
-          value: 'true',
-          domain: '.youtube.com',
-          path: '/',
-        ),
-      ];
-      
-      for (final cookie in youtubeCookies) {
-        await cookieManager.setCookie(cookie);
+      // Load and apply YouTube cookies
+      final youtubeCookieDataString = prefs.getString('youtube_cookies_data');
+      if (youtubeCookieDataString != null) {
+        try {
+          final youtubeCookieList = const JsonDecoder().convert(youtubeCookieDataString) as List<dynamic>;
+          for (final cookieData in youtubeCookieList) {
+            final cookieMap = cookieData as Map<String, dynamic>;
+            final cookie = WebViewCookie(
+              name: cookieMap['name'] as String,
+              value: cookieMap['value'] as String,
+              domain: cookieMap['domain'] as String,
+              path: cookieMap['path'] as String? ?? '/',
+            );
+            await cookieManager.setCookie(cookie);
+          }
+          AppLogger.info('Applied ${youtubeCookieList.length} YouTube cookies to player');
+        } catch (e) {
+          AppLogger.error('Failed to parse YouTube cookies: $e');
+        }
       }
       
-      AppLogger.info('Applied login cookies to YouTube Player');
+      // Add a marker cookie to indicate login state
+      await cookieManager.setCookie(const WebViewCookie(
+        name: 'youtube_login_shared',
+        value: 'true',
+        domain: '.youtube.com',
+        path: '/',
+      ));
+      
+      AppLogger.info('YouTube login cookies applied to player');
     } catch (e) {
       AppLogger.error('Failed to apply cookies to player: $e');
     }
@@ -243,6 +288,7 @@ class YouTubeLoginService {
       await prefs.remove(_loginStateKey);
       await prefs.remove('youtube_user_info');
       await prefs.remove(_cookiesKey);
+      await prefs.remove('youtube_cookies_data');
       
       // Clear WebView cookies
       final cookieManager = WebViewCookieManager();
@@ -272,5 +318,86 @@ class YouTubeLoginService {
     await _saveLoginState();
     await _saveCookies();
     AppLogger.info('Manually marked as logged in: $_userInfo');
+  }
+  
+  /// Force refresh YouTube player cookies (for use after login)
+  Future<void> refreshPlayerCookies() async {
+    try {
+      if (!_isLoggedIn) {
+        AppLogger.info('Not logged in, cannot refresh player cookies');
+        return;
+      }
+      
+      final cookieManager = WebViewCookieManager();
+      
+      // Clear existing YouTube cookies
+      await cookieManager.clearCookies();
+      
+      // Wait a moment for cookies to clear
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Re-apply saved cookies
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Apply YouTube cookies
+      final youtubeCookieDataString = prefs.getString('youtube_cookies_data');
+      if (youtubeCookieDataString != null) {
+        try {
+          final youtubeCookieList = const JsonDecoder().convert(youtubeCookieDataString) as List<dynamic>;
+          for (final cookieData in youtubeCookieList) {
+            final cookieMap = cookieData as Map<String, dynamic>;
+            final cookie = WebViewCookie(
+              name: cookieMap['name'] as String,
+              value: cookieMap['value'] as String,
+              domain: cookieMap['domain'] as String,
+              path: cookieMap['path'] as String? ?? '/',
+            );
+            await cookieManager.setCookie(cookie);
+          }
+          AppLogger.info('Refreshed ${youtubeCookieList.length} YouTube cookies');
+        } catch (e) {
+          AppLogger.error('Failed to refresh YouTube cookies: $e');
+        }
+      }
+      
+      AppLogger.info('Player cookies refreshed successfully');
+    } catch (e) {
+      AppLogger.error('Failed to refresh player cookies: $e');
+    }
+  }
+  
+  /// Get login token for YouTube API usage (Android specific fix)
+  Future<String?> getYouTubeApiToken() async {
+    try {
+      if (!_isLoggedIn) {
+        return null;
+      }
+      
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Try to extract auth token from cookies
+      final youtubeCookieDataString = prefs.getString('youtube_cookies_data');
+      if (youtubeCookieDataString != null) {
+        try {
+          final youtubeCookieList = const JsonDecoder().convert(youtubeCookieDataString) as List<dynamic>;
+          
+          for (final cookieData in youtubeCookieList) {
+            final cookieMap = cookieData as Map<String, dynamic>;
+            if (cookieMap['name'] == 'SAPISID' || 
+                cookieMap['name'] == '__Secure-3PAPISID' ||
+                cookieMap['name'] == 'SSID') {
+              return cookieMap['value'] as String?;
+            }
+          }
+        } catch (e) {
+          AppLogger.error('Failed to parse cookies for API token: $e');
+        }
+      }
+      
+      return 'logged_in'; // Fallback indicator
+    } catch (e) {
+      AppLogger.error('Failed to get YouTube API token: $e');
+      return null;
+    }
   }
 }
