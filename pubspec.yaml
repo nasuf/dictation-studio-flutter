@@ -45,6 +45,7 @@ dependencies:
 
   # Encryption and security
   crypto: ^3.0.3
+  pointycastle: ^4.0.0
 
   # Local storage
   shared_preferences: ^2.2.2

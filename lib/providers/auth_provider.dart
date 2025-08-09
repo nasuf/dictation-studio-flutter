@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import '../models/user.dart' as models;
 import '../services/api_service.dart';
 import '../services/token_manager.dart';
+import '../services/password_encryption_service.dart';
 import '../utils/logger.dart';
 
 class AuthProvider extends ChangeNotifier {
@@ -156,11 +156,8 @@ class AuthProvider extends ChangeNotifier {
   }
 
   // Deterministic password encryption (matching React logic)
-  String _encryptPasswordDeterministic(String password, String email) {
-    final combinedData = '$password$email';
-    final bytes = utf8.encode(combinedData);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
+  Future<String> _encryptPasswordDeterministic(String password, String email) {
+    return PasswordEncryptionService.encryptPasswordDeterministic(password, email);
   }
 
   // Register with email and password
@@ -174,30 +171,54 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      AppLogger.info('📝 Starting user registration for: $email');
+      
       // Encrypt password deterministically
-      final encryptedPassword = _encryptPasswordDeterministic(password, email);
+      final encryptedPassword = await _encryptPasswordDeterministic(password, email);
 
       final response = await _supabase.auth.signUp(
         email: email,
         password: encryptedPassword,
-        data: {'full_name': fullName, 'avatar_url': avatar},
+        data: {
+          'full_name': fullName,
+          'avatar_url': avatar,
+        },
       );
 
       if (response.user != null) {
-        // Registration successful
+        AppLogger.info('✅ Registration successful - email verification required');
+        // Registration successful - user will need to verify email
         return true;
       } else {
+        AppLogger.error('❌ Registration failed - no user returned');
         _setError('Registration failed');
         return false;
       }
-    } on AuthException catch (e) {
-      _setError(e.message);
+    } on AuthException catch (authError) {
+      AppLogger.error('❌ Registration auth error: ${authError.message}');
+      _setError(_getRegistrationErrorMessage(authError.message));
       return false;
     } catch (e) {
-      _setError('Registration failed: $e');
+      AppLogger.error('❌ Registration failed: $e');
+      _setError('Registration failed. Please try again later.');
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Convert Supabase registration errors to user-friendly messages
+  String _getRegistrationErrorMessage(String errorMessage) {
+    if (errorMessage.toLowerCase().contains('user already registered')) {
+      return 'An account with this email already exists';
+    } else if (errorMessage.toLowerCase().contains('password')) {
+      return 'Password does not meet requirements';
+    } else if (errorMessage.toLowerCase().contains('email')) {
+      return 'Please enter a valid email address';
+    } else if (errorMessage.toLowerCase().contains('weak password')) {
+      return 'Password is too weak. Please use at least 6 characters.';
+    } else {
+      return 'Registration failed. Please try again.';
     }
   }
 
@@ -210,13 +231,16 @@ class AuthProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      AppLogger.info('🔐 Starting email/password login for: $email');
       
       bool loginSuccess = false;
       AuthResponse? authResponse;
+      String? loginMethod;
 
       // Strategy 1: Try encrypted password first (for new users)
       try {
-        final encryptedPassword = _encryptPasswordDeterministic(
+        AppLogger.info('🔑 Attempting login with encrypted password...');
+        final encryptedPassword = await _encryptPasswordDeterministic(
           password,
           email,
         );
@@ -227,17 +251,24 @@ class AuthProvider extends ChangeNotifier {
 
         if (authResponse.user != null) {
           loginSuccess = true;
-          AppLogger.info('Login successful with encrypted password');
+          loginMethod = 'encrypted';
+          AppLogger.info('✅ Login successful with encrypted password');
         }
+      } on AuthException catch (authError) {
+        AppLogger.info(
+          '⚠️ Encrypted password login failed: ${authError.message}',
+        );
+        // Continue to try original password
       } catch (e) {
         AppLogger.info(
-          'Encrypted password login failed, trying original password...',
+          '⚠️ Encrypted password login failed: $e - trying original password...',
         );
       }
 
       // Strategy 2: If encrypted password fails, try original password (for existing users)
       if (!loginSuccess) {
         try {
+          AppLogger.info('🔑 Attempting login with original password...');
           authResponse = await _supabase.auth.signInWithPassword(
             email: email,
             password: password,
@@ -245,29 +276,22 @@ class AuthProvider extends ChangeNotifier {
 
           if (authResponse.user != null) {
             loginSuccess = true;
+            loginMethod = 'original';
             AppLogger.info(
-              'Login successful with original password - migrating to encrypted password...',
+              '✅ Login successful with original password - will migrate to encrypted...',
             );
 
-            // Migrate user to encrypted password
-            try {
-              final encryptedPassword = _encryptPasswordDeterministic(
-                password,
-                email,
-              );
-              await _supabase.auth.updateUser(
-                UserAttributes(password: encryptedPassword),
-              );
-              AppLogger.info(
-                'Successfully migrated user to encrypted password',
-              );
-            } catch (migrationError) {
-              AppLogger.error('Password migration failed: $migrationError');
-              // Don't fail the login if migration fails
-            }
+            // Migrate user to encrypted password (background operation)
+            _migratePasswordInBackground(password, email);
           }
+        } on AuthException catch (authError) {
+          AppLogger.error('❌ Original password login failed: ${authError.message}');
+          _setError(_getLocalizedErrorMessage(authError.message));
+          return false;
         } catch (e) {
-          AppLogger.error('Original password login also failed: $e');
+          AppLogger.error('❌ Original password login failed: $e');
+          _setError('Login failed. Please check your credentials and try again.');
+          return false;
         }
       }
 
@@ -276,14 +300,50 @@ class AuthProvider extends ChangeNotifier {
         return false;
       }
 
+      AppLogger.info('🔄 Loading user data from backend...');
       // Load user data and call backend API
       await _loadUserFromSession(authResponse!.user!);
+      
+      AppLogger.info('✅ Email login completed successfully using $loginMethod password');
       return true;
     } catch (e) {
-      _setError('Login failed: $e');
+      AppLogger.error('❌ Login failed with error: $e');
+      _setError('Login failed. Please try again later.');
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  // Background password migration to avoid blocking login
+  void _migratePasswordInBackground(String password, String email) {
+    Future.microtask(() async {
+      try {
+        final encryptedPassword = await _encryptPasswordDeterministic(
+          password,
+          email,
+        );
+        await _supabase.auth.updateUser(
+          UserAttributes(password: encryptedPassword),
+        );
+        AppLogger.info('✅ Successfully migrated user to encrypted password');
+      } catch (migrationError) {
+        AppLogger.warning('⚠️ Password migration failed: $migrationError');
+        // Migration failure is non-critical
+      }
+    });
+  }
+
+  // Convert Supabase auth errors to user-friendly messages
+  String _getLocalizedErrorMessage(String errorMessage) {
+    if (errorMessage.toLowerCase().contains('invalid login credentials')) {
+      return 'Invalid email or password';
+    } else if (errorMessage.toLowerCase().contains('too many requests')) {
+      return 'Too many login attempts. Please try again later.';
+    } else if (errorMessage.toLowerCase().contains('email not confirmed')) {
+      return 'Please verify your email address before signing in.';
+    } else {
+      return 'Login failed. Please try again.';
     }
   }
 
