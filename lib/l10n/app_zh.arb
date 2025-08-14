@@ -180,5 +180,15 @@
   "showComparison": "显示比较",
   "original": "原文:",
   "typeWhatYouHear": "输入您听到的内容...",
-  "loading": "加载中..."
+  "loading": "加载中...",
+  "dictationProgress": "听写进度",
+  "noProgressDataAvailable": "暂无听写进度",
+  "startDictationToSeeProgress": "开始练习听写以查看您的进度",
+  "selectChannelToViewProgress": "选择频道查看进度",
+  "loadError": "加载数据失败",
+  "tryAgain": "重试",
+  "channels": "频道",
+  "progress": "进度",
+  "viewYourDictationHistory": "查看您的听写练习历史和进度",
+  "completed": "已完成"
 }

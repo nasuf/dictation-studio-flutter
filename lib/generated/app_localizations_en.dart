@@ -456,7 +456,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notStarted => 'Not Started';
 
   @override
-  String get completed => 'Completed';
+  String get completed => 'completed';
 
   @override
   String get noVideosFound => 'No videos found';
@@ -499,4 +499,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get loading => 'Loading...';
+
+  @override
+  String get dictationProgress => 'Dictation Progress';
+
+  @override
+  String get noProgressDataAvailable => 'No dictation progress available';
+
+  @override
+  String get startDictationToSeeProgress =>
+      'Start practicing dictation to see your progress here';
+
+  @override
+  String get selectChannelToViewProgress => 'Select a channel to view progress';
+
+  @override
+  String get loadError => 'Failed to load data';
+
+  @override
+  String get viewYourDictationHistory =>
+      'View your dictation practice history and progress';
 }

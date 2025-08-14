@@ -485,6 +485,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get loading => '加载中...';
+
+  @override
+  String get dictationProgress => '听写进度';
+
+  @override
+  String get noProgressDataAvailable => '暂无听写进度';
+
+  @override
+  String get startDictationToSeeProgress => '开始练习听写以查看您的进度';
+
+  @override
+  String get selectChannelToViewProgress => '选择频道查看进度';
+
+  @override
+  String get loadError => '加载数据失败';
+
+  @override
+  String get viewYourDictationHistory => '查看您的听写练习历史和进度';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -968,4 +986,22 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get loading => '載入中...';
+
+  @override
+  String get dictationProgress => '聽寫進度';
+
+  @override
+  String get noProgressDataAvailable => '暫無聽寫進度';
+
+  @override
+  String get startDictationToSeeProgress => '開始練習聽寫以查看您的進度';
+
+  @override
+  String get selectChannelToViewProgress => '選擇頻道查看進度';
+
+  @override
+  String get loadError => '載入資料失敗';
+
+  @override
+  String get viewYourDictationHistory => '查看您的聽寫練習歷史和進度';
 }

@@ -180,5 +180,15 @@
       }
     }
   },
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "dictationProgress": "Dictation Progress",
+  "noProgressDataAvailable": "No dictation progress available",
+  "startDictationToSeeProgress": "Start practicing dictation to see your progress here",
+  "selectChannelToViewProgress": "Select a channel to view progress",
+  "loadError": "Failed to load data",
+  "tryAgain": "Try Again",
+  "channels": "Channels",
+  "progress": "Progress",
+  "viewYourDictationHistory": "View your dictation practice history and progress",
+  "completed": "completed"
 }

@@ -931,6 +931,60 @@ class ApiService {
     }
   }
 
+  // Get current user's dictation progress
+  Future<List<progress_data.ProgressData>> getCurrentUserProgress() async {
+    try {
+      AppLogger.info('Fetching current user progress');
+
+      final response = await _makeRequest<dynamic>(
+        '/user/all-progress',
+        (data) => data,
+        method: 'GET',
+        requiresAuth: true,
+      );
+
+      AppLogger.info('Current user progress response type: ${response.runtimeType}');
+      AppLogger.info('Current user progress response: $response');
+
+      // Handle different response formats
+      List<dynamic> progressList;
+      if (response is List) {
+        AppLogger.info('Response is direct list with ${response.length} items');
+        progressList = response;
+      } else if (response is Map && response.containsKey('progress')) {
+        AppLogger.info(
+          'Response contains progress field with ${(response['progress'] as List).length} items',
+        );
+        progressList = response['progress'] as List;
+      } else if (response is Map && response.containsKey('data')) {
+        AppLogger.info(
+          'Response contains data field with ${(response['data'] as List).length} items',
+        );
+        progressList = response['data'] as List;
+      } else {
+        AppLogger.warning('Unknown response format, returning empty list');
+        progressList = [];
+      }
+
+      AppLogger.info('Parsed ${progressList.length} progress items');
+      final result = progressList
+          .map(
+            (item) => progress_data.ProgressData.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+      AppLogger.info(
+        'Successfully converted to ${result.length} ProgressData objects',
+      );
+
+      return result;
+    } catch (e) {
+      AppLogger.error('Get current user progress API error: $e');
+      rethrow;
+    }
+  }
+
   // Generate verification code (admin operation)
   Future<Map<String, dynamic>> generateVerificationCode(String duration) async {
     try {

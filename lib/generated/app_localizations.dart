@@ -970,7 +970,7 @@ abstract class AppLocalizations {
   /// No description provided for @completed.
   ///
   /// In en, this message translates to:
-  /// **'Completed'**
+  /// **'completed'**
   String get completed;
 
   /// No description provided for @noVideosFound.
@@ -1044,6 +1044,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Loading...'**
   String get loading;
+
+  /// No description provided for @dictationProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Dictation Progress'**
+  String get dictationProgress;
+
+  /// No description provided for @noProgressDataAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No dictation progress available'**
+  String get noProgressDataAvailable;
+
+  /// No description provided for @startDictationToSeeProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Start practicing dictation to see your progress here'**
+  String get startDictationToSeeProgress;
+
+  /// No description provided for @selectChannelToViewProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a channel to view progress'**
+  String get selectChannelToViewProgress;
+
+  /// No description provided for @loadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load data'**
+  String get loadError;
+
+  /// No description provided for @viewYourDictationHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'View your dictation practice history and progress'**
+  String get viewYourDictationHistory;
 }
 
 class _AppLocalizationsDelegate

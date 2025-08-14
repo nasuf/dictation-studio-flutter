@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../providers/locale_provider.dart';
 import '../services/api_service.dart';
@@ -11,6 +12,8 @@ import '../widgets/calendar_heatmap.dart';
 import '../widgets/theme_toggle_button.dart';
 import '../generated/app_localizations.dart';
 import 'login_screen.dart';
+import '../models/progress_data.dart' as progress_data;
+import '../models/video.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -812,6 +815,54 @@ class _ProfileScreenState extends State<ProfileScreen>
 
                   const SizedBox(height: 24),
 
+                  // Dictation Progress Section
+                  Container(
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.1),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: theme.colorScheme.shadow.withValues(
+                            alpha: 0.08,
+                          ),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.analytics_outlined,
+                                color: theme.colorScheme.primary,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                AppLocalizations.of(context)!.progress,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: theme.colorScheme.onSurface,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        _buildDictationProgressTile(theme),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 24),
+
                   // Logout Button
                   SizedBox(
                     width: double.infinity,
@@ -1131,4 +1182,393 @@ class _ProfileScreenState extends State<ProfileScreen>
     }
   }
 
+  Widget _buildDictationProgressTile(ThemeData theme) {
+    return ListTile(
+      leading: Icon(
+        Icons.library_books_outlined,
+        color: theme.colorScheme.primary,
+        size: 20,
+      ),
+      title: Text(
+        AppLocalizations.of(context)!.dictationProgress,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w500,
+          color: theme.colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        AppLocalizations.of(context)!.viewYourDictationHistory,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+        ),
+      ),
+      trailing: Icon(
+        Icons.arrow_forward_ios,
+        size: 16,
+        color: theme.colorScheme.outline,
+      ),
+      onTap: () => _showDictationProgressDialog(context),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+    );
+  }
+
+  /// 显示听写进度对话框
+  void _showDictationProgressDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => _DictationProgressDialog(),
+    );
+  }
+
+}
+
+/// 听写进度对话框
+class _DictationProgressDialog extends StatefulWidget {
+  @override
+  State<_DictationProgressDialog> createState() => _DictationProgressDialogState();
+}
+
+class _DictationProgressDialogState extends State<_DictationProgressDialog> {
+  List<progress_data.ProgressData> _progress = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrentUserProgress();
+  }
+
+  /// 加载当前用户的听写进度
+  Future<void> _loadCurrentUserProgress() async {
+    try {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+
+      final result = await _apiService.getCurrentUserProgress();
+      
+      if (mounted) {
+        setState(() {
+          _progress = result;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Failed to load current user progress: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = e.toString();
+        });
+      }
+    }
+  }
+
+  /// 根据频道分组进度数据
+  Map<String, List<progress_data.ProgressData>> _groupProgressByChannel() {
+    final Map<String, List<progress_data.ProgressData>> grouped = {};
+    
+    for (final item in _progress) {
+      final channelName = item.channelName.isNotEmpty ? item.channelName : item.channelId;
+      if (!grouped.containsKey(channelName)) {
+        grouped[channelName] = [];
+      }
+      grouped[channelName]!.add(item);
+    }
+    
+    // 按完成度排序每个频道下的视频
+    for (final channelVideos in grouped.values) {
+      channelVideos.sort((a, b) => b.overallCompletion.compareTo(a.overallCompletion));
+    }
+    
+    return grouped;
+  }
+
+  /// 获取完成度对应的颜色
+  Color _getCompletionColor(double completion, BuildContext context) {
+    if (completion >= 90) {
+      return Colors.green;
+    } else if (completion >= 60) {
+      return Colors.orange;
+    } else {
+      return Colors.red;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    
+    return Material(
+      color: Colors.black54,
+      child: Center(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            children: [
+              // 标题栏
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      AppLocalizations.of(context)!.dictationProgress,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(
+                      Icons.close,
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              Divider(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
+              
+              // 内容区域
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: theme.colorScheme.primary,
+                        ),
+                      )
+                    : _errorMessage != null
+                        ? Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  color: theme.colorScheme.error,
+                                  size: 48,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  AppLocalizations.of(context)!.loadError,
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    color: theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  _errorMessage!,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: theme.colorScheme.error,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 16),
+                                ElevatedButton(
+                                  onPressed: _loadCurrentUserProgress,
+                                  child: Text(AppLocalizations.of(context)!.tryAgain),
+                                ),
+                              ],
+                            ),
+                          )
+                        : _progress.isEmpty
+                            ? Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.library_books_outlined,
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                      size: 48,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      AppLocalizations.of(context)!.noProgressDataAvailable,
+                                      style: theme.textTheme.titleMedium?.copyWith(
+                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      AppLocalizations.of(context)!.startDictationToSeeProgress,
+                                      style: theme.textTheme.bodyMedium?.copyWith(
+                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : _buildProgressList(context, theme),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 构建进度列表
+  Widget _buildProgressList(BuildContext context, ThemeData theme) {
+    final groupedProgress = _groupProgressByChannel();
+    
+    return ListView.builder(
+      itemCount: groupedProgress.keys.length,
+      itemBuilder: (context, index) {
+        final channelName = groupedProgress.keys.elementAt(index);
+        final videos = groupedProgress[channelName]!;
+        
+        return Card(
+          margin: const EdgeInsets.only(bottom: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ExpansionTile(
+            title: Text(
+              channelName,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.onSurface,
+              ),
+            ),
+            subtitle: Text(
+              '${videos.length} ${videos.length == 1 ? "video" : "videos"}',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+            leading: Icon(
+              Icons.video_library,
+              color: theme.colorScheme.primary,
+            ),
+            // 移除展开时的分隔线
+            childrenPadding: EdgeInsets.zero,
+            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            shape: const Border(),
+            collapsedShape: const Border(),
+            children: videos.map((video) => _buildVideoItem(context, theme, video)).toList(),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 构建单个视频项
+  Widget _buildVideoItem(BuildContext context, ThemeData theme, progress_data.ProgressData video) {
+    final completionColor = _getCompletionColor(video.overallCompletion, context);
+    
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainer.withValues(alpha: 0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          width: 48,
+          height: 36,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(6),
+            color: theme.colorScheme.surfaceContainer,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: Image.network(
+              'https://img.youtube.com/vi/${video.videoId}/default.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Icon(
+                  Icons.play_circle_outline,
+                  color: theme.colorScheme.primary,
+                  size: 24,
+                );
+              },
+            ),
+          ),
+        ),
+        title: Text(
+          video.videoTitle.isNotEmpty ? video.videoTitle : 'Video ${video.videoId}',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+            color: theme.colorScheme.onSurface,
+          ),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            LinearProgressIndicator(
+              value: video.overallCompletion / 100,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(completionColor),
+              minHeight: 6,
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${video.overallCompletion.toStringAsFixed(1)}% ${AppLocalizations.of(context)!.completed}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: completionColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (video.overallCompletion >= 100)
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 16,
+                  ),
+              ],
+            ),
+          ],
+        ),
+        trailing: Icon(
+          Icons.arrow_forward_ios,
+          size: 16,
+          color: theme.colorScheme.outline,
+        ),
+        onTap: () {
+          Navigator.of(context).pop(); // 关闭对话框
+          // 导航到听写页面，使用与video_list_screen.dart相同的逻辑
+          // 创建兼容的Video对象给dictation_screen使用
+          final videoObject = Video(
+            videoId: video.videoId,
+            title: video.videoTitle,
+            link: video.videoLink,
+            visibility: 'public',
+            createdAt: 0,
+            updatedAt: 0,
+            isRefined: true,
+          );
+          
+          context.pushNamed(
+            'dictation',
+            pathParameters: {
+              'channelId': video.channelId,
+              'videoId': video.videoId,
+            },
+            extra: {
+              'video': videoObject,
+            },
+          );
+        },
+      ),
+    );
+  }
 }

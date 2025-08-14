@@ -446,7 +446,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get notStarted => '未開始';
 
   @override
-  String get completed => '完了済み';
+  String get completed => '完了';
 
   @override
   String get noVideosFound => 'ビデオが見つかりません';
@@ -487,4 +487,22 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get loading => '読み込み中...';
+
+  @override
+  String get dictationProgress => '聴写進捗';
+
+  @override
+  String get noProgressDataAvailable => '聴写進捗データがありません';
+
+  @override
+  String get startDictationToSeeProgress => '聴写練習を始めて進捗を確認してください';
+
+  @override
+  String get selectChannelToViewProgress => 'チャンネルを選択して進捗を表示';
+
+  @override
+  String get loadError => 'データの読み込みに失敗しました';
+
+  @override
+  String get viewYourDictationHistory => '聴写練習の履歴と進捗を表示';
 }

@@ -180,5 +180,15 @@
   "showComparison": "比較を表示",
   "original": "オリジナル:",
   "typeWhatYouHear": "聞こえたことを入力してください...",
-  "loading": "読み込み中..."
+  "loading": "読み込み中...",
+  "dictationProgress": "聴写進捗",
+  "noProgressDataAvailable": "聴写進捗データがありません",
+  "startDictationToSeeProgress": "聴写練習を始めて進捗を確認してください",
+  "selectChannelToViewProgress": "チャンネルを選択して進捗を表示",
+  "loadError": "データの読み込みに失敗しました",
+  "tryAgain": "再試行",
+  "channels": "チャンネル",
+  "progress": "進捗",
+  "viewYourDictationHistory": "聴写練習の履歴と進捗を表示",
+  "completed": "完了"
 }

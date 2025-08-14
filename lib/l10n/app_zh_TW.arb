@@ -180,5 +180,15 @@
   "showComparison": "顯示比較",
   "original": "原文:",
   "typeWhatYouHear": "輸入您聽到的內容...",
-  "loading": "載入中..."
+  "loading": "載入中...",
+  "dictationProgress": "聽寫進度",
+  "noProgressDataAvailable": "暫無聽寫進度",
+  "startDictationToSeeProgress": "開始練習聽寫以查看您的進度",
+  "selectChannelToViewProgress": "選擇頻道查看進度",
+  "loadError": "載入資料失敗",
+  "tryAgain": "重試",
+  "channels": "頻道",
+  "progress": "進度",
+  "viewYourDictationHistory": "查看您的聽寫練習歷史和進度",
+  "completed": "已完成"
 }

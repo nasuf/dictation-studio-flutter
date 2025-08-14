@@ -180,5 +180,15 @@
   "showComparison": "비교 보기",
   "original": "원본:",
   "typeWhatYouHear": "들리는 것을 입력하세요...",
-  "loading": "로딩 중..."
+  "loading": "로딩 중...",
+  "dictationProgress": "받아쓰기 진도",
+  "noProgressDataAvailable": "받아쓰기 진도 데이터가 없습니다",
+  "startDictationToSeeProgress": "받아쓰기 연습을 시작하여 진도를 확인하세요",
+  "selectChannelToViewProgress": "채널을 선택하여 진도 보기",
+  "loadError": "데이터 로드에 실패했습니다",
+  "tryAgain": "다시 시도",
+  "channels": "채널",
+  "progress": "진도",
+  "viewYourDictationHistory": "받아쓰기 연습 기록과 진도 보기",
+  "completed": "완료"
 }

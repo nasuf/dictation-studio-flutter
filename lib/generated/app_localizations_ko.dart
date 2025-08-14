@@ -435,7 +435,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get alphabetical => '알파벳순';
 
   @override
-  String get progress => '진행률';
+  String get progress => '진도';
 
   @override
   String get done => '완료';
@@ -447,7 +447,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get notStarted => '시작 안 함';
 
   @override
-  String get completed => '완료됨';
+  String get completed => '완료';
 
   @override
   String get noVideosFound => '비디오를 찾을 수 없습니다';
@@ -488,4 +488,22 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get loading => '로딩 중...';
+
+  @override
+  String get dictationProgress => '받아쓰기 진도';
+
+  @override
+  String get noProgressDataAvailable => '받아쓰기 진도 데이터가 없습니다';
+
+  @override
+  String get startDictationToSeeProgress => '받아쓰기 연습을 시작하여 진도를 확인하세요';
+
+  @override
+  String get selectChannelToViewProgress => '채널을 선택하여 진도 보기';
+
+  @override
+  String get loadError => '데이터 로드에 실패했습니다';
+
+  @override
+  String get viewYourDictationHistory => '받아쓰기 연습 기록과 진도 보기';
 }
