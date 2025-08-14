@@ -435,16 +435,17 @@ class ApiService {
       AppLogger.info(
         'Fetching transcript items for channel: $channelId, video: $videoId',
       );
-      
+
       final response = await getVideoTranscript(channelId, videoId);
-      
+
       // Parse the transcript data
       List<TranscriptItem> transcriptItems = [];
-      
-      if (response.containsKey('transcript') && response['transcript'] is List) {
+
+      if (response.containsKey('transcript') &&
+          response['transcript'] is List) {
         final transcriptList = response['transcript'] as List;
         AppLogger.info('Found ${transcriptList.length} transcript segments');
-        
+
         for (int i = 0; i < transcriptList.length; i++) {
           final item = transcriptList[i];
           if (item is Map<String, dynamic>) {
@@ -468,8 +469,10 @@ class ApiService {
         final data = response['data'] as Map<String, dynamic>;
         if (data.containsKey('transcript') && data['transcript'] is List) {
           final transcriptList = data['transcript'] as List;
-          AppLogger.info('Found ${transcriptList.length} transcript segments in data');
-          
+          AppLogger.info(
+            'Found ${transcriptList.length} transcript segments in data',
+          );
+
           for (int i = 0; i < transcriptList.length; i++) {
             final item = transcriptList[i];
             if (item is Map<String, dynamic>) {
@@ -488,15 +491,16 @@ class ApiService {
           }
         }
       }
-      
+
       if (transcriptItems.isEmpty) {
         AppLogger.warning('No transcript items found or parsed');
         // Return empty list instead of throwing error to allow manual transcript creation
       }
-      
-      AppLogger.info('Successfully parsed ${transcriptItems.length} transcript items');
+
+      AppLogger.info(
+        'Successfully parsed ${transcriptItems.length} transcript items',
+      );
       return transcriptItems;
-      
     } catch (e) {
       AppLogger.error('Get video transcript items error: $e');
       // Return empty list to allow manual transcript creation
@@ -514,20 +518,22 @@ class ApiService {
       AppLogger.info(
         'Saving full transcript for channel: $channelId, video: $videoId with ${transcriptItems.length} segments',
       );
-      
+
       // Convert transcript items to API format
-      final transcript = transcriptItems.map((item) => {
-        'start': item.start,
-        'end': item.end,
-        'transcript': item.transcript.trim(),
-      }).toList();
-      
-      final payload = {
-        'transcript': transcript,
-      };
-      
+      final transcript = transcriptItems
+          .map(
+            (item) => {
+              'start': item.start,
+              'end': item.end,
+              'transcript': item.transcript.trim(),
+            },
+          )
+          .toList();
+
+      final payload = {'transcript': transcript};
+
       AppLogger.info('Transcript payload: ${transcript.length} segments');
-      
+
       final result = await _makeRequest<Map<String, dynamic>>(
         '/service/$channelId/$videoId/full-transcript',
         (data) => data as Map<String, dynamic>,
@@ -535,10 +541,9 @@ class ApiService {
         body: payload,
         requiresAuth: true,
       );
-      
+
       AppLogger.info('Full transcript saved successfully');
       return result;
-      
     } catch (e) {
       AppLogger.error('Save video full transcript error: $e');
       rethrow;
@@ -546,14 +551,10 @@ class ApiService {
   }
 
   // Restore original transcript
-  Future<Map<String, dynamic>> restoreOriginalTranscript(
-    String videoId,
-  ) async {
+  Future<Map<String, dynamic>> restoreOriginalTranscript(String videoId) async {
     try {
-      AppLogger.info(
-        'Restoring original transcript for video: $videoId',
-      );
-      
+      AppLogger.info('Restoring original transcript for video: $videoId');
+
       return await _makeRequest<Map<String, dynamic>>(
         '/service/deep_look/$videoId/restore-transcript',
         (data) => data as Map<String, dynamic>,
@@ -755,6 +756,21 @@ class ApiService {
       );
     } catch (e) {
       AppLogger.error('Get admin stats API error: $e');
+      rethrow;
+    }
+  }
+
+  // Get detailed analytics (video counts by visibility, refined status, and per channel breakdown)
+  Future<Map<String, dynamic>> getAnalytics() async {
+    try {
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/admin/analytics/videos',
+        (data) => data as Map<String, dynamic>,
+        method: 'GET',
+        requiresAuth: true, // Admin operations require authentication
+      );
+    } catch (e) {
+      AppLogger.error('Get analytics API error: $e');
       rethrow;
     }
   }
@@ -1044,7 +1060,7 @@ class ApiService {
       AppLogger.info(
         'Marking video as ${isRefined ? 'refined' : 'unrefined'}: $channelId/$videoId',
       );
-      
+
       return await _makeRequest<Map<String, dynamic>>(
         '/service/$channelId/$videoId/mark-refined',
         (data) => data as Map<String, dynamic>,
@@ -1054,6 +1070,48 @@ class ApiService {
       );
     } catch (e) {
       AppLogger.error('Mark video refined API error: $e');
+      rethrow;
+    }
+  }
+
+  // Delete video (admin operation)
+  Future<Map<String, dynamic>> deleteVideo(
+    String channelId,
+    String videoId,
+  ) async {
+    try {
+      AppLogger.info('Deleting video: $channelId/$videoId');
+
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/video-list/$channelId/$videoId',
+        (data) => data as Map<String, dynamic>,
+        method: 'DELETE',
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Delete video API error: $e');
+      rethrow;
+    }
+  }
+
+  // Update video (admin operation)
+  Future<Map<String, dynamic>> updateVideo(
+    String channelId,
+    String videoId,
+    Map<String, dynamic> updateData,
+  ) async {
+    try {
+      AppLogger.info('Updating video: $channelId/$videoId with data: $updateData');
+
+      return await _makeRequest<Map<String, dynamic>>(
+        '/service/video-list/$channelId/$videoId',
+        (data) => data as Map<String, dynamic>,
+        method: 'PUT',
+        body: updateData,
+        requiresAuth: true,
+      );
+    } catch (e) {
+      AppLogger.error('Update video API error: $e');
       rethrow;
     }
   }

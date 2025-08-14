@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../models/video.dart';
 import '../../models/channel.dart';
 import '../../models/transcript_item.dart';
+import '../../models/analytics.dart';
 import '../../services/api_service.dart';
 import '../../utils/logger.dart';
 import '../../utils/constants.dart';
@@ -33,6 +34,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   // Data
   List<Channel> _channels = [];
   List<Video> _videos = [];
+  Analytics? _analytics;
+  bool _isLoadingAnalytics = false;
   // List<TranscriptItem> _currentTranscript = []; // Removed unused field
 
   // Services
@@ -52,6 +55,14 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    
+    // Add listener for tab changes to load analytics when analytics tab is selected
+    _tabController.addListener(() {
+      if (_tabController.index == 1 && _analytics == null && !_isLoadingAnalytics) {
+        // Analytics tab selected and data not loaded yet
+        _loadAnalytics();
+      }
+    });
 
     // Load initial data without triggering widget rebuild during initState
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -153,6 +164,31 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     }
   }
 
+  // Load analytics data
+  Future<void> _loadAnalytics() async {
+    setState(() {
+      _isLoadingAnalytics = true;
+    });
+
+    try {
+      final analyticsData = await _apiService.getAnalytics();
+      if (mounted) {
+        setState(() {
+          _analytics = Analytics.fromJson(analyticsData);
+          _isLoadingAnalytics = false;
+        });
+      }
+    } catch (e) {
+      AppLogger.error('Error loading analytics: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingAnalytics = false;
+        });
+        _showErrorSnackBar('Failed to load analytics: $e');
+      }
+    }
+  }
+
   // Debounced search
   void _onSearchChanged(String query) {
     _debounceTimer?.cancel();
@@ -219,10 +255,169 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
   }
 
   // Show edit video modal
-  void _showEditVideoModal(Video video) {
-    setState(() {
-      // _editingVideo = video; // Removed unused field
-    });
+  void _showEditVideoModal(Video video) async {
+    final titleController = TextEditingController(text: video.title);
+    final linkController = TextEditingController(text: video.link);
+    String selectedVisibility = video.visibility;
+    
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Edit Video'),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Video ID: ${video.videoId}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: titleController,
+                      decoration: const InputDecoration(
+                        labelText: 'Video Title',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: linkController,
+                      decoration: const InputDecoration(
+                        labelText: 'Video Link',
+                        border: OutlineInputBorder(),
+                        hintText: 'https://www.youtube.com/watch?v=...',
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedVisibility,
+                      decoration: const InputDecoration(
+                        labelText: 'Visibility',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'public',
+                          child: Row(
+                            children: [
+                              Icon(Icons.public, size: 18),
+                              SizedBox(width: 8),
+                              Text('Public'),
+                            ],
+                          ),
+                        ),
+                        DropdownMenuItem(
+                          value: 'private',
+                          child: Row(
+                            children: [
+                              Icon(Icons.lock, size: 18),
+                              SizedBox(width: 8),
+                              Text('Private'),
+                            ],
+                          ),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() {
+                            selectedVisibility = value;
+                          });
+                        }
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final updatedData = <String, dynamic>{};
+                    
+                    if (titleController.text != video.title) {
+                      updatedData['title'] = titleController.text;
+                    }
+                    
+                    if (linkController.text != video.link) {
+                      updatedData['link'] = linkController.text;
+                    }
+                    
+                    if (selectedVisibility != video.visibility) {
+                      updatedData['visibility'] = selectedVisibility;
+                    }
+                    
+                    Navigator.of(context).pop(updatedData);
+                  },
+                  child: const Text('Save Changes'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    
+    titleController.dispose();
+    linkController.dispose();
+    
+    if (result != null && result.isNotEmpty) {
+      await _updateVideo(video, result);
+    }
+  }
+  
+  // Toggle video refined status
+  Future<void> _toggleVideoRefined(Video video, bool isRefined) async {
+    if (_selectedChannelId == null) return;
+    
+    try {
+      AppLogger.info('Toggling video ${video.videoId} refined status to $isRefined');
+      await _apiService.markVideoRefined(_selectedChannelId!, video.videoId, isRefined);
+      _showSuccessSnackBar('Video marked as ${isRefined ? 'refined' : 'unrefined'}');
+      await _loadVideos(); // Refresh video list
+    } catch (e) {
+      AppLogger.error('Error toggling video refined status: $e');
+      _showErrorSnackBar('Failed to update refined status: $e');
+    }
+  }
+  
+  // Update video with given data
+  Future<void> _updateVideo(Video video, Map<String, dynamic> updateData) async {
+    if (_selectedChannelId == null) return;
+    
+    try {
+      AppLogger.info('Updating video ${video.videoId} with data: $updateData');
+      await _apiService.updateVideo(_selectedChannelId!, video.videoId, updateData);
+      
+      final List<String> updatedFields = [];
+      if (updateData.containsKey('title')) {
+        updatedFields.add('title');
+      }
+      if (updateData.containsKey('link')) {
+        updatedFields.add('link');
+      }
+      if (updateData.containsKey('visibility')) {
+        updatedFields.add('visibility');
+      }
+      
+      _showSuccessSnackBar('Video ${updatedFields.join(" and ")} updated successfully');
+      await _loadVideos(); // Refresh video list
+    } catch (e) {
+      AppLogger.error('Error updating video: $e');
+      _showErrorSnackBar('Failed to update video: $e');
+    }
   }
 
   // Show transcript editor
@@ -297,13 +492,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     if (!confirmed) return;
 
     try {
-      // TODO: Implement video deletion when API is available
       AppLogger.info('Deleting video: ${video.videoId}');
-
-      // Placeholder - simulate deletion
-      await Future.delayed(const Duration(seconds: 1));
-      _showSuccessSnackBar('Delete functionality coming soon');
-      // await _loadVideos(); // Refresh video list when API is available
+      await _apiService.deleteVideo(_selectedChannelId!, video.videoId);
+      _showSuccessSnackBar('Video deleted successfully');
+      await _loadVideos(); // Refresh video list
     } catch (e) {
       AppLogger.error('Error deleting video: $e');
       _showErrorSnackBar('Failed to delete video: $e');
@@ -315,15 +507,15 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     if (_selectedChannelId == null) return;
 
     try {
-      // TODO: Implement video visibility update when API is available
       AppLogger.info(
         'Updating video ${video.videoId} visibility to $newVisibility',
       );
 
-      // Placeholder - simulate update
-      await Future.delayed(const Duration(seconds: 1));
-      _showSuccessSnackBar('Visibility update functionality coming soon');
-      // await _loadVideos(); // Refresh video list when API is available
+      await _apiService.updateVideo(_selectedChannelId!, video.videoId, {
+        'visibility': newVisibility,
+      });
+      _showSuccessSnackBar('Video visibility updated to $newVisibility');
+      await _loadVideos(); // Refresh video list
     } catch (e) {
       AppLogger.error('Error updating video visibility: $e');
       _showErrorSnackBar('Failed to update video visibility: $e');
@@ -432,7 +624,14 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadVideos,
+            onPressed: () {
+              // Refresh based on current tab
+              if (_tabController.index == 0) {
+                _loadVideos();
+              } else if (_tabController.index == 1) {
+                _loadAnalytics();
+              }
+            },
             tooltip: 'Refresh',
           ),
         ],
@@ -795,6 +994,29 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                     ),
                     const PopupMenuDivider(),
                     PopupMenuItem(
+                      value: video.isRefined ? 'mark_unrefined' : 'mark_refined',
+                      child: Row(
+                        children: [
+                          Icon(
+                            video.isRefined ? Icons.remove_circle_outline : Icons.check_circle_outline,
+                            color: video.isRefined 
+                                ? theme.colorScheme.error 
+                                : theme.colorScheme.tertiary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            video.isRefined ? 'Mark Unrefined' : 'Mark Refined',
+                            style: TextStyle(
+                              color: video.isRefined 
+                                  ? theme.colorScheme.error 
+                                  : theme.colorScheme.tertiary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const PopupMenuDivider(),
+                    PopupMenuItem(
                       value: 'delete',
                       child: Row(
                         children: [
@@ -869,22 +1091,411 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
       case 'visibility_private':
         _updateVideoVisibility(video, 'private');
         break;
+      case 'mark_refined':
+        _toggleVideoRefined(video, true);
+        break;
+      case 'mark_unrefined':
+        _toggleVideoRefined(video, false);
+        break;
       case 'delete':
         _deleteVideo(video);
         break;
     }
   }
 
-  // Build analytics tab (placeholder)
+  // Build analytics tab
   Widget _buildAnalyticsTab() {
     final theme = Theme.of(context);
-    return Center(
+    final isDark = theme.brightness == Brightness.dark;
+
+    if (_isLoadingAnalytics) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Loading analytics...'),
+          ],
+        ),
+      );
+    }
+
+    if (_analytics == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.analytics, size: 48, color: theme.colorScheme.outline),
+            const SizedBox(height: 16),
+            const Text('Failed to load analytics'),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadAnalytics,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.analytics, size: 48, color: theme.colorScheme.outline),
+          // Summary section
+          _buildAnalyticsSummarySection(theme, isDark),
+          
+          const SizedBox(height: 24),
+          
+          // Channel breakdown section
+          _buildChannelBreakdownSection(theme, isDark),
+        ],
+      ),
+    );
+  }
+
+  // Build analytics summary section
+  Widget _buildAnalyticsSummarySection(ThemeData theme, bool isDark) {
+    final summary = _analytics!.summary;
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.insights, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Video Statistics',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            // Total videos
+            _buildSummaryRow(
+              theme,
+              'Total Videos',
+              summary.totalVideos,
+              Colors.blue,
+              Icons.video_library,
+            ),
+            
+            const Divider(height: 24),
+            
+            // Visibility breakdown
+            Text(
+              'By Visibility',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            _buildSummaryRow(
+              theme,
+              'Public Videos',
+              summary.publicVideos,
+              Colors.green,
+              Icons.public,
+            ),
+            
+            _buildSummaryRow(
+              theme,
+              'Private Videos',
+              summary.privateVideos,
+              Colors.orange,
+              Icons.lock,
+            ),
+            
+            const Divider(height: 24),
+            
+            // Refined status breakdown
+            Text(
+              'By Refinement Status',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            
+            _buildSummaryRow(
+              theme,
+              'Refined Videos',
+              summary.refinedVideos,
+              Colors.teal,
+              Icons.check_circle,
+            ),
+            
+            _buildSummaryRow(
+              theme,
+              'Unrefined Videos',
+              summary.unrefinedVideos,
+              Colors.red,
+              Icons.warning,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build summary row
+  Widget _buildSummaryRow(
+    ThemeData theme,
+    String label,
+    int count,
+    Color color,
+    IconData icon,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium,
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: color,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              count.toString(),
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build channel breakdown section
+  Widget _buildChannelBreakdownSection(ThemeData theme, bool isDark) {
+    final channels = _analytics!.channels;
+    
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.playlist_play, color: theme.colorScheme.primary),
+                const SizedBox(width: 8),
+                Text(
+                  'Channel Statistics',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            
+            if (channels.isEmpty)
+              Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.folder_open,
+                        size: 48,
+                        color: theme.colorScheme.outline,
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No channels found',
+                        style: TextStyle(color: theme.colorScheme.outline),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else
+              ...channels.map((channel) => _buildChannelCard(theme, channel)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build individual channel card
+  Widget _buildChannelCard(ThemeData theme, ChannelAnalytics channel) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.colorScheme.outline.withOpacity(0.2),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Channel header
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  Icons.tv,
+                  color: theme.colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      channel.channelName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      'ID: ${channel.channelId}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.outline,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Total videos badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${channel.totalVideos}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          
           const SizedBox(height: 16),
-          const Text('Analytics feature coming soon'),
+          
+          // Channel statistics
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _buildChannelStatChip(
+                theme,
+                'Public',
+                channel.publicVideos,
+                Colors.green,
+              ),
+              _buildChannelStatChip(
+                theme,
+                'Private',
+                channel.privateVideos,
+                Colors.orange,
+              ),
+              _buildChannelStatChip(
+                theme,
+                'Refined',
+                channel.refinedVideos,
+                Colors.teal,
+              ),
+              _buildChannelStatChip(
+                theme,
+                'Unrefined',
+                channel.unrefinedVideos,
+                Colors.red,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build channel statistic chip
+  Widget _buildChannelStatChip(
+    ThemeData theme,
+    String label,
+    int count,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            '$label: $count',
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
