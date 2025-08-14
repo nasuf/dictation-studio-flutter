@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../providers/auth_provider.dart';
 import '../generated/app_localizations.dart';
 import '../services/onboarding_service.dart';
+import '../theme/app_colors.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -294,7 +295,7 @@ class _LoginScreenState extends State<LoginScreen>
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFF4CAF50), Color(0xFF66BB6A)],
+            colors: [AppColors.techBlue, AppColors.techCyan],
           ),
         ),
         child: SafeArea(
@@ -318,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen>
                         const Icon(
                           Icons.audiotrack,
                           size: 48,
-                          color: Color(0xFF4CAF50),
+                          color: AppColors.techBlue,
                         ),
                         const SizedBox(height: 16),
                         Text(
@@ -326,7 +327,7 @@ class _LoginScreenState extends State<LoginScreen>
                           style: Theme.of(context).textTheme.headlineMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: const Color(0xFF4CAF50),
+                                color: AppColors.techBlue,
                               ),
                         ),
                         const SizedBox(height: 8),
@@ -357,7 +358,7 @@ class _LoginScreenState extends State<LoginScreen>
                                   child: Container(
                                     padding: const EdgeInsets.all(4),
                                     decoration: const BoxDecoration(
-                                      color: Color(0xFF4CAF50),
+                                      color: AppColors.techBlue,
                                       shape: BoxShape.circle,
                                     ),
                                     child: const Icon(
@@ -621,7 +622,7 @@ class _LoginScreenState extends State<LoginScreen>
                                     child: Text(
                                       _isRegistering ? AppLocalizations.of(context)!.signIn : AppLocalizations.of(context)!.signUp,
                                       style: const TextStyle(
-                                        color: Color(0xFF4CAF50),
+                                        color: AppColors.techBlue,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),

@@ -9,6 +9,7 @@ import '../providers/channel_provider.dart';
 import '../utils/constants.dart';
 import '../utils/logger.dart';
 import '../generated/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 class ChannelListScreen extends StatefulWidget {
   const ChannelListScreen({super.key});
@@ -549,10 +550,10 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                               colors: [
-                                _getLanguageColor(
+                                AppColors.getLanguageColor(
                                   channel.language,
                                 ).withValues(alpha: 0.8),
-                                _getLanguageColor(
+                                AppColors.getLanguageColor(
                                   channel.language,
                                 ).withValues(alpha: 0.6),
                               ],
@@ -572,15 +573,11 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                                     height: double.infinity,
                                     fit: BoxFit.cover,
                                     placeholder: (context, url) => Container(
-                                      color: _getLanguageColor(
-                                        channel.language,
-                                      ).withValues(alpha: 0.3),
+                                      color: context.colors.loadingCardBackground,
                                     ),
                                     errorWidget: (context, error, stackTrace) =>
                                         Container(
-                                          color: _getLanguageColor(
-                                            channel.language,
-                                          ).withValues(alpha: 0.3),
+                                          color: context.colors.loadingCardBackground,
                                         ),
                                   ),
 
@@ -632,7 +629,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                                       vertical: 3,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _getLanguageColor(channel.language),
+                                      color: AppColors.getLanguageColor(channel.language),
                                       borderRadius: BorderRadius.circular(10),
                                     ),
                                     child: Text(
@@ -874,7 +871,7 @@ class _ChannelListScreenState extends State<ChannelListScreen>
                         _getLocalizedLanguageName(context, language),
                         language,
                         Icons.language,
-                        _getLanguageColor(language),
+context.colors.globeIconColor,
                       ),
                     ),
                   ],
@@ -961,21 +958,6 @@ class _ChannelListScreenState extends State<ChannelListScreen>
     }
   }
 
-  // Get language color for visual distinction with green theme
-  Color _getLanguageColor(String language) {
-    switch (language) {
-      case AppConstants.languageEnglish:
-        return const Color(0xFF4CAF50); // Green for English
-      case AppConstants.languageChinese:
-        return const Color(0xFF66BB6A); // Light green for Chinese
-      case AppConstants.languageJapanese:
-        return const Color(0xFF81C784); // Soft green for Japanese
-      case AppConstants.languageKorean:
-        return const Color(0xFF009688); // Teal for Korean
-      default:
-        return const Color(0xFF8BC34A); // Lime green for others
-    }
-  }
 }
 
 // Helper class for language display

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/onboarding_service.dart';
 import '../providers/auth_provider.dart';
+import '../theme/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -164,16 +165,7 @@ class _SplashScreenState extends State<SplashScreen>
                   Color(0xFF0A0A0B), // Darkest at bottom
                 ],
               )
-            : const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF4CAF50), // Green
-                  Color(0xFF66BB6A), // Light green
-                  Color(0xFF81C784), // Soft green
-                ],
-                stops: [0.0, 0.5, 1.0],
-              ),
+            : AppColors.techGradient,
         ),
         child: Center(
           child: Column(
@@ -331,7 +323,7 @@ class _SplashScreenState extends State<SplashScreen>
           child: Icon(
             Icons.mic,
             size: 40,
-            color: isDark ? const Color(0xFF1A1A1D) : const Color(0xFF2E7D32),
+            color: isDark ? const Color(0xFF1A1A1D) : AppColors.techBlue,
           ),
         ),
         
@@ -353,15 +345,15 @@ class _SplashScreenState extends State<SplashScreen>
                         const Color(0xFF0056CC),
                       ]
                     : [
-                        const Color(0xFF4CAF50),
-                        const Color(0xFF388E3C),
+                        AppColors.techCyan,
+                        AppColors.techPurple,
                       ],
               ),
               boxShadow: [
                 BoxShadow(
                   color: (isDark 
                       ? const Color(0xFF007AFF) 
-                      : const Color(0xFF4CAF50)).withOpacity(0.3),
+                      : AppColors.techCyan).withOpacity(0.3),
                   blurRadius: 6,
                   spreadRadius: 1,
                 ),

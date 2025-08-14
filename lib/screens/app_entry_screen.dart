@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/onboarding_service.dart';
+import '../theme/app_colors.dart';
 
 class AppEntryScreen extends StatefulWidget {
   const AppEntryScreen({super.key});
@@ -148,9 +149,9 @@ class _AppEntryScreenState extends State<AppEntryScreen>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    Color(0xFF4CAF50), // Green
-                    Color(0xFF66BB6A), // Light green
-                    Color(0xFF81C784), // Soft green
+                    AppColors.techBlue,
+                    AppColors.techCyan,
+                    AppColors.techPurple
                   ],
                   stops: [0.0, 0.5, 1.0],
                 ),
@@ -318,7 +319,7 @@ class _AppEntryScreenState extends State<AppEntryScreen>
             width: 16,
             height: 16,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF34C759) : const Color(0xFF4CAF50),
+              color: AppColors.techBlue,
               shape: BoxShape.circle,
               border: Border.all(color: Colors.white, width: 2),
             ),

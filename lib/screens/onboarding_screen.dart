@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:go_router/go_router.dart';
 import '../generated/app_localizations.dart';
 import '../providers/locale_provider.dart';
+import '../theme/app_colors.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
@@ -68,9 +69,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  Color(0xFF4CAF50), // Green
-                  Color(0xFF66BB6A), // Light green
-                  Color(0xFF81C784), // Soft green
+                  AppColors.techBlue,
+                  AppColors.techCyan,
+                  AppColors.techPurple
                 ],
                 stops: [0.0, 0.5, 1.0],
               ),
@@ -158,7 +159,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           onPressed: _isNavigating ? null : _nextPage,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xFF4CAF50),
+                            foregroundColor: AppColors.techBlue,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 32,
                               vertical: 16,
@@ -175,7 +176,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
                                     valueColor: AlwaysStoppedAnimation<Color>(
-                                      Color(0xFF4CAF50),
+                                      AppColors.techBlue,
                                     ),
                                   ),
                                 )

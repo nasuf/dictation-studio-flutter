@@ -1,91 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'app_colors.dart';
 
-/// App theme configuration providing both light and dark themes
+/// 应用主题配置 - 使用统一的颜色系统构建完整主题
+/// 所有颜色定义现在统一在 AppColors 中管理
 class AppTheme {
-  // Color constants for light green theme
-  static const Color _lightPrimary = Color(0xFF4CAF50);        // Green 500
-  static const Color _lightPrimaryContainer = Color(0xFFE8F5E8); // Very light green
-  static const Color _lightSecondary = Color(0xFF8BC34A);       // Light green 500
-  static const Color _lightSecondaryContainer = Color(0xFFF1F8E9); // Very light lime
-  static const Color _lightTertiary = Color(0xFF009688);        // Teal 500
-  static const Color _lightSurface = Colors.white;
-  static const Color _lightSurfaceContainerHighest = Color(0xFFF1F8E9);
-  static const Color _lightOnSurface = Color(0xFF1B5E20);       // Dark green for text
-  static const Color _lightOutline = Color(0xFF81C784);         // Medium green for borders
-  
-  // Color constants for dark green theme (complementary to light theme)
-  static const Color _darkPrimary = Color(0xFF81C784);          // Light green 300 
-  static const Color _darkPrimaryContainer = Color(0xFF2E7D32); // Green 800
-  static const Color _darkSecondary = Color(0xFFA5D6A7);        // Light green 200
-  static const Color _darkSecondaryContainer = Color(0xFF388E3C); // Green 700
-  static const Color _darkTertiary = Color(0xFF4DB6AC);         // Teal 300
-  static const Color _darkSurface = Color(0xFF0F1419);          // Very dark blue-gray
-  static const Color _darkSurfaceContainer = Color(0xFF1A1F24); // Dark blue-gray
-  static const Color _darkSurfaceContainerHighest = Color(0xFF2A2F34); // Medium dark gray
-  static const Color _darkOnSurface = Color(0xFFE8F5E8);        // Very light green for text
-  static const Color _darkOnSurfaceVariant = Color(0xFFA5D6A7); // Light green for secondary text
-  static const Color _darkOutline = Color(0xFF4CAF50);          // Green for borders
-  static const Color _darkShadow = Color(0xFF000000);
+  // 私有构造函数，防止实例化
+  AppTheme._();
 
-  /// Create light theme with light green color scheme
+  /// 创建浅色主题
+  /// 使用 AppColors.lightColorScheme 提供的统一颜色方案
   static ThemeData lightTheme() {
-    final lightGreenColorScheme = ColorScheme.light(
-      primary: _lightPrimary,
-      primaryContainer: _lightPrimaryContainer,
-      secondary: _lightSecondary,
-      secondaryContainer: _lightSecondaryContainer,
-      tertiary: _lightTertiary,
-      surface: _lightSurface,
-      surfaceContainerHighest: _lightSurfaceContainerHighest,
-      onSurface: _lightOnSurface,
-      outline: _lightOutline,
-      shadow: Colors.black.withValues(alpha: 0.1),
-    );
-
-    return _buildTheme(lightGreenColorScheme, Brightness.light);
+    return _buildTheme(AppColors.lightColorScheme, Brightness.light);
   }
 
-  /// Create dark theme with dark green color scheme
+  /// 创建深色主题
+  /// 使用 AppColors.darkColorScheme 提供的统一颜色方案
   static ThemeData darkTheme() {
-    final darkGreenColorScheme = ColorScheme.dark(
-      primary: _darkPrimary,
-      primaryContainer: _darkPrimaryContainer,
-      secondary: _darkSecondary,
-      secondaryContainer: _darkSecondaryContainer,
-      tertiary: _darkTertiary,
-      surface: _darkSurface,
-      surfaceContainer: _darkSurfaceContainer,
-      surfaceContainerHighest: _darkSurfaceContainerHighest,
-      onSurface: _darkOnSurface,
-      onSurfaceVariant: _darkOnSurfaceVariant,
-      outline: _darkOutline,
-      shadow: _darkShadow.withValues(alpha: 0.3),
-      // Ensure proper contrast for dark theme
-      onPrimary: const Color(0xFF003300),        // Very dark green for text on primary
-      onPrimaryContainer: const Color(0xFFE8F5E8), // Light green for text on primary container
-      onSecondary: const Color(0xFF003300),      // Very dark green for text on secondary
-      onSecondaryContainer: const Color(0xFFE8F5E8), // Light green for text on secondary container
-      onTertiary: const Color(0xFF003300),       // Very dark green for text on tertiary
-      error: const Color(0xFFCF6679),            // Soft red for errors in dark theme
-      onError: const Color(0xFF000000),          // Black text on error
-      inverseSurface: const Color(0xFFE8F5E8),   // Light green for inverse elements
-      onInverseSurface: const Color(0xFF1B5E20), // Dark green for text on inverse surface
-    );
-
-    return _buildTheme(darkGreenColorScheme, Brightness.dark);
+    return _buildTheme(AppColors.darkColorScheme, Brightness.dark);
   }
 
-  /// Build theme with shared component styling
+  /// 主题构建器 - 构建完整的主题数据
+  /// 统一配置所有 Material 组件的样式
   static ThemeData _buildTheme(ColorScheme colorScheme, Brightness brightness) {
     final bool isDark = brightness == Brightness.dark;
     
     return ThemeData(
+      // ======================== 基础配置 ========================
       useMaterial3: true,
       colorScheme: colorScheme,
       brightness: brightness,
       
-      // AppBar theme
+      // ======================== AppBar 主题 ========================
       appBarTheme: AppBarTheme(
         centerTitle: false,
         elevation: 0,
@@ -119,7 +65,7 @@ class AppTheme {
             ),
       ),
 
-      // Button themes
+      // ======================== 按钮主题 ========================
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           elevation: isDark ? 2 : 1,
@@ -175,7 +121,7 @@ class AppTheme {
         ),
       ),
 
-      // FAB theme
+      // ======================== 浮动操作按钮主题 ========================
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
@@ -185,7 +131,7 @@ class AppTheme {
         ),
       ),
 
-      // Card theme
+      // ======================== 卡片主题 ========================
       cardTheme: CardThemeData(
         elevation: isDark ? 2 : 1,
         shadowColor: colorScheme.shadow,
@@ -197,7 +143,7 @@ class AppTheme {
         margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       ),
 
-      // Chip theme
+      // ======================== 芯片主题 ========================
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
         deleteIconColor: colorScheme.onSurfaceVariant,
@@ -223,7 +169,7 @@ class AppTheme {
         ),
       ),
 
-      // Input decoration theme
+      // ======================== 输入框主题 ========================
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surfaceContainerHighest,
@@ -267,7 +213,7 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
 
-      // Navigation theme
+      // ======================== 导航栏主题 ========================
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: colorScheme.surface,
         indicatorColor: colorScheme.secondaryContainer,
@@ -302,7 +248,7 @@ class AppTheme {
         }),
       ),
 
-      // SnackBar theme
+      // ======================== SnackBar 主题 ========================
       snackBarTheme: SnackBarThemeData(
         backgroundColor: colorScheme.inverseSurface,
         contentTextStyle: TextStyle(
@@ -316,7 +262,7 @@ class AppTheme {
         elevation: isDark ? 4 : 3,
       ),
 
-      // Dialog theme
+      // ======================== 对话框主题 ========================
       dialogTheme: DialogThemeData(
         backgroundColor: colorScheme.surface,
         surfaceTintColor: colorScheme.surfaceContainerHighest,
@@ -337,17 +283,17 @@ class AppTheme {
         ),
       ),
 
-      // Progress indicator theme
+      // ======================== 进度指示器主题 ========================
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: colorScheme.primary,
         linearTrackColor: colorScheme.surfaceContainerHighest,
         circularTrackColor: colorScheme.surfaceContainerHighest,
       ),
 
-      // Scaffold background
+      // ======================== 脚手架背景 ========================
       scaffoldBackgroundColor: colorScheme.surface,
       
-      // Drawer theme for better dark mode support
+      // ======================== 抽屉主题 ========================
       drawerTheme: DrawerThemeData(
         backgroundColor: colorScheme.surface,
         surfaceTintColor: colorScheme.surfaceContainerHighest,
@@ -361,7 +307,7 @@ class AppTheme {
         ),
       ),
 
-      // Bottom sheet theme
+      // ======================== 底部弹窗主题 ========================
       bottomSheetTheme: BottomSheetThemeData(
         backgroundColor: colorScheme.surface,
         surfaceTintColor: colorScheme.surfaceContainerHighest,
@@ -375,7 +321,7 @@ class AppTheme {
         ),
       ),
 
-      // List tile theme
+      // ======================== 列表项主题 ========================
       listTileTheme: ListTileThemeData(
         textColor: colorScheme.onSurface,
         iconColor: colorScheme.onSurfaceVariant,
@@ -386,7 +332,7 @@ class AppTheme {
         ),
       ),
       
-      // Typography
+      // ======================== 字体主题 ========================
       fontFamily: 'Roboto',
       textTheme: TextTheme(
         displayLarge: TextStyle(color: colorScheme.onSurface),
@@ -406,7 +352,7 @@ class AppTheme {
         bodySmall: TextStyle(color: colorScheme.onSurfaceVariant),
       ),
       
-      // Icon theme
+      // ======================== 图标主题 ========================
       iconTheme: IconThemeData(
         color: colorScheme.onSurfaceVariant,
         size: 24,

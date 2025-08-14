@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../models/channel.dart';
 import '../utils/constants.dart';
+import '../theme/app_colors.dart';
 
 class ChannelCard extends StatelessWidget {
   final Channel channel;
@@ -94,7 +95,7 @@ class ChannelCard extends StatelessWidget {
                           '${channel.videoCount} videos',
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
-                                color: const Color(0xFF2E7D32), // Dark green text
+                                color: AppColors.techBlue,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -139,17 +140,17 @@ class ChannelCard extends StatelessWidget {
   Color _getLanguageColor() {
     switch (channel.language.toLowerCase()) {
       case 'en':
-        return const Color(0xFF4CAF50); // Green for English
+        return AppColors.getLanguageColor('en');
       case 'zh':
-        return const Color(0xFF66BB6A); // Light green for Chinese
+        return AppColors.getLanguageColor('zh');
       case 'es':
-        return const Color(0xFF8BC34A); // Lime green for Spanish
+        return AppColors.getLanguageColor('es');
       case 'fr':
-        return const Color(0xFF2E7D32); // Dark green for French
+        return AppColors.getLanguageColor('fr');
       case 'de':
-        return const Color(0xFF388E3C); // Medium green for German
+        return AppColors.getLanguageColor('de');
       case 'ja':
-        return const Color(0xFF81C784); // Soft green for Japanese
+        return AppColors.getLanguageColor('ja');
       case 'ko':
         return const Color(0xFF009688); // Teal (compatible with green theme)
       default:

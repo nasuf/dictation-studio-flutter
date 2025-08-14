@@ -8,6 +8,7 @@ import '../providers/video_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/scrollable_text.dart';
 import '../generated/app_localizations.dart';
+import '../theme/app_colors.dart';
 
 class VideoListScreen extends StatefulWidget {
   final String channelId;
@@ -1009,7 +1010,7 @@ class _VideoListScreenState extends State<VideoListScreen>
 
   Color _getProgressColor(double progress) {
     if (progress >= 100) {
-      return const Color(0xFF4CAF50);
+      return AppColors.success;
     } else if (progress > 0) {
       return const Color(0xFF2196F3);
     } else {

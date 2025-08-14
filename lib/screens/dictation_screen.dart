@@ -13,6 +13,7 @@ import '../models/progress.dart';
 import '../utils/video_playback_utils.dart';
 import '../utils/logger.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/simple_comparison_widget.dart';
 import '../widgets/compact_progress_bar.dart';
@@ -2392,7 +2393,7 @@ class _DictationScreenState extends State<DictationScreen>
                     size: 20,
                   ),
                   onPressed: _toggleCurrentSentenceReveal,
-                  color: const Color(0xFF4CAF50), // Original deep green color
+                  color: AppColors.techBlue,
                   style: IconButton.styleFrom(
                     backgroundColor: Colors.transparent,
                     elevation: 0,
