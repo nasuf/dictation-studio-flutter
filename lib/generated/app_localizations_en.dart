@@ -519,4 +519,119 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get viewYourDictationHistory =>
       'View your dictation practice history and progress';
+
+  @override
+  String get forceRefreshPlayer => 'Force Refresh Player';
+
+  @override
+  String get refreshingPlayer => 'Refreshing player...';
+
+  @override
+  String get playerRefreshedSuccessfully => 'Player refreshed successfully';
+
+  @override
+  String get youtubeVideoAccess => 'YouTube Video Access';
+
+  @override
+  String get chooseVideoAccessMethod => 'Choose how to enable video playback:';
+
+  @override
+  String get enableVideoPlayback => 'Enable Video Playback';
+
+  @override
+  String get enableVideoPlaybackDesc =>
+      'Recommended - Works for most videos without login';
+
+  @override
+  String get browserLogin => 'Browser Login';
+
+  @override
+  String get browserLoginDesc =>
+      'Login via browser for full access (requires confirmation)';
+
+  @override
+  String get tryWithoutLogin => 'Try Without Login';
+
+  @override
+  String get tryWithoutLoginDesc =>
+      'Attempt playback without authentication (limited)';
+
+  @override
+  String get videoAccessInfo =>
+      '\"Enable Video Playback\" works for most videos and is the easiest option.';
+
+  @override
+  String get confirmLogin => 'Confirm Login';
+
+  @override
+  String get confirmLoginInstructions =>
+      'Please:\n1. Login to YouTube in the browser that just opened\n2. Once logged in, return to this app\n3. Click \"Confirm\" below\n\nThis will enable video playback in the app.';
+
+  @override
+  String get confirmLoginButton => 'Confirm Login';
+
+  @override
+  String get youtubeAccess => 'YouTube Access';
+
+  @override
+  String get disableVideoAccess =>
+      'Do you want to disable YouTube video access?';
+
+  @override
+  String currentStatus(String status) {
+    return 'Current status: $status';
+  }
+
+  @override
+  String get disable => 'Disable';
+
+  @override
+  String get videoAccessDisabled => 'YouTube video access disabled';
+
+  @override
+  String get enableYoutubeVideoAccess => 'Enable YouTube Video Access';
+
+  @override
+  String youtubeAccessEnabled(String userInfo) {
+    return 'YouTube Access: $userInfo';
+  }
+
+  @override
+  String get youtubeAuthenticationCompleted =>
+      'YouTube authentication completed successfully';
+
+  @override
+  String get youtubeAuthSuccessMessage =>
+      'YouTube authentication successful! Refreshing video player...';
+
+  @override
+  String get youtubeLoginCancelled =>
+      'YouTube login cancelled - staying on dictation screen and refreshing player';
+
+  @override
+  String get refreshingAfterLogin =>
+      'Refreshing YouTube player after successful authentication';
+
+  @override
+  String get refreshingAfterCancel =>
+      'Refreshing YouTube player after login cancellation';
+
+  @override
+  String youtubeAuthFailed(String error) {
+    return 'YouTube authentication failed: $error';
+  }
+
+  @override
+  String get videoPlayerLoginSuggestion =>
+      'Video player might need YouTube login. Tap the login button in the top-right corner.';
+
+  @override
+  String get testModeEnabled => 'Test mode enabled - videos should work now';
+
+  @override
+  String get authenticationConfirmed =>
+      'Authentication confirmed - please refresh the video';
+
+  @override
+  String get publicAccessEnabled => 'Public access mode enabled';
 }

@@ -503,6 +503,109 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get viewYourDictationHistory => '查看您的听写练习历史和进度';
+
+  @override
+  String get forceRefreshPlayer => '强制刷新播放器';
+
+  @override
+  String get refreshingPlayer => '刷新播放器中...';
+
+  @override
+  String get playerRefreshedSuccessfully => '播放器刷新成功';
+
+  @override
+  String get youtubeVideoAccess => 'YouTube视频访问';
+
+  @override
+  String get chooseVideoAccessMethod => '选择启用视频播放的方式：';
+
+  @override
+  String get enableVideoPlayback => '启用视频播放';
+
+  @override
+  String get enableVideoPlaybackDesc => '推荐 - 适用于大多数视频，无需登录';
+
+  @override
+  String get browserLogin => '浏览器登录';
+
+  @override
+  String get browserLoginDesc => '通过浏览器登录获得完整访问权限（需要确认）';
+
+  @override
+  String get tryWithoutLogin => '尝试无登录播放';
+
+  @override
+  String get tryWithoutLoginDesc => '尝试在不进行身份验证的情况下播放（功能有限）';
+
+  @override
+  String get videoAccessInfo => '\"启用视频播放\"适用于大多数视频，是最简单的选择。';
+
+  @override
+  String get confirmLogin => '确认登录';
+
+  @override
+  String get confirmLoginInstructions =>
+      '请：\n1. 在刚打开的浏览器中登录YouTube\n2. 登录完成后，返回此应用\n3. 点击下方\"确认登录\"\n\n这将启用应用中的视频播放功能。';
+
+  @override
+  String get confirmLoginButton => '确认登录';
+
+  @override
+  String get youtubeAccess => 'YouTube访问';
+
+  @override
+  String get disableVideoAccess => '您要禁用YouTube视频访问吗？';
+
+  @override
+  String currentStatus(String status) {
+    return '当前状态：$status';
+  }
+
+  @override
+  String get disable => '禁用';
+
+  @override
+  String get videoAccessDisabled => 'YouTube视频访问已禁用';
+
+  @override
+  String get enableYoutubeVideoAccess => '启用YouTube视频访问';
+
+  @override
+  String youtubeAccessEnabled(String userInfo) {
+    return 'YouTube访问：$userInfo';
+  }
+
+  @override
+  String get youtubeAuthenticationCompleted => 'YouTube身份验证成功完成';
+
+  @override
+  String get youtubeAuthSuccessMessage => 'YouTube身份验证成功！正在刷新视频播放器...';
+
+  @override
+  String get youtubeLoginCancelled => 'YouTube登录已取消 - 留在听写页面并刷新播放器';
+
+  @override
+  String get refreshingAfterLogin => '成功认证后刷新YouTube播放器';
+
+  @override
+  String get refreshingAfterCancel => '登录取消后刷新YouTube播放器';
+
+  @override
+  String youtubeAuthFailed(String error) {
+    return 'YouTube身份验证失败：$error';
+  }
+
+  @override
+  String get videoPlayerLoginSuggestion => '视频播放器可能需要YouTube登录。请点击右上角的登录按钮。';
+
+  @override
+  String get testModeEnabled => '测试模式已启用 - 视频现在应该可以正常工作';
+
+  @override
+  String get authenticationConfirmed => '身份验证已确认 - 请刷新视频';
+
+  @override
+  String get publicAccessEnabled => '公共访问模式已启用';
 }
 
 /// The translations for Chinese, as used in Taiwan (`zh_TW`).
@@ -1004,4 +1107,107 @@ class AppLocalizationsZhTw extends AppLocalizationsZh {
 
   @override
   String get viewYourDictationHistory => '查看您的聽寫練習歷史和進度';
+
+  @override
+  String get forceRefreshPlayer => '強制刷新播放器';
+
+  @override
+  String get refreshingPlayer => '刷新播放器中...';
+
+  @override
+  String get playerRefreshedSuccessfully => '播放器刷新成功';
+
+  @override
+  String get youtubeVideoAccess => 'YouTube影片存取';
+
+  @override
+  String get chooseVideoAccessMethod => '選擇啟用影片播放的方式：';
+
+  @override
+  String get enableVideoPlayback => '啟用影片播放';
+
+  @override
+  String get enableVideoPlaybackDesc => '推薦 - 適用於大多數影片，無需登入';
+
+  @override
+  String get browserLogin => '瀏覽器登入';
+
+  @override
+  String get browserLoginDesc => '透過瀏覽器登入獲得完整存取權限（需要確認）';
+
+  @override
+  String get tryWithoutLogin => '嘗試無登入播放';
+
+  @override
+  String get tryWithoutLoginDesc => '嘗試在不進行身分驗證的情況下播放（功能有限）';
+
+  @override
+  String get videoAccessInfo => '\"啟用影片播放\"適用於大多數影片，是最簡單的選擇。';
+
+  @override
+  String get confirmLogin => '確認登入';
+
+  @override
+  String get confirmLoginInstructions =>
+      '請：\n1. 在剛開啟的瀏覽器中登入YouTube\n2. 登入完成後，返回此應用程式\n3. 點擊下方\"確認登入\"\n\n這將啟用應用程式中的影片播放功能。';
+
+  @override
+  String get confirmLoginButton => '確認登入';
+
+  @override
+  String get youtubeAccess => 'YouTube存取';
+
+  @override
+  String get disableVideoAccess => '您要停用YouTube影片存取嗎？';
+
+  @override
+  String currentStatus(String status) {
+    return '目前狀態：$status';
+  }
+
+  @override
+  String get disable => '停用';
+
+  @override
+  String get videoAccessDisabled => 'YouTube影片存取已停用';
+
+  @override
+  String get enableYoutubeVideoAccess => '啟用YouTube影片存取';
+
+  @override
+  String youtubeAccessEnabled(String userInfo) {
+    return 'YouTube存取：$userInfo';
+  }
+
+  @override
+  String get youtubeAuthenticationCompleted => 'YouTube身分驗證成功完成';
+
+  @override
+  String get youtubeAuthSuccessMessage => 'YouTube身分驗證成功！正在刷新影片播放器...';
+
+  @override
+  String get youtubeLoginCancelled => 'YouTube登入已取消 - 留在聽寫頁面並刷新播放器';
+
+  @override
+  String get refreshingAfterLogin => '成功認證後刷新YouTube播放器';
+
+  @override
+  String get refreshingAfterCancel => '登入取消後刷新YouTube播放器';
+
+  @override
+  String youtubeAuthFailed(String error) {
+    return 'YouTube身分驗證失敗：$error';
+  }
+
+  @override
+  String get videoPlayerLoginSuggestion => '影片播放器可能需要YouTube登入。請點擊右上角的登入按鈕。';
+
+  @override
+  String get testModeEnabled => '測試模式已啟用 - 影片現在應該可以正常運作';
+
+  @override
+  String get authenticationConfirmed => '身分驗證已確認 - 請刷新影片';
+
+  @override
+  String get publicAccessEnabled => '公開存取模式已啟用';
 }

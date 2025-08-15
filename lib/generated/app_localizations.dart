@@ -1080,6 +1080,198 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'View your dictation practice history and progress'**
   String get viewYourDictationHistory;
+
+  /// No description provided for @forceRefreshPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Force Refresh Player'**
+  String get forceRefreshPlayer;
+
+  /// No description provided for @refreshingPlayer.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing player...'**
+  String get refreshingPlayer;
+
+  /// No description provided for @playerRefreshedSuccessfully.
+  ///
+  /// In en, this message translates to:
+  /// **'Player refreshed successfully'**
+  String get playerRefreshedSuccessfully;
+
+  /// No description provided for @youtubeVideoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube Video Access'**
+  String get youtubeVideoAccess;
+
+  /// No description provided for @chooseVideoAccessMethod.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how to enable video playback:'**
+  String get chooseVideoAccessMethod;
+
+  /// No description provided for @enableVideoPlayback.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Video Playback'**
+  String get enableVideoPlayback;
+
+  /// No description provided for @enableVideoPlaybackDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Recommended - Works for most videos without login'**
+  String get enableVideoPlaybackDesc;
+
+  /// No description provided for @browserLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Browser Login'**
+  String get browserLogin;
+
+  /// No description provided for @browserLoginDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Login via browser for full access (requires confirmation)'**
+  String get browserLoginDesc;
+
+  /// No description provided for @tryWithoutLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Try Without Login'**
+  String get tryWithoutLogin;
+
+  /// No description provided for @tryWithoutLoginDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Attempt playback without authentication (limited)'**
+  String get tryWithoutLoginDesc;
+
+  /// No description provided for @videoAccessInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'\"Enable Video Playback\" works for most videos and is the easiest option.'**
+  String get videoAccessInfo;
+
+  /// No description provided for @confirmLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Login'**
+  String get confirmLogin;
+
+  /// No description provided for @confirmLoginInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Please:\n1. Login to YouTube in the browser that just opened\n2. Once logged in, return to this app\n3. Click \"Confirm\" below\n\nThis will enable video playback in the app.'**
+  String get confirmLoginInstructions;
+
+  /// No description provided for @confirmLoginButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Login'**
+  String get confirmLoginButton;
+
+  /// No description provided for @youtubeAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube Access'**
+  String get youtubeAccess;
+
+  /// No description provided for @disableVideoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Do you want to disable YouTube video access?'**
+  String get disableVideoAccess;
+
+  /// No description provided for @currentStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Current status: {status}'**
+  String currentStatus(String status);
+
+  /// No description provided for @disable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get disable;
+
+  /// No description provided for @videoAccessDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube video access disabled'**
+  String get videoAccessDisabled;
+
+  /// No description provided for @enableYoutubeVideoAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable YouTube Video Access'**
+  String get enableYoutubeVideoAccess;
+
+  /// No description provided for @youtubeAccessEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube Access: {userInfo}'**
+  String youtubeAccessEnabled(String userInfo);
+
+  /// No description provided for @youtubeAuthenticationCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube authentication completed successfully'**
+  String get youtubeAuthenticationCompleted;
+
+  /// No description provided for @youtubeAuthSuccessMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube authentication successful! Refreshing video player...'**
+  String get youtubeAuthSuccessMessage;
+
+  /// No description provided for @youtubeLoginCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube login cancelled - staying on dictation screen and refreshing player'**
+  String get youtubeLoginCancelled;
+
+  /// No description provided for @refreshingAfterLogin.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing YouTube player after successful authentication'**
+  String get refreshingAfterLogin;
+
+  /// No description provided for @refreshingAfterCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing YouTube player after login cancellation'**
+  String get refreshingAfterCancel;
+
+  /// No description provided for @youtubeAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube authentication failed: {error}'**
+  String youtubeAuthFailed(String error);
+
+  /// No description provided for @videoPlayerLoginSuggestion.
+  ///
+  /// In en, this message translates to:
+  /// **'Video player might need YouTube login. Tap the login button in the top-right corner.'**
+  String get videoPlayerLoginSuggestion;
+
+  /// No description provided for @testModeEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Test mode enabled - videos should work now'**
+  String get testModeEnabled;
+
+  /// No description provided for @authenticationConfirmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication confirmed - please refresh the video'**
+  String get authenticationConfirmed;
+
+  /// No description provided for @publicAccessEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Public access mode enabled'**
+  String get publicAccessEnabled;
 }
 
 class _AppLocalizationsDelegate

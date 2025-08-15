@@ -8,8 +8,11 @@ class YouTubeLoginService {
   static const String _loginStateKey = 'youtube_login_state';
   static const String _cookiesKey = 'youtube_cookies';
   
-  // YouTube login URL with embedded player permissions
-  static const String _youtubeLoginUrl = 'https://accounts.google.com/signin/v2/identifier?service=youtube&continue=https%3A%2F%2Fwww.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Ddesktop%26hl%3Den%26next%3D%252F&hl=en&passive=true&flowName=GlifWebSignIn&flowEntry=ServiceLogin';
+  // YouTube login URL - using mobile-friendly login flow to avoid WebView restrictions
+  static const String _youtubeLoginUrl = 'https://accounts.google.com/signin/v2/identifier?service=youtube&continue=https%3A%2F%2Fm.youtube.com%2Fsignin%3Faction_handle_signin%3Dtrue%26app%3Dmobile%26hl%3Den&hl=en&passive=true&flowName=GlifWebSignIn&flowEntry=ServiceLogin';
+  
+  // Backup mobile login URL for better compatibility
+  static const String _mobileYoutubeLoginUrl = 'https://m.youtube.com/signin';
   
   WebViewController? _controller;
   bool _isLoggedIn = false;
@@ -61,10 +64,10 @@ class YouTubeLoginService {
   }
   
   /// Create WebViewController for YouTube login
-  WebViewController createLoginWebViewController({
+  Future<WebViewController> createLoginWebViewController({
     required VoidCallback onLoginSuccess,
     required Function(String) onLoginError,
-  }) {
+  }) async {
     // Reset the callback flag for new login session
     _hasCalledLoginSuccess = false;
     _controller = WebViewController()
@@ -87,10 +90,27 @@ class YouTubeLoginService {
             AppLogger.error('YouTube login WebView error: ${error.description}');
             onLoginError('Login failed: ${error.description}');
           },
+          onNavigationRequest: (NavigationRequest request) {
+            AppLogger.info('Navigation request to: ${request.url}');
+            // Allow all YouTube and Google navigation
+            if (request.url.contains('google.com') || 
+                request.url.contains('youtube.com') ||
+                request.url.contains('gstatic.com') ||
+                request.url.contains('googleapis.com')) {
+              return NavigationDecision.navigate;
+            }
+            return NavigationDecision.prevent;
+          },
         ),
-      )
-      ..setUserAgent('Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.0 Mobile/15E148 Safari/604.1')
-      ..loadRequest(Uri.parse(_youtubeLoginUrl));
+      );
+
+    // Use latest Mobile Safari User-Agent for better Google compatibility
+    await _controller!.setUserAgent(
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1'
+    );
+
+    // Load the login URL
+    await _controller!.loadRequest(Uri.parse(_youtubeLoginUrl));
     
     return _controller!;
   }
@@ -129,27 +149,69 @@ class YouTubeLoginService {
       if (url.startsWith('https://www.youtube.com') && !url.contains('accounts')) {
         AppLogger.info('On YouTube main page - checking login status');
         
-        // Execute JavaScript to check if user is logged in
+        // Execute JavaScript to check if user is logged in with enhanced detection
         final result = await _controller!.runJavaScriptReturningResult('''
           (function() {
-            // Check for user avatar or sign-in button
-            const avatar = document.querySelector('[id="avatar-btn"]');
-            const signInButton = document.querySelector('[aria-label="Sign in"]');
-            const userMenu = document.querySelector('#avatar-btn');
-            
-            if (avatar && !signInButton) {
-              // User is logged in - try to get user info
-              const channelName = document.querySelector('#avatar-btn img')?.alt || 'YouTube User';
-              return JSON.stringify({
-                loggedIn: true,
-                userInfo: channelName
-              });
-            } else {
-              return JSON.stringify({
-                loggedIn: false,
-                userInfo: null
-              });
-            }
+            // Wait a moment for page elements to load
+            return new Promise((resolve) => {
+              setTimeout(() => {
+                try {
+                  // Multiple methods to detect login state
+                  const avatar = document.querySelector('[id="avatar-btn"]');
+                  const avatarImg = document.querySelector('#avatar-btn img');
+                  const signInButton = document.querySelector('[aria-label="Sign in"]');
+                  const userMenu = document.querySelector('#avatar-btn');
+                  const accountMenu = document.querySelector('[aria-label="Account menu"]');
+                  
+                  // Check for login indicators in URL or page content
+                  const isLoggedInURL = window.location.href.includes('youtube.com') && 
+                                        !window.location.href.includes('accounts.google.com');
+                  
+                  // Check for presence of user data in the page
+                  const hasUserData = document.querySelector('[data-sessionlink*="signin"]') === null;
+                  
+                  // Check cookies for auth indicators
+                  const hasAuthCookie = document.cookie.includes('SAPISID') || 
+                                       document.cookie.includes('LOGIN_INFO') ||
+                                       document.cookie.includes('SSID');
+                  
+                  let loggedIn = false;
+                  let userInfo = null;
+                  
+                  if ((avatar && !signInButton) || accountMenu || hasAuthCookie) {
+                    loggedIn = true;
+                    // Try to extract user info
+                    userInfo = avatarImg?.alt || 
+                              avatarImg?.title ||
+                              document.querySelector('[aria-label*="channel"]')?.textContent ||
+                              'YouTube User';
+                  }
+                  
+                  // Additional checks for mobile layout
+                  if (!loggedIn && isLoggedInURL) {
+                    const mobileAvatar = document.querySelector('img[alt*="Avatar"]');
+                    const mobileUserButton = document.querySelector('[aria-label*="Account"]');
+                    if (mobileAvatar || mobileUserButton || hasAuthCookie) {
+                      loggedIn = true;
+                      userInfo = mobileAvatar?.alt || 'YouTube User';
+                    }
+                  }
+                  
+                  resolve(JSON.stringify({
+                    loggedIn: loggedIn,
+                    userInfo: userInfo,
+                    hasAuthCookie: hasAuthCookie,
+                    currentURL: window.location.href
+                  }));
+                } catch (error) {
+                  resolve(JSON.stringify({
+                    loggedIn: false,
+                    userInfo: null,
+                    error: error.toString()
+                  }));
+                }
+              }, 2000); // Wait 2 seconds for page to fully load
+            });
           })();
         ''');
         
@@ -231,7 +293,7 @@ class YouTubeLoginService {
     }
   }
   
-  /// Apply stored cookies to YouTube Player WebView
+  /// Apply stored cookies to YouTube Player WebView with enhanced compatibility
   Future<void> applyCookiesToPlayer(WebViewController playerController) async {
     try {
       if (!_isLoggedIn) {
@@ -242,36 +304,70 @@ class YouTubeLoginService {
       final prefs = await SharedPreferences.getInstance();
       final cookieManager = WebViewCookieManager();
       
-      // Load and apply YouTube cookies
+      // Clear existing cookies first for clean state
+      await cookieManager.clearCookies();
+      await Future.delayed(const Duration(milliseconds: 300));
+      AppLogger.info('Cleared cookies before applying YouTube cookies');
+      
+      // Load and apply YouTube cookies with enhanced domains
       final youtubeCookieDataString = prefs.getString('youtube_cookies_data');
       if (youtubeCookieDataString != null) {
         try {
           final youtubeCookieList = const JsonDecoder().convert(youtubeCookieDataString) as List<dynamic>;
+          
+          // Apply cookies to multiple YouTube domains for better compatibility
+          final domains = ['.youtube.com', '.m.youtube.com', '.www.youtube.com', '.googlevideo.com'];
+          
           for (final cookieData in youtubeCookieList) {
             final cookieMap = cookieData as Map<String, dynamic>;
-            final cookie = WebViewCookie(
-              name: cookieMap['name'] as String,
-              value: cookieMap['value'] as String,
-              domain: cookieMap['domain'] as String,
-              path: cookieMap['path'] as String? ?? '/',
-            );
-            await cookieManager.setCookie(cookie);
+            final name = cookieMap['name'] as String;
+            final value = cookieMap['value'] as String;
+            
+            // Skip empty or invalid cookies
+            if (name.isEmpty || value.isEmpty) continue;
+            
+            // Apply to all relevant domains
+            for (final domain in domains) {
+              final cookie = WebViewCookie(
+                name: name,
+                value: value,
+                domain: domain,
+                path: '/',
+              );
+              try {
+                await cookieManager.setCookie(cookie);
+                // Small delay between cookie sets to avoid conflicts
+                await Future.delayed(const Duration(milliseconds: 50));
+              } catch (e) {
+                AppLogger.warning('Failed to set cookie $name for $domain: $e');
+              }
+            }
           }
-          AppLogger.info('Applied ${youtubeCookieList.length} YouTube cookies to player');
+          
+          AppLogger.info('Applied ${youtubeCookieList.length} YouTube cookies to player across ${domains.length} domains');
         } catch (e) {
           AppLogger.error('Failed to parse YouTube cookies: $e');
         }
       }
       
-      // Add a marker cookie to indicate login state
-      await cookieManager.setCookie(const WebViewCookie(
-        name: 'youtube_login_shared',
-        value: 'true',
-        domain: '.youtube.com',
-        path: '/',
-      ));
+      // Add enhanced marker cookies to indicate login state
+      final markerCookies = [
+        const WebViewCookie(name: 'youtube_login_shared', value: 'true', domain: '.youtube.com', path: '/'),
+        const WebViewCookie(name: 'youtube_login_shared', value: 'true', domain: '.m.youtube.com', path: '/'),
+        const WebViewCookie(name: 'youtube_mobile_auth', value: 'true', domain: '.youtube.com', path: '/'),
+        const WebViewCookie(name: 'PREF', value: 'hl=en&gl=US&f5=30', domain: '.youtube.com', path: '/'),
+      ];
       
-      AppLogger.info('YouTube login cookies applied to player');
+      for (final cookie in markerCookies) {
+        try {
+          await cookieManager.setCookie(cookie);
+          await Future.delayed(const Duration(milliseconds: 50));
+        } catch (e) {
+          AppLogger.warning('Failed to set marker cookie ${cookie.name}: $e');
+        }
+      }
+      
+      AppLogger.info('YouTube login cookies and markers applied to player');
     } catch (e) {
       AppLogger.error('Failed to apply cookies to player: $e');
     }
@@ -309,6 +405,19 @@ class YouTubeLoginService {
   String getLoginUrl() {
     return _youtubeLoginUrl;
   }
+
+  /// Get mobile login URL for backup login attempt
+  String getMobileLoginUrl() {
+    return _mobileYoutubeLoginUrl;
+  }
+
+  /// Try backup mobile login if primary login fails
+  Future<void> tryMobileLogin() async {
+    if (_controller != null) {
+      AppLogger.info('Attempting backup mobile login');
+      await _controller!.loadRequest(Uri.parse(_mobileYoutubeLoginUrl));
+    }
+  }
   
   /// Manually mark as logged in (when user confirms login completion)
   Future<void> markAsLoggedIn({String? userInfo}) async {
@@ -330,11 +439,14 @@ class YouTubeLoginService {
       
       final cookieManager = WebViewCookieManager();
       
-      // Clear existing YouTube cookies
-      await cookieManager.clearCookies();
-      
-      // Wait a moment for cookies to clear
-      await Future.delayed(const Duration(milliseconds: 500));
+      // Clear cookies for clean state - this helps resolve playback issues
+      try {
+        await cookieManager.clearCookies();
+        AppLogger.info('Cleared all cookies before re-applying YouTube cookies');
+        await Future.delayed(const Duration(milliseconds: 300));
+      } catch (e) {
+        AppLogger.warning('Failed to clear cookies: $e, continuing with refresh');
+      }
       
       // Re-apply saved cookies
       final prefs = await SharedPreferences.getInstance();
@@ -398,6 +510,69 @@ class YouTubeLoginService {
     } catch (e) {
       AppLogger.error('Failed to get YouTube API token: $e');
       return null;
+    }
+  }
+  
+  /// Pre-initialize YouTube Player environment with login cookies
+  Future<void> prepareYouTubePlayerEnvironment() async {
+    try {
+      AppLogger.info('Preparing YouTube Player environment...');
+      
+      final cookieManager = WebViewCookieManager();
+      
+      if (_isLoggedIn) {
+        // Apply all cookies before any YouTube player initialization
+        await refreshPlayerCookies();
+        AppLogger.info('YouTube Player environment prepared with login cookies');
+      } else {
+        // Clear any existing cookies to ensure clean state when not logged in
+        await cookieManager.clearCookies();
+        AppLogger.info('YouTube Player environment prepared (no login, cookies cleared)');
+      }
+      
+      // Add a small delay to ensure cookies are properly set
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+    } catch (e) {
+      AppLogger.error('Failed to prepare YouTube Player environment: $e');
+    }
+  }
+  
+  /// Enhanced method to inject login state into YouTube Player
+  Future<void> injectLoginStateToPlayer(WebViewController? playerController) async {
+    if (playerController == null || !_isLoggedIn) return;
+    
+    try {
+      // Inject JavaScript to modify YouTube Player behavior
+      await playerController.runJavaScript('''
+        (function() {
+          // Set login indicators that YouTube might check
+          if (window.yt) {
+            window.yt.config_ = window.yt.config_ || {};
+            window.yt.config_.LOGGED_IN = true;
+            window.yt.config_.SESSION_INDEX = 1;
+          }
+          
+          // Try to set auth headers if available
+          if (window.XMLHttpRequest) {
+            const originalOpen = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function() {
+              originalOpen.apply(this, arguments);
+              // Add auth header if making requests to YouTube API
+              if (arguments[1] && arguments[1].includes('youtube.com')) {
+                this.setRequestHeader('X-YouTube-Client-Name', '1');
+                this.setRequestHeader('X-YouTube-Client-Version', '2.0');
+              }
+            };
+          }
+          
+          console.log('YouTube Player login state injected');
+        })();
+      ''');
+      
+      AppLogger.info('Successfully injected login state to YouTube Player');
+    } catch (e) {
+      AppLogger.error('Failed to inject login state to player: $e');
     }
   }
 }

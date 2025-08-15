@@ -22,11 +22,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   // Filter options
   String _selectedRole = 'All';
   String _selectedMembership = 'All';
-  
+
   // Sorting options
   String _sortBy = 'lastActive'; // lastActive, createdAt, updatedAt, username
   bool _sortAscending = false; // Default to descending for lastActive
-
 
   @override
   void initState() {
@@ -47,9 +46,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     try {
       AppLogger.info('Loading users from API...');
-      
+
       final response = await apiService.getAllUsers();
-      
+
       // Handle different response formats
       List<dynamic> usersData;
       try {
@@ -75,17 +74,23 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         AppLogger.error('Failed to parse API response: $e');
         throw Exception('Invalid API response format');
       }
-      
-      _users = usersData.map((userData) {
-        try {
-          // Backend already parsed the data, just cast it directly
-          final userMap = userData as Map<String, dynamic>;
-          return User.fromJson(userMap);
-        } catch (e) {
-          AppLogger.warning('Failed to parse user data: $userData, error: $e');
-          return null;
-        }
-      }).where((user) => user != null).cast<User>().toList();
+
+      _users = usersData
+          .map((userData) {
+            try {
+              // Backend already parsed the data, just cast it directly
+              final userMap = userData as Map<String, dynamic>;
+              return User.fromJson(userMap);
+            } catch (e) {
+              AppLogger.warning(
+                'Failed to parse user data: $userData, error: $e',
+              );
+              return null;
+            }
+          })
+          .where((user) => user != null)
+          .cast<User>()
+          .toList();
 
       // Sort users by default (last active, descending)
       _sortUsers();
@@ -114,7 +119,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   void _sortUsers() {
     _users.sort((a, b) {
       int comparison = 0;
-      
+
       switch (_sortBy) {
         case 'lastActive':
           final aTimestamp = a.getLastMeaningfulDictationInputTimestamp();
@@ -130,12 +135,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
           comparison = aUpdated.compareTo(bUpdated);
           break;
         case 'username':
-          comparison = a.username.toLowerCase().compareTo(b.username.toLowerCase());
+          comparison = a.username.toLowerCase().compareTo(
+            b.username.toLowerCase(),
+          );
           break;
         default:
           return 0;
       }
-      
+
       return _sortAscending ? comparison : -comparison;
     });
   }
@@ -171,19 +178,17 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  void _showUserProgress(String userEmail) async {    
+  void _showUserProgress(String userEmail) async {
     showDialog(
       context: context,
-      builder: (context) => _StatefulUserProgressDialog(
-        userEmail: userEmail,
-      ),
+      builder: (context) => _StatefulUserProgressDialog(userEmail: userEmail),
     );
   }
 
   void _showVerificationCodeModal() async {
     List<VerificationCode> codes = [];
     bool isLoading = true;
-    
+
     showDialog(
       context: context,
       builder: (context) => _VerificationCodeDialog(
@@ -202,7 +207,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       final result = await apiService.getAllVerificationCodes();
       codes = result;
       isLoading = false;
-      
+
       // Update dialog if still mounted
       if (mounted) {
         Navigator.of(context).pop(); // Close loading dialog
@@ -275,7 +280,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               color: Theme.of(context).colorScheme.primaryContainer,
               border: Border(
                 bottom: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.outline.withValues(alpha: 0.2),
                   width: 1,
                 ),
               ),
@@ -365,7 +372,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 // Sort Row
                 Row(
                   children: [
@@ -377,10 +384,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: 'lastActive', child: Text('Last Active')),
-                          DropdownMenuItem(value: 'createdAt', child: Text('Created At')),
-                          DropdownMenuItem(value: 'updatedAt', child: Text('Updated At')),
-                          DropdownMenuItem(value: 'username', child: Text('Username')),
+                          DropdownMenuItem(
+                            value: 'lastActive',
+                            child: Text('Last Active'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'createdAt',
+                            child: Text('Created At'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'updatedAt',
+                            child: Text('Updated At'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'username',
+                            child: Text('Username'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -400,8 +419,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           border: OutlineInputBorder(),
                         ),
                         items: const [
-                          DropdownMenuItem(value: true, child: Text('Ascending')),
-                          DropdownMenuItem(value: false, child: Text('Descending')),
+                          DropdownMenuItem(
+                            value: true,
+                            child: Text('Ascending'),
+                          ),
+                          DropdownMenuItem(
+                            value: false,
+                            child: Text('Descending'),
+                          ),
                         ],
                         onChanged: (value) {
                           setState(() {
@@ -436,7 +461,11 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         Text(
                           'No users found',
                           style: Theme.of(context).textTheme.titleLarge
-                              ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                         if (_searchQuery.isNotEmpty ||
                             _selectedRole != 'All' ||
@@ -445,7 +474,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                           Text(
                             'Try adjusting your filters',
                             style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: Theme.of(context).colorScheme.outline),
+                                ?.copyWith(
+                                  color: Theme.of(context).colorScheme.outline,
+                                ),
                           ),
                         ],
                       ],
@@ -495,7 +526,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     children: [
                       Text(
                         user.username,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       Text(
                         user.email,
@@ -538,7 +572,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Chips Row
             Wrap(
               spacing: 8,
@@ -563,23 +597,41 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   Chip(
                     label: const Text('Active', style: TextStyle(fontSize: 12)),
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.primaryContainer,
                   ),
               ],
             ),
             const SizedBox(height: 12),
-            
+
             // Details Row
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildDetailRow('Last Active', user.getLastActiveDate(), Icons.schedule),
+                _buildDetailRow(
+                  'Last Active',
+                  user.getLastActiveDate(),
+                  Icons.schedule,
+                ),
                 const SizedBox(height: 4),
-                _buildDetailRow('Created', _formatDate(DateTime.fromMillisecondsSinceEpoch(user.createdAt)), Icons.person_add),
+                _buildDetailRow(
+                  'Created',
+                  _formatDate(
+                    DateTime.fromMillisecondsSinceEpoch(user.createdAt),
+                  ),
+                  Icons.person_add,
+                ),
                 const SizedBox(height: 4),
-                _buildDetailRow('Updated', 
-                  user.updatedAt != null ? _formatDate(DateTime.fromMillisecondsSinceEpoch(user.updatedAt!)) : 'Never', 
-                  Icons.update),
+                _buildDetailRow(
+                  'Updated',
+                  user.updatedAt != null
+                      ? _formatDate(
+                          DateTime.fromMillisecondsSinceEpoch(user.updatedAt!),
+                        )
+                      : 'Never',
+                  Icons.update,
+                ),
               ],
             ),
           ],
@@ -587,7 +639,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
       ),
     );
   }
-  
+
   Widget _buildDetailRow(String label, String value, IconData icon) {
     return Row(
       children: [
@@ -821,23 +873,23 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
       AppLogger.info('Updating user: ${widget.user.email}');
       AppLogger.info('New role: $_role');
       AppLogger.info('New membership: $_membership');
-      
+
       // Update role if changed
       if (_role != widget.user.role) {
         await apiService.updateUserRole([widget.user.email], _role);
         AppLogger.info('User role updated successfully');
       }
-      
+
       // Update membership if changed
       if (_membership != widget.user.plan.name) {
         await apiService.updateUserPlan([widget.user.email], _membership);
         AppLogger.info('User plan updated successfully');
       }
-      
+
       if (mounted) {
         Navigator.of(context).pop();
         widget.onUserUpdated();
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('User updated successfully'),
@@ -847,7 +899,7 @@ class _UserDetailsDialogState extends State<_UserDetailsDialog> {
       }
     } catch (e) {
       AppLogger.error('Failed to update user: $e');
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -978,7 +1030,6 @@ class _UserStatisticsDialog extends StatelessWidget {
   }
 }
 
-
 // Verification Code Dialog
 class _VerificationCodeDialog extends StatefulWidget {
   final List<VerificationCode> codes;
@@ -996,7 +1047,8 @@ class _VerificationCodeDialog extends StatefulWidget {
   });
 
   @override
-  State<_VerificationCodeDialog> createState() => _VerificationCodeDialogState();
+  State<_VerificationCodeDialog> createState() =>
+      _VerificationCodeDialogState();
 }
 
 class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
@@ -1007,7 +1059,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
   String _selectedCode = '';
   bool _isGenerating = false;
   bool _isAssigning = false;
-  
+
   final _customDaysController = TextEditingController();
   final _userSearchController = TextEditingController();
 
@@ -1029,15 +1081,17 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
         if (_customDaysValue <= 0) {
           throw Exception('Please enter a valid number of days');
         }
-        response = await apiService.generateCustomVerificationCode(_customDaysValue);
+        response = await apiService.generateCustomVerificationCode(
+          _customDaysValue,
+        );
       } else {
         response = await apiService.generateVerificationCode(_selectedDuration);
       }
-      
+
       setState(() {
         _generatedCode = response['fullCode'] ?? response['full_code'] ?? '';
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -1046,7 +1100,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
           ),
         );
       }
-      
+
       widget.onRefresh(); // Refresh the codes list
     } catch (e) {
       if (mounted) {
@@ -1080,8 +1134,11 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
     });
 
     try {
-      await apiService.assignVerificationCode(_selectedCode, _selectedUserEmail);
-      
+      await apiService.assignVerificationCode(
+        _selectedCode,
+        _selectedUserEmail,
+      );
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1090,7 +1147,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
           ),
         );
       }
-      
+
       widget.onRefresh(); // Refresh the codes list
     } catch (e) {
       if (mounted) {
@@ -1141,7 +1198,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                 ],
               ),
               const Divider(),
-              
+
               // Generate Code Section
               Card(
                 child: Padding(
@@ -1151,12 +1208,11 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                     children: [
                       Text(
                         'Generate New Code',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           Expanded(
@@ -1167,11 +1223,26 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                 border: OutlineInputBorder(),
                               ),
                               items: const [
-                                DropdownMenuItem(value: '30days', child: Text('30 Days')),
-                                DropdownMenuItem(value: '60days', child: Text('60 Days')),
-                                DropdownMenuItem(value: '90days', child: Text('90 Days')),
-                                DropdownMenuItem(value: 'permanent', child: Text('Permanent')),
-                                DropdownMenuItem(value: 'custom', child: Text('Custom')),
+                                DropdownMenuItem(
+                                  value: '30days',
+                                  child: Text('30 Days'),
+                                ),
+                                DropdownMenuItem(
+                                  value: '60days',
+                                  child: Text('60 Days'),
+                                ),
+                                DropdownMenuItem(
+                                  value: '90days',
+                                  child: Text('90 Days'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'permanent',
+                                  child: Text('Permanent'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'custom',
+                                  child: Text('Custom'),
+                                ),
                               ],
                               onChanged: (value) {
                                 setState(() {
@@ -1192,7 +1263,8 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                 keyboardType: TextInputType.number,
                                 onChanged: (value) {
                                   setState(() {
-                                    _customDaysValue = int.tryParse(value) ?? 30;
+                                    _customDaysValue =
+                                        int.tryParse(value) ?? 30;
                                   });
                                 },
                               ),
@@ -1200,7 +1272,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      
+
                       Row(
                         children: [
                           ElevatedButton(
@@ -1209,7 +1281,9 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                 ? const SizedBox(
                                     width: 20,
                                     height: 20,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
                                   )
                                 : const Text('Generate Code'),
                           ),
@@ -1219,7 +1293,9 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: Theme.of(context).colorScheme.primaryContainer,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primaryContainer,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Row(
@@ -1227,15 +1303,23 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                     Expanded(
                                       child: Text(
                                         _generatedCode,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
                                       ),
                                     ),
                                     IconButton(
                                       icon: const Icon(Icons.copy),
                                       onPressed: () {
                                         // Copy to clipboard logic would go here
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Code copied to clipboard')),
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          const SnackBar(
+                                            content: Text(
+                                              'Code copied to clipboard',
+                                            ),
+                                          ),
                                         );
                                       },
                                     ),
@@ -1250,7 +1334,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Assign Code Section
               Card(
                 child: Padding(
@@ -1260,12 +1344,11 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                     children: [
                       Text(
                         'Assign Code to User',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 16),
-                      
+
                       LayoutBuilder(
                         builder: (context, constraints) {
                           // Use column layout on narrow screens
@@ -1275,53 +1358,61 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                 SizedBox(
                                   width: double.infinity,
                                   child: DropdownButtonFormField<String>(
-                                  value: _selectedCode.isEmpty ? null : _selectedCode,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Select Code',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  isExpanded: true,
-                                  items: widget.codes
-                                      .where((code) => !code.isExpired)
-                                      .map((code) => DropdownMenuItem(
+                                    value: _selectedCode.isEmpty
+                                        ? null
+                                        : _selectedCode,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Select Code',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    isExpanded: true,
+                                    items: widget.codes
+                                        .where((code) => !code.isExpired)
+                                        .map(
+                                          (code) => DropdownMenuItem(
                                             value: code.fullCode,
                                             child: Text(
                                               '${code.codePart} (${code.duration})',
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedCode = value ?? '';
-                                    });
-                                  },
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedCode = value ?? '';
+                                      });
+                                    },
                                   ),
                                 ),
                                 const SizedBox(height: 16),
                                 SizedBox(
                                   width: double.infinity,
                                   child: DropdownButtonFormField<String>(
-                                  value: _selectedUserEmail.isEmpty ? null : _selectedUserEmail,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Select User',
-                                    border: OutlineInputBorder(),
-                                  ),
-                                  isExpanded: true,
-                                  items: widget.users
-                                      .map((email) => DropdownMenuItem(
+                                    value: _selectedUserEmail.isEmpty
+                                        ? null
+                                        : _selectedUserEmail,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Select User',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                    isExpanded: true,
+                                    items: widget.users
+                                        .map(
+                                          (email) => DropdownMenuItem(
                                             value: email,
                                             child: Text(
                                               email,
                                               overflow: TextOverflow.ellipsis,
                                             ),
-                                          ))
-                                      .toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedUserEmail = value ?? '';
-                                    });
-                                  },
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedUserEmail = value ?? '';
+                                      });
+                                    },
                                   ),
                                 ),
                               ],
@@ -1332,20 +1423,24 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                               children: [
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _selectedCode.isEmpty ? null : _selectedCode,
+                                    value: _selectedCode.isEmpty
+                                        ? null
+                                        : _selectedCode,
                                     decoration: const InputDecoration(
                                       labelText: 'Select Code',
                                       border: OutlineInputBorder(),
                                     ),
                                     items: widget.codes
                                         .where((code) => !code.isExpired)
-                                        .map((code) => DropdownMenuItem(
-                                              value: code.fullCode,
-                                              child: Text(
-                                                '${code.codePart} (${code.duration})',
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ))
+                                        .map(
+                                          (code) => DropdownMenuItem(
+                                            value: code.fullCode,
+                                            child: Text(
+                                              '${code.codePart} (${code.duration})',
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        )
                                         .toList(),
                                     onChanged: (value) {
                                       setState(() {
@@ -1357,19 +1452,23 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                                 const SizedBox(width: 16),
                                 Expanded(
                                   child: DropdownButtonFormField<String>(
-                                    value: _selectedUserEmail.isEmpty ? null : _selectedUserEmail,
+                                    value: _selectedUserEmail.isEmpty
+                                        ? null
+                                        : _selectedUserEmail,
                                     decoration: const InputDecoration(
                                       labelText: 'Select User',
                                       border: OutlineInputBorder(),
                                     ),
                                     items: widget.users
-                                        .map((email) => DropdownMenuItem(
-                                              value: email,
-                                              child: Text(
-                                                email,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ))
+                                        .map(
+                                          (email) => DropdownMenuItem(
+                                            value: email,
+                                            child: Text(
+                                              email,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        )
                                         .toList(),
                                     onChanged: (value) {
                                       setState(() {
@@ -1384,14 +1483,16 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      
+
                       ElevatedButton(
                         onPressed: _isAssigning ? null : _assignCode,
                         child: _isAssigning
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Assign Code'),
                       ),
@@ -1400,7 +1501,7 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                 ),
               ),
               const SizedBox(height: 16),
-              
+
               // Existing Codes List
               Expanded(
                 child: Column(
@@ -1417,39 +1518,44 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
                       child: widget.isLoading
                           ? const Center(child: CircularProgressIndicator())
                           : widget.codes.isEmpty
-                              ? const Center(child: Text('No verification codes found.'))
-                              : ListView.builder(
-                                  itemCount: widget.codes.length,
-                                  itemBuilder: (context, index) {
-                                    final code = widget.codes[index];
-                                    return Card(
-                                      margin: const EdgeInsets.only(bottom: 8),
-                                      child: ListTile(
-                                        title: Text(
-                                          code.codePart,
-                                          style: const TextStyle(fontWeight: FontWeight.bold),
-                                        ),
-                                        subtitle: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          children: [
-                                            Text('Duration: ${code.duration}'),
-                                            Text('Status: ${code.timeRemaining}'),
-                                          ],
-                                        ),
-                                        trailing: code.isExpired
-                                            ? const Chip(
-                                                label: Text('Expired'),
-                                                backgroundColor: Colors.red,
-                                              )
-                                            : const Chip(
-                                                label: Text('Active'),
-                                                backgroundColor: Colors.green,
-                                              ),
-                                        isThreeLine: true,
+                          ? const Center(
+                              child: Text('No verification codes found.'),
+                            )
+                          : ListView.builder(
+                              itemCount: widget.codes.length,
+                              itemBuilder: (context, index) {
+                                final code = widget.codes[index];
+                                return Card(
+                                  margin: const EdgeInsets.only(bottom: 8),
+                                  child: ListTile(
+                                    title: Text(
+                                      code.codePart,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    );
-                                  },
-                                ),
+                                    ),
+                                    subtitle: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Duration: ${code.duration}'),
+                                        Text('Status: ${code.timeRemaining}'),
+                                      ],
+                                    ),
+                                    trailing: code.isExpired
+                                        ? const Chip(
+                                            label: Text('Expired'),
+                                            backgroundColor: Colors.red,
+                                          )
+                                        : const Chip(
+                                            label: Text('Active'),
+                                            backgroundColor: Colors.green,
+                                          ),
+                                    isThreeLine: true,
+                                  ),
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
@@ -1466,15 +1572,15 @@ class _VerificationCodeDialogState extends State<_VerificationCodeDialog> {
 class _StatefulUserProgressDialog extends StatefulWidget {
   final String userEmail;
 
-  const _StatefulUserProgressDialog({
-    required this.userEmail,
-  });
+  const _StatefulUserProgressDialog({required this.userEmail});
 
   @override
-  State<_StatefulUserProgressDialog> createState() => _StatefulUserProgressDialogState();
+  State<_StatefulUserProgressDialog> createState() =>
+      _StatefulUserProgressDialogState();
 }
 
-class _StatefulUserProgressDialogState extends State<_StatefulUserProgressDialog> {
+class _StatefulUserProgressDialogState
+    extends State<_StatefulUserProgressDialog> {
   List<progress_data.ProgressData> _progress = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -1493,7 +1599,7 @@ class _StatefulUserProgressDialogState extends State<_StatefulUserProgressDialog
       });
 
       final result = await apiService.getUserProgressByEmail(widget.userEmail);
-      
+
       if (mounted) {
         setState(() {
           _progress = result;
@@ -1544,95 +1650,100 @@ class _StatefulUserProgressDialogState extends State<_StatefulUserProgressDialog
                 ],
               ),
               const Divider(),
-              
+
               // Content
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : _errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(
-                                  Icons.error_outline,
-                                  color: Colors.red,
-                                  size: 48,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Failed to load progress data',
-                                  style: Theme.of(context).textTheme.titleMedium,
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _errorMessage!,
-                                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: Colors.red,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _loadUserProgress,
-                                  child: const Text('Retry'),
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.error_outline,
+                              color: Colors.red,
+                              size: 48,
                             ),
-                          )
-                        : _progress.isEmpty
-                            ? const Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.inbox_outlined,
-                                      color: Colors.grey,
-                                      size: 48,
-                                    ),
-                                    SizedBox(height: 16),
-                                    Text(
-                                      'No progress data found for this user.',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        color: Colors.grey,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            : ListView.builder(
-                                itemCount: _progress.length,
-                                itemBuilder: (context, index) {
-                                  final item = _progress[index];
-                                  return Card(
-                                    margin: const EdgeInsets.only(bottom: 8),
-                                    child: ListTile(
-                                      title: Text(
-                                        item.videoTitle ?? 'Video ${item.videoId}',
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                      subtitle: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Channel: ${item.channelName ?? item.channelId}'),
-                                          const SizedBox(height: 8),
-                                          LinearProgressIndicator(
-                                            value: item.overallCompletion / 100,
-                                            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              Theme.of(context).colorScheme.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text('${item.overallCompletion.toStringAsFixed(1)}% complete'),
-                                        ],
-                                      ),
-                                      isThreeLine: true,
-                                    ),
-                                  );
-                                },
+                            const SizedBox(height: 16),
+                            Text(
+                              'Failed to load progress data',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage!,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: Colors.red),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadUserProgress,
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _progress.isEmpty
+                    ? const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.inbox_outlined,
+                              color: Colors.grey,
+                              size: 48,
+                            ),
+                            SizedBox(height: 16),
+                            Text(
+                              'No progress data found for this user.',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
                               ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _progress.length,
+                        itemBuilder: (context, index) {
+                          final item = _progress[index];
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              title: Text(
+                                item.videoTitle,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Channel: ${item.channelName}'),
+                                  const SizedBox(height: 8),
+                                  LinearProgressIndicator(
+                                    value: item.overallCompletion / 100,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainerHighest,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${item.overallCompletion.toStringAsFixed(1)}% complete',
+                                  ),
+                                ],
+                              ),
+                              isThreeLine: true,
+                            ),
+                          );
+                        },
+                      ),
               ),
             ],
           ),

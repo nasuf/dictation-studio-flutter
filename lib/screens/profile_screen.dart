@@ -1124,7 +1124,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             children: [
               Icon(
                 icon,
-                color: isSelected ? theme.colorScheme.primary : theme.colorScheme.onSurface.withValues(alpha: 0.7),
+                color: isSelected
+                    ? theme.colorScheme.primary
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 size: 20,
               ),
               const SizedBox(width: 12),
@@ -1219,13 +1221,13 @@ class _ProfileScreenState extends State<ProfileScreen>
       builder: (context) => _DictationProgressDialog(),
     );
   }
-
 }
 
 /// 听写进度对话框
 class _DictationProgressDialog extends StatefulWidget {
   @override
-  State<_DictationProgressDialog> createState() => _DictationProgressDialogState();
+  State<_DictationProgressDialog> createState() =>
+      _DictationProgressDialogState();
 }
 
 class _DictationProgressDialogState extends State<_DictationProgressDialog> {
@@ -1249,7 +1251,7 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
       });
 
       final result = await _apiService.getCurrentUserProgress();
-      
+
       if (mounted) {
         setState(() {
           _progress = result;
@@ -1270,20 +1272,24 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
   /// 根据频道分组进度数据
   Map<String, List<progress_data.ProgressData>> _groupProgressByChannel() {
     final Map<String, List<progress_data.ProgressData>> grouped = {};
-    
+
     for (final item in _progress) {
-      final channelName = item.channelName.isNotEmpty ? item.channelName : item.channelId;
+      final channelName = item.channelName.isNotEmpty
+          ? item.channelName
+          : item.channelId;
       if (!grouped.containsKey(channelName)) {
         grouped[channelName] = [];
       }
       grouped[channelName]!.add(item);
     }
-    
+
     // 按完成度排序每个频道下的视频
     for (final channelVideos in grouped.values) {
-      channelVideos.sort((a, b) => b.overallCompletion.compareTo(a.overallCompletion));
+      channelVideos.sort(
+        (a, b) => b.overallCompletion.compareTo(a.overallCompletion),
+      );
     }
-    
+
     return grouped;
   }
 
@@ -1301,8 +1307,7 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    
+
     return Material(
       color: Colors.black54,
       child: Center(
@@ -1330,16 +1335,13 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
                     ),
                   ),
                   IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      color: theme.colorScheme.onSurface,
-                    ),
+                    icon: Icon(Icons.close, color: theme.colorScheme.onSurface),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
               ),
               Divider(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
-              
+
               // 内容区域
               Expanded(
                 child: _isLoading
@@ -1349,68 +1351,80 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
                         ),
                       )
                     : _errorMessage != null
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.error_outline,
-                                  color: theme.colorScheme.error,
-                                  size: 48,
-                                ),
-                                const SizedBox(height: 16),
-                                Text(
-                                  AppLocalizations.of(context)!.loadError,
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    color: theme.colorScheme.onSurface,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  _errorMessage!,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: theme.colorScheme.error,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 16),
-                                ElevatedButton(
-                                  onPressed: _loadCurrentUserProgress,
-                                  child: Text(AppLocalizations.of(context)!.tryAgain),
-                                ),
-                              ],
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              color: theme.colorScheme.error,
+                              size: 48,
                             ),
-                          )
-                        : _progress.isEmpty
-                            ? Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.library_books_outlined,
-                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                                      size: 48,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Text(
-                                      AppLocalizations.of(context)!.noProgressDataAvailable,
-                                      style: theme.textTheme.titleMedium?.copyWith(
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      AppLocalizations.of(context)!.startDictationToSeeProgress,
-                                      style: theme.textTheme.bodyMedium?.copyWith(
-                                        color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
+                            const SizedBox(height: 16),
+                            Text(
+                              AppLocalizations.of(context)!.loadError,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _errorMessage!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadCurrentUserProgress,
+                              child: Text(
+                                AppLocalizations.of(context)!.tryAgain,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : _progress.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.library_books_outlined,
+                              color: theme.colorScheme.onSurface.withValues(
+                                alpha: 0.5,
+                              ),
+                              size: 48,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.noProgressDataAvailable,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.7,
                                 ),
-                              )
-                            : _buildProgressList(context, theme),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              AppLocalizations.of(
+                                context,
+                              )!.startDictationToSeeProgress,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.onSurface.withValues(
+                                  alpha: 0.5,
+                                ),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      )
+                    : _buildProgressList(context, theme),
               ),
             ],
           ),
@@ -1422,13 +1436,13 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
   /// 构建进度列表
   Widget _buildProgressList(BuildContext context, ThemeData theme) {
     final groupedProgress = _groupProgressByChannel();
-    
+
     return ListView.builder(
       itemCount: groupedProgress.keys.length,
       itemBuilder: (context, index) {
         final channelName = groupedProgress.keys.elementAt(index);
         final videos = groupedProgress[channelName]!;
-        
+
         return Card(
           margin: const EdgeInsets.only(bottom: 16),
           shape: RoundedRectangleBorder(
@@ -1454,10 +1468,15 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
             ),
             // 移除展开时的分隔线
             childrenPadding: EdgeInsets.zero,
-            tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            tilePadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             shape: const Border(),
             collapsedShape: const Border(),
-            children: videos.map((video) => _buildVideoItem(context, theme, video)).toList(),
+            children: videos
+                .map((video) => _buildVideoItem(context, theme, video))
+                .toList(),
           ),
         );
       },
@@ -1465,9 +1484,16 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
   }
 
   /// 构建单个视频项
-  Widget _buildVideoItem(BuildContext context, ThemeData theme, progress_data.ProgressData video) {
-    final completionColor = _getCompletionColor(video.overallCompletion, context);
-    
+  Widget _buildVideoItem(
+    BuildContext context,
+    ThemeData theme,
+    progress_data.ProgressData video,
+  ) {
+    final completionColor = _getCompletionColor(
+      video.overallCompletion,
+      context,
+    );
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
@@ -1499,7 +1525,9 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
           ),
         ),
         title: Text(
-          video.videoTitle.isNotEmpty ? video.videoTitle : 'Video ${video.videoId}',
+          video.videoTitle.isNotEmpty
+              ? video.videoTitle
+              : 'Video ${video.videoId}',
           style: theme.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w500,
             color: theme.colorScheme.onSurface,
@@ -1529,11 +1557,7 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
                   ),
                 ),
                 if (video.overallCompletion >= 100)
-                  Icon(
-                    Icons.check_circle,
-                    color: Colors.green,
-                    size: 16,
-                  ),
+                  Icon(Icons.check_circle, color: Colors.green, size: 16),
               ],
             ),
           ],
@@ -1556,16 +1580,14 @@ class _DictationProgressDialogState extends State<_DictationProgressDialog> {
             updatedAt: 0,
             isRefined: true,
           );
-          
+
           context.pushNamed(
             'dictation',
             pathParameters: {
               'channelId': video.channelId,
               'videoId': video.videoId,
             },
-            extra: {
-              'video': videoObject,
-            },
+            extra: {'video': videoObject},
           );
         },
       ),

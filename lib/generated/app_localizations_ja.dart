@@ -505,4 +505,109 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get viewYourDictationHistory => '聴写練習の履歴と進捗を表示';
+
+  @override
+  String get forceRefreshPlayer => 'プレーヤーを強制リフレッシュ';
+
+  @override
+  String get refreshingPlayer => 'プレーヤーをリフレッシュ中...';
+
+  @override
+  String get playerRefreshedSuccessfully => 'プレーヤーを正常にリフレッシュしました';
+
+  @override
+  String get youtubeVideoAccess => 'YouTubeビデオアクセス';
+
+  @override
+  String get chooseVideoAccessMethod => 'ビデオ再生を有効にする方法を選択してください：';
+
+  @override
+  String get enableVideoPlayback => 'ビデオ再生を有効にする';
+
+  @override
+  String get enableVideoPlaybackDesc => '推奨 - ログインなしでほとんどのビデオで動作します';
+
+  @override
+  String get browserLogin => 'ブラウザログイン';
+
+  @override
+  String get browserLoginDesc => 'フルアクセスのためのブラウザログイン（確認が必要）';
+
+  @override
+  String get tryWithoutLogin => 'ログインなしで試す';
+
+  @override
+  String get tryWithoutLoginDesc => '認証なしで再生を試みます（制限あり）';
+
+  @override
+  String get videoAccessInfo => '「ビデオ再生を有効にする」はほとんどのビデオで動作し、最も簡単な選択肢です。';
+
+  @override
+  String get confirmLogin => 'ログイン確認';
+
+  @override
+  String get confirmLoginInstructions =>
+      '手順：\n1. 開いたブラウザでYouTubeにログイン\n2. ログイン完了後、このアプリに戻る\n3. 下の「ログイン確認」をクリック\n\nこれによりアプリでビデオ再生が有効になります。';
+
+  @override
+  String get confirmLoginButton => 'ログイン確認';
+
+  @override
+  String get youtubeAccess => 'YouTubeアクセス';
+
+  @override
+  String get disableVideoAccess => 'YouTubeビデオアクセスを無効にしますか？';
+
+  @override
+  String currentStatus(String status) {
+    return '現在のステータス：$status';
+  }
+
+  @override
+  String get disable => '無効にする';
+
+  @override
+  String get videoAccessDisabled => 'YouTubeビデオアクセスが無効になりました';
+
+  @override
+  String get enableYoutubeVideoAccess => 'YouTubeビデオアクセスを有効にする';
+
+  @override
+  String youtubeAccessEnabled(String userInfo) {
+    return 'YouTubeアクセス：$userInfo';
+  }
+
+  @override
+  String get youtubeAuthenticationCompleted => 'YouTube認証が正常に完了しました';
+
+  @override
+  String get youtubeAuthSuccessMessage => 'YouTube認証成功！ビデオプレーヤーをリフレッシュしています...';
+
+  @override
+  String get youtubeLoginCancelled =>
+      'YouTubeログインがキャンセルされました - 聴写ページに留まりプレーヤーをリフレッシュします';
+
+  @override
+  String get refreshingAfterLogin => '認証成功後にYouTubeプレーヤーをリフレッシュ';
+
+  @override
+  String get refreshingAfterCancel => 'ログインキャンセル後にYouTubeプレーヤーをリフレッシュ';
+
+  @override
+  String youtubeAuthFailed(String error) {
+    return 'YouTube認証が失敗しました：$error';
+  }
+
+  @override
+  String get videoPlayerLoginSuggestion =>
+      'ビデオプレーヤーはYouTubeログインが必要かもしれません。右上のログインボタンをタップしてください。';
+
+  @override
+  String get testModeEnabled => 'テストモードが有効になりました - ビデオが動作するはずです';
+
+  @override
+  String get authenticationConfirmed => '認証が確認されました - ビデオをリフレッシュしてください';
+
+  @override
+  String get publicAccessEnabled => 'パブリックアクセスモードが有効になりました';
 }

@@ -190,5 +190,58 @@
   "channels": "Channels",
   "progress": "Progress",
   "viewYourDictationHistory": "View your dictation practice history and progress",
-  "completed": "completed"
+  "completed": "completed",
+  "forceRefreshPlayer": "Force Refresh Player",
+  "refreshingPlayer": "Refreshing player...",
+  "playerRefreshedSuccessfully": "Player refreshed successfully",
+  "youtubeVideoAccess": "YouTube Video Access",
+  "chooseVideoAccessMethod": "Choose how to enable video playback:",
+  "enableVideoPlayback": "Enable Video Playback",
+  "enableVideoPlaybackDesc": "Recommended - Works for most videos without login",
+  "browserLogin": "Browser Login",
+  "browserLoginDesc": "Login via browser for full access (requires confirmation)",
+  "tryWithoutLogin": "Try Without Login",
+  "tryWithoutLoginDesc": "Attempt playback without authentication (limited)",
+  "videoAccessInfo": "\"Enable Video Playback\" works for most videos and is the easiest option.",
+  "confirmLogin": "Confirm Login",
+  "confirmLoginInstructions": "Please:\n1. Login to YouTube in the browser that just opened\n2. Once logged in, return to this app\n3. Click \"Confirm\" below\n\nThis will enable video playback in the app.",
+  "confirmLoginButton": "Confirm Login",
+  "youtubeAccess": "YouTube Access",
+  "disableVideoAccess": "Do you want to disable YouTube video access?",
+  "currentStatus": "Current status: {status}",
+  "@currentStatus": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "disable": "Disable",
+  "videoAccessDisabled": "YouTube video access disabled",
+  "enableYoutubeVideoAccess": "Enable YouTube Video Access",
+  "youtubeAccessEnabled": "YouTube Access: {userInfo}",
+  "@youtubeAccessEnabled": {
+    "placeholders": {
+      "userInfo": {
+        "type": "String"
+      }
+    }
+  },
+  "youtubeAuthenticationCompleted": "YouTube authentication completed successfully",
+  "youtubeAuthSuccessMessage": "YouTube authentication successful! Refreshing video player...",
+  "youtubeLoginCancelled": "YouTube login cancelled - staying on dictation screen and refreshing player",
+  "refreshingAfterLogin": "Refreshing YouTube player after successful authentication",
+  "refreshingAfterCancel": "Refreshing YouTube player after login cancellation",
+  "youtubeAuthFailed": "YouTube authentication failed: {error}",
+  "@youtubeAuthFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "videoPlayerLoginSuggestion": "Video player might need YouTube login. Tap the login button in the top-right corner.",
+  "testModeEnabled": "Test mode enabled - videos should work now",
+  "authenticationConfirmed": "Authentication confirmed - please refresh the video",
+  "publicAccessEnabled": "Public access mode enabled"
 }

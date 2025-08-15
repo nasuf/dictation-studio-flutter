@@ -32,8 +32,8 @@ class _YouTubeLoginWebViewState extends State<YouTubeLoginWebView> {
     _initializeWebView();
   }
 
-  void _initializeWebView() {
-    _controller = _loginService.createLoginWebViewController(
+  Future<void> _initializeWebView() async {
+    _controller = await _loginService.createLoginWebViewController(
       onLoginSuccess: () {
         AppLogger.info('YouTube login successful in WebView');
         if (mounted) {
@@ -194,8 +194,9 @@ class _YouTubeLoginWebViewState extends State<YouTubeLoginWebView> {
                 Text(
                   '1. Sign in with your Google/YouTube account\n'
                   '2. Complete any verification steps\n'
-                  '3. You\'ll be redirected automatically when login succeeds\n'
-                  '4. This allows the video player to access YouTube without restrictions',
+                  '3. If you see \"This browser or app may not be secure\", use \"Try Mobile Login\" below\n'
+                  '4. You\'ll be redirected automatically when login succeeds\n'
+                  '5. This allows the video player to access YouTube without restrictions',
                   style: TextStyle(
                     fontSize: 13,
                     color: isDark ? Colors.grey[300] : Colors.grey[700],
@@ -223,34 +224,55 @@ class _YouTubeLoginWebViewState extends State<YouTubeLoginWebView> {
             ),
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: OutlinedButton(
-                onPressed: () {
-                  AppLogger.info('YouTube login cancelled by user');
-                  widget.onCancel?.call();
-                  Navigator.of(context).pop();
+            // Mobile Login button for WebView security issues
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  AppLogger.info('Trying mobile login as backup');
+                  await _loginService.tryMobileLogin();
                 },
-                child: const Text('Cancel'),
+                icon: const Icon(Icons.phone_android),
+                label: const Text('Try Mobile Login'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () async {
-                  AppLogger.info('YouTube login completed via Done & Refresh button');
-                  // Mark as logged in manually and refresh player
-                  await _loginService.markAsLoggedIn(userInfo: 'YouTube User');
-                  // Don't call Navigator.pop() here - let the success callback handle navigation
-                  widget.onLoginSuccess?.call();
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () {
+                      AppLogger.info('YouTube login cancelled by user');
+                      widget.onCancel?.call();
+                      Navigator.of(context).pop();
+                    },
+                    child: const Text('Cancel'),
+                  ),
                 ),
-                child: const Text('Done & Refresh'),
-              ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      AppLogger.info('YouTube login completed via Done & Refresh button');
+                      // Mark as logged in manually and refresh player
+                      await _loginService.markAsLoggedIn(userInfo: 'YouTube User');
+                      // Don't call Navigator.pop() here - let the success callback handle navigation
+                      widget.onLoginSuccess?.call();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    child: const Text('Done & Refresh'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
