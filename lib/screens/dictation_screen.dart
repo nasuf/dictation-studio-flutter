@@ -521,7 +521,7 @@ class _DictationScreenState extends State<DictationScreen>
 
       // Show simple authentication dialog
       await showYouTubeSimpleAuthDialog(
-        context,
+        context: context,
         onAuthSuccess: () {
           AppLogger.info('YouTube authentication completed successfully');
           if (mounted) {
@@ -557,46 +557,6 @@ class _DictationScreenState extends State<DictationScreen>
             });
           }
         },
-        onCancel: () {
-          // When user cancels/closes login, stay on dictation screen and refresh player
-          AppLogger.info(
-            'YouTube login cancelled - staying on dictation screen and refreshing player',
-          );
-          if (mounted) {
-            final l10n = AppLocalizations.of(context)!;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Row(
-                  children: [
-                    const Icon(Icons.info_outline, color: Colors.white),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(l10n.youtubeLoginCancelled),
-                    ),
-                  ],
-                ),
-                backgroundColor: Colors.blue,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-
-            // Refresh the YouTube player even if login was cancelled
-            Future.delayed(const Duration(milliseconds: 500), () async {
-              if (mounted) {
-                AppLogger.info(
-                  'Refreshing YouTube player after login cancellation',
-                );
-
-                // Auth service automatically maintains authentication state
-                if (_youtubeAuthService.isAuthenticated) {
-                  // Auth service automatically manages authentication state
-                }
-
-                await _refreshYouTubePlayer();
-              }
-            });
-          }
-        },
         onAuthError: (error) {
           AppLogger.error('YouTube authentication failed: $error');
           if (mounted) {
@@ -622,6 +582,29 @@ class _DictationScreenState extends State<DictationScreen>
           }
         },
       );
+
+      if (!_youtubeAuthService.isAuthenticated && mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.info_outline, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(child: Text(l10n.youtubeLoginCancelled)),
+              ],
+            ),
+            backgroundColor: Colors.blue,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+
+        Future.delayed(const Duration(milliseconds: 500), () async {
+          if (mounted) {
+            await _refreshYouTubePlayer();
+          }
+        });
+      }
     } else {
       AppLogger.info('YouTube authentication not required - user is already authenticated');
     }
