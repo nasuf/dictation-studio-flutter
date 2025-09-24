@@ -114,8 +114,8 @@ class _LoginScreenState extends State<LoginScreen>
       if (success && mounted) {
         // Mark onboarding as completed when user successfully logs in
         await OnboardingService.completeOnboarding();
-        // Navigate to splash screen, let it handle the proper routing
-        context.go('/');
+        // Navigate directly to the main screen to avoid showing splash again
+        context.go('/main');
       }
     }
 
@@ -172,8 +172,8 @@ class _LoginScreenState extends State<LoginScreen>
       if (authProvider.isLoggedIn && mounted) {
         // Mark onboarding as completed when user successfully logs in via Google
         await OnboardingService.completeOnboarding();
-        // Navigate to splash screen, let it handle the proper routing
-        context.go('/');
+        // Navigate directly to the main screen to avoid showing splash again
+        context.go('/main');
         // Remove the listener after use
         authProvider.removeListener(_authStateListener!);
         _authStateListener = null;
