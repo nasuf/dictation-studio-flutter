@@ -1,17 +1,11 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../models/transcript_item.dart';
 import '../utils/logger.dart';
 
 /// Video playback states
-enum VideoPlaybackState {
-  unstarted,
-  ended,
-  playing,
-  paused,
-  buffering,
-  cued,
-}
+enum VideoPlaybackState { unstarted, ended, playing, paused, buffering, cued }
 
 /// Configuration for video playback
 class PlaybackConfig {
@@ -24,10 +18,10 @@ class PlaybackConfig {
 
   const PlaybackConfig({
     this.playbackSpeed = 1.0,
-    this.timeAccuracy = 0.1,
-    this.bufferTolerance = 0.5,
+    this.timeAccuracy = 0.05,
+    this.bufferTolerance = 0.3,
     this.maxRetries = 3,
-    this.retryDelay = const Duration(milliseconds: 100),
+    this.retryDelay = const Duration(milliseconds: 200),
     this.enableLogging = true,
   });
 
@@ -48,7 +42,8 @@ class VideoPlaybackController {
   final PlaybackStateCallback? _onStateChange;
   final PlaybackProgressCallback? _onProgress;
   final PlaybackFailureCallback? _onPlaybackFailure;
-  
+
+  double _currentPlaybackSpeed;
 
   Timer? _progressTimer;
   Timer? _stopTimer;
@@ -66,7 +61,8 @@ class VideoPlaybackController {
   }) : _config = config,
        _onStateChange = onStateChange,
        _onProgress = onProgress,
-       _onPlaybackFailure = onPlaybackFailure {
+       _onPlaybackFailure = onPlaybackFailure,
+       _currentPlaybackSpeed = config.playbackSpeed {
     _initializeListener();
   }
 
@@ -75,18 +71,24 @@ class VideoPlaybackController {
     _playerController.addListener(_onPlayerStateChange);
   }
 
+  bool get _isIOSPlatform =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  bool get _supportsPlaybackRateChange => !_isIOSPlatform;
+
   /// Handle player state changes
   void _onPlayerStateChange() {
     final playerState = _getVideoPlaybackState();
     _onStateChange?.call(playerState);
-    
+
     if (_config.enableLogging) {
       AppLogger.info('Video player state changed to: $playerState');
     }
-    
+
     // Handle automatic stopping for segment playback
     if (_isPlaying && _segmentEndTime != null) {
-      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+      final currentTime =
+          _playerController.value.position.inMilliseconds / 1000.0;
       if (currentTime >= _segmentEndTime! - _config.timeAccuracy) {
         _stopSegmentPlayback();
       }
@@ -109,27 +111,41 @@ class VideoPlaybackController {
     try {
       // Always stop any existing playback first (like React version)
       await stop();
-      
+
       // Reset cancellation flag for new playback
       _isCancelled = false;
-      
+
       // Check if player is ready or can be made ready
       if (!_playerController.value.isReady) {
         AppLogger.info('Player not ready, waiting...');
         await _waitForPlayerReady();
       }
-      
+
       // Check if cancelled during preparation
       if (_isCancelled) {
         AppLogger.info('Playback cancelled during preparation');
         return;
       }
-      
+
+      _applyPlaybackSpeed(_currentPlaybackSpeed);
+
+      if (_isCancelled) {
+        AppLogger.info('Playback cancelled after speed preparation');
+        return;
+      }
+
       await _playTranscriptSegment(segment);
     } catch (e) {
+      if (_isCancelled) {
+        if (_config.enableLogging) {
+          AppLogger.info('Playback cancelled: $e');
+        }
+        return;
+      }
+
       AppLogger.error('Error playing segment: $e');
-      // Don't rethrow - show user a friendly error instead
       _onStateChange?.call(VideoPlaybackState.paused);
+      rethrow;
     }
   }
 
@@ -146,74 +162,143 @@ class VideoPlaybackController {
     }
   }
 
+  void _applyPlaybackSpeed(double speed) {
+    if (!_supportsPlaybackRateChange) {
+      if (_config.enableLogging) {
+        AppLogger.info(
+          'Skipping playback rate change for unsupported platform',
+        );
+      }
+      return;
+    }
+
+    try {
+      _playerController.setPlaybackRate(speed);
+      if (_config.enableLogging) {
+        AppLogger.info('Playback rate set to ${speed.toStringAsFixed(2)}x');
+      }
+    } catch (e) {
+      AppLogger.warning('Failed to set playback rate: $e');
+    }
+  }
+
   /// Enhanced wait strategy for iOS devices with actual playback verification
   Future<void> _waitForPlaybackSimple() async {
     int attempts = 0;
     const maxAttempts = 30; // 3 seconds total
     double lastPosition = -1;
     bool playbackConfirmed = false;
-    
+
     while (attempts < maxAttempts && !playbackConfirmed) {
       await Future.delayed(const Duration(milliseconds: 100));
       attempts++;
-      
+
       try {
         final isPlaying = _playerController.value.isPlaying;
         final playerState = _playerController.value.playerState;
-        final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
-        
+        final currentTime =
+            _playerController.value.position.inMilliseconds / 1000.0;
+
         // Check if we have actual progress (time is moving forward)
         bool hasProgress = currentTime > lastPosition && currentTime > 0;
         lastPosition = currentTime;
-        
+
         // Confirm playback if player is playing and time is progressing
         if (isPlaying && playerState == PlayerState.playing && hasProgress) {
           playbackConfirmed = true;
-          AppLogger.info('iOS playback confirmed after ${attempts * 100}ms, position: ${currentTime}s');
-          
+          AppLogger.info(
+            'iOS playback confirmed after ${attempts * 100}ms, position: ${currentTime}s',
+          );
+
           // Wait additional time to ensure stable playback before setting up timers
           await Future.delayed(const Duration(milliseconds: 300));
           return;
         }
-        
-        if (attempts % 10 == 0) { // Log every second
-          AppLogger.info('iOS waiting for playback... attempt $attempts, state: $playerState, playing: $isPlaying, time: ${currentTime}s, hasProgress: $hasProgress');
+
+        if (attempts % 10 == 0) {
+          // Log every second
+          AppLogger.info(
+            'iOS waiting for playback... attempt $attempts, state: $playerState, playing: $isPlaying, time: ${currentTime}s, hasProgress: $hasProgress',
+          );
         }
       } catch (e) {
         AppLogger.warning('Error checking iOS playback state: $e');
       }
     }
-    
+
     // If we couldn't confirm playback, still proceed but with caution
-    AppLogger.warning('iOS playback not fully confirmed after ${maxAttempts * 100}ms, proceeding with caution');
-    await Future.delayed(const Duration(milliseconds: 500)); // Extra buffer time
+    AppLogger.warning(
+      'iOS playback not fully confirmed after ${maxAttempts * 100}ms, proceeding with caution',
+    );
+    await Future.delayed(
+      const Duration(milliseconds: 500),
+    ); // Extra buffer time
   }
 
+  Future<void> _confirmPlaybackStarted(int attemptNumber) async {
+    if (_isIOSPlatform) {
+      await _waitForPlaybackSimple();
+      return;
+    }
+
+    const int maxChecks = 10;
+    int checks = 0;
+
+    while (checks < maxChecks && !_isCancelled) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      checks++;
+
+      try {
+        final value = _playerController.value;
+        final state = value.playerState;
+        final isPlaying = value.isPlaying;
+
+        if (isPlaying ||
+            state == PlayerState.playing ||
+            state == PlayerState.buffering) {
+          return;
+        }
+
+        if (state == PlayerState.paused || state == PlayerState.cued) {
+          _playerController.play();
+        }
+      } catch (e) {
+        AppLogger.warning('Error confirming playback start: $e');
+      }
+    }
+
+    throw Exception(
+      'Playback did not start after ${(maxChecks * 200)}ms (attempt $attemptNumber)',
+    );
+  }
 
   /// Wait for YouTube player to be ready with fallback approach
   Future<void> _waitForPlayerReady() async {
     int attempts = 0;
     const maxAttempts = 30; // 3 seconds total
-    
+
     while (!_playerController.value.isReady && attempts < maxAttempts) {
       await Future.delayed(const Duration(milliseconds: 100));
       attempts++;
-      if (attempts % 10 == 0) { // Log every second
+      if (attempts % 10 == 0) {
+        // Log every second
         AppLogger.info('Waiting for player ready... attempt $attempts');
       }
     }
-    
+
     // If player is not ready, try a more relaxed approach
     if (!_playerController.value.isReady) {
-      AppLogger.warning('Player not ready after ${maxAttempts * 100}ms, trying fallback approach');
-      
+      AppLogger.warning(
+        'Player not ready after ${maxAttempts * 100}ms, trying fallback approach',
+      );
+
       // Check if we can at least get the player state
       try {
         final playerState = _playerController.value.playerState;
         AppLogger.info('Player state: $playerState');
-        
+
         // If we can get the state, consider it "ready enough" for our purposes
-        if (playerState == PlayerState.unStarted || 
+        if (playerState == PlayerState.unStarted ||
             playerState == PlayerState.paused ||
             playerState == PlayerState.playing ||
             playerState == PlayerState.ended) {
@@ -223,9 +308,11 @@ class VideoPlaybackController {
       } catch (e) {
         AppLogger.error('Error getting player state: $e');
       }
-      
+
       // Last resort: wait a bit more and proceed anyway
-      AppLogger.warning('Final fallback: Proceeding with potentially unready player');
+      AppLogger.warning(
+        'Final fallback: Proceeding with potentially unready player',
+      );
       await Future.delayed(const Duration(milliseconds: 500));
     } else {
       AppLogger.info('YouTube player is ready');
@@ -238,29 +325,64 @@ class VideoPlaybackController {
       AppLogger.info('Segment playback cancelled before starting');
       return;
     }
-    
+
     if (_config.enableLogging) {
       AppLogger.info('Playing segment: ${segment.start}s - ${segment.end}s');
     }
 
-    // Validate segment
     if (segment.start < 0 || segment.end <= segment.start) {
-      throw ArgumentError('Invalid segment times: ${segment.start} - ${segment.end}');
+      throw ArgumentError(
+        'Invalid segment times: ${segment.start} - ${segment.end}',
+      );
     }
 
-    // Single attempt only - no retry mechanism to avoid chaos during sentence switching
-    await _attemptSegmentPlayback(segment);
+    Exception? lastError;
+
+    for (
+      int attempt = 1;
+      attempt <= _config.maxRetries && !_isCancelled;
+      attempt++
+    ) {
+      try {
+        await _attemptSegmentPlayback(segment, attempt);
+        return;
+      } catch (e) {
+        if (_isCancelled) {
+          AppLogger.info('Segment playback cancelled during attempt $attempt');
+          return;
+        }
+
+        lastError = e is Exception ? e : Exception(e.toString());
+
+        if (_config.enableLogging) {
+          AppLogger.warning('Segment playback attempt $attempt failed: $e');
+        }
+
+        if (attempt < _config.maxRetries) {
+          await Future.delayed(_config.retryDelay * attempt);
+        }
+      }
+    }
+
+    if (lastError != null) {
+      throw lastError;
+    }
   }
 
   /// Single attempt to play a segment with enhanced precision and error handling
-  Future<void> _attemptSegmentPlayback(TranscriptItem segment) async {
+  Future<void> _attemptSegmentPlayback(
+    TranscriptItem segment,
+    int attemptNumber,
+  ) async {
     if (_isCancelled) {
       AppLogger.info('Segment playback attempt cancelled');
       return;
     }
-    
-    AppLogger.info('Attempting to play segment: ${segment.start}s - ${segment.end}s');
-    
+
+    AppLogger.info(
+      'Attempting to play segment: ${segment.start}s - ${segment.end}s (attempt $attemptNumber/${_config.maxRetries})',
+    );
+
     // Set up completion tracking
     _playbackCompleter = Completer<void>();
     _segmentEndTime = segment.end;
@@ -269,46 +391,56 @@ class VideoPlaybackController {
     try {
       // Check if we can control the player
       if (!_canControlPlayer()) {
-        throw Exception('Cannot control YouTube player - player may not be properly initialized');
+        throw Exception(
+          'Cannot control YouTube player - player may not be properly initialized',
+        );
       }
-      
-      // Skip playback speed setting for iOS device compatibility
-      AppLogger.info('Skipping playback speed setting for iOS device compatibility');
-      
+
+      // Ensure we start from a paused state for deterministic behavior
+      try {
+        _playerController.pause();
+      } catch (e) {
+        AppLogger.warning('Pause before seek failed: $e');
+      }
+
       // Seek to start position with precise timing
       final seekTime = (segment.start * 1000).round();
       AppLogger.info('Seeking to: ${seekTime}ms');
-      
+
       try {
         _playerController.seekTo(Duration(milliseconds: seekTime));
-        
+
         // Wait for seek to complete - longer delay for reliability
         await Future.delayed(const Duration(milliseconds: 300));
-        
+
         // Verify current position for debugging
         try {
-          final currentPos = _playerController.value.position.inMilliseconds / 1000.0;
-          AppLogger.info('Position after seek: ${currentPos}s (target: ${segment.start}s)');
+          final currentPos =
+              _playerController.value.position.inMilliseconds / 1000.0;
+          AppLogger.info(
+            'Position after seek: ${currentPos}s (target: ${segment.start}s)',
+          );
         } catch (e) {
           AppLogger.warning('Could not verify position: $e');
         }
       } catch (e) {
-        AppLogger.warning('Seek operation failed: $e, attempting to play anyway');
+        AppLogger.warning(
+          'Seek operation failed: $e, attempting to play anyway',
+        );
       }
-      
+
       // Start playing with error handling
       try {
         _playerController.play();
         AppLogger.info('Initiated playback command');
-        
+
         // Check for cancellation before starting playback
         if (_isCancelled) {
           AppLogger.info('Playback cancelled before starting');
           return;
         }
-        
-        // For iOS devices, use a simpler wait strategy
-        await _waitForPlaybackSimple();
+
+        await _confirmPlaybackStarted(attemptNumber);
         AppLogger.info('Playback confirmed to have started');
       } catch (e) {
         AppLogger.error('Failed to start playback: $e');
@@ -326,15 +458,22 @@ class VideoPlaybackController {
       _startStopTimer(segment);
 
       // Wait for playback to complete with cancellation checking
+      final playbackDurationSeconds =
+          segment.duration /
+          (_currentPlaybackSpeed > 0 ? _currentPlaybackSpeed : 1.0);
+      final timeoutSeconds = (playbackDurationSeconds + 5).clamp(2.0, 60.0);
+      final timeoutDuration = Duration(
+        milliseconds: (timeoutSeconds * 1000).round(),
+      );
+
       await _playbackCompleter!.future.timeout(
-        Duration(seconds: (segment.duration + 5).round()),
+        timeoutDuration,
         onTimeout: () {
           if (!_isCancelled) {
-            throw TimeoutException('Segment playback timeout', Duration(seconds: segment.duration.round()));
+            throw TimeoutException('Segment playback timeout', timeoutDuration);
           }
         },
       );
-
     } finally {
       _cleanup();
     }
@@ -342,36 +481,45 @@ class VideoPlaybackController {
 
   /// Start monitoring playback progress with enhanced precision
   void _startProgressMonitoring() {
-    _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) { // Reduced frequency to 100ms
+    _progressTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+      // Reduced frequency to 100ms
       if (!_isPlaying || _isCancelled) {
         timer.cancel();
         return;
       }
 
       try {
-        final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
+        final currentTime =
+            _playerController.value.position.inMilliseconds / 1000.0;
         final isActuallyPlaying = _playerController.value.isPlaying;
         final playerState = _playerController.value.playerState;
-        
+
         // Only call progress callback if video is actually playing
         if (isActuallyPlaying) {
           _onProgress?.call(currentTime);
         }
 
-        // Enhanced stopping logic with more conservative precision
         if (_segmentEndTime != null) {
-          final timeRemaining = _segmentEndTime! - currentTime;
-          
-          // Much more conservative stopping: allow significant overshoot to prevent premature stopping
-          if (timeRemaining <= -0.3) { // Allow 300ms overshoot for safety
+          final bufferTolerance = _config.bufferTolerance;
+          final timeAccuracy = _config.timeAccuracy;
+          final shouldStopByTime =
+              currentTime >= (_segmentEndTime! - timeAccuracy);
+          final exceededBuffer =
+              currentTime > (_segmentEndTime! + bufferTolerance);
+          final externalStop =
+              playerState == PlayerState.paused ||
+              playerState == PlayerState.ended;
+
+          if (exceededBuffer || externalStop || shouldStopByTime) {
             if (_config.enableLogging) {
-              AppLogger.info('Stopping playback at ${currentTime}s (target: ${_segmentEndTime}s, overshoot: ${(-timeRemaining).toStringAsFixed(3)}s)');
-            }
-            _stopSegmentPlayback();
-          } else if (timeRemaining <= 0.1 && !isActuallyPlaying && playerState != PlayerState.buffering) {
-            // Only stop if naturally stopped and not buffering
-            if (_config.enableLogging) {
-              AppLogger.info('Stopping playback due to natural end at ${currentTime}s (target: ${_segmentEndTime}s)');
+              final reason = exceededBuffer
+                  ? 'buffer tolerance exceeded'
+                  : externalStop
+                  ? 'player state $playerState'
+                  : 'time threshold reached';
+              AppLogger.info(
+                'Stopping playback at ${currentTime.toStringAsFixed(3)}s (target: ${_segmentEndTime!.toStringAsFixed(3)}s, reason: $reason)',
+              );
             }
             _stopSegmentPlayback();
           }
@@ -386,29 +534,36 @@ class VideoPlaybackController {
   void _startStopTimer(TranscriptItem segment) {
     // Check cancellation before setting up timer
     if (_isCancelled) return;
-    
-    // Use segment duration instead of current position for more reliable timing
-    // This ensures we give the full segment duration to play regardless of seek accuracy
-    final segmentDuration = segment.end - segment.start;
-    
-    // Add generous buffer time to prevent premature stopping
-    final extraBuffer = 1.0; // Extra 1000ms buffer for safety
-    final totalDuration = segmentDuration + _config.bufferTolerance + extraBuffer;
-    final duration = Duration(milliseconds: (totalDuration * 1000).round().clamp(1500, 35000)); // Min 1.5s, max 35s
-    
-    AppLogger.info('Setting safety stop timer for ${totalDuration.toStringAsFixed(1)}s (segment: ${segmentDuration.toStringAsFixed(1)}s + buffer: ${(_config.bufferTolerance + extraBuffer).toStringAsFixed(1)}s)');
-    
-    _stopTimer = Timer(duration, () {
+
+    final segmentDuration = (segment.end - segment.start).clamp(0.05, 600.0);
+    final effectiveSpeed = _currentPlaybackSpeed > 0
+        ? _currentPlaybackSpeed
+        : 1.0;
+    final playbackSeconds = segmentDuration / effectiveSpeed;
+    final guardBuffer = (_config.bufferTolerance + 0.3);
+    final totalSeconds = playbackSeconds + guardBuffer;
+    final totalMillis = (totalSeconds * 1000).round();
+    final clampedMillis = totalMillis.clamp(1200, 35000).toInt();
+
+    if (_config.enableLogging) {
+      AppLogger.info(
+        'Setting safety stop timer for ${totalSeconds.toStringAsFixed(2)}s (segment=${segmentDuration.toStringAsFixed(2)}s, speed=${effectiveSpeed.toStringAsFixed(2)}x)',
+      );
+    }
+
+    _stopTimer = Timer(Duration(milliseconds: clampedMillis), () {
       try {
         if (_isPlaying && !_isCancelled) {
-          final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
-          AppLogger.warning('Safety stop timer triggered at ${currentTime}s (target was ${segment.end}s) - this should be rare');
-          
-          // Only check for login issues if we're very early in playback
-          if (currentTime < segment.start + 1.0) {
+          final currentTime =
+              _playerController.value.position.inMilliseconds / 1000.0;
+          AppLogger.warning(
+            'Safety stop timer triggered at ${currentTime.toStringAsFixed(3)}s (target ${segment.end.toStringAsFixed(3)}s)',
+          );
+
+          if (currentTime <= segment.start + 0.5) {
             _checkPlaybackFailureReason();
           }
-          
+
           _stopSegmentPlayback();
         }
       } catch (e) {
@@ -423,6 +578,8 @@ class VideoPlaybackController {
 
     _isPlaying = false;
     _segmentEndTime = null;
+
+    _cleanupTimersOnly();
 
     // Pause the player
     _playerController.pause();
@@ -450,27 +607,28 @@ class VideoPlaybackController {
     _cleanupTimersOnly();
     _isPlaying = false;
     _segmentEndTime = null;
+    _playbackCompleter = null;
   }
 
   /// Stop any current playback immediately
   Future<void> stop() async {
     AppLogger.info('Stopping playback immediately');
-    
+
     // Set cancellation flag immediately to stop all ongoing operations
     _isCancelled = true;
-    
+
     // Mark as not playing first to prevent any ongoing operations
     _isPlaying = false;
     _segmentEndTime = null;
-    
+
     // Cancel and complete any pending operations
     if (_playbackCompleter != null && !_playbackCompleter!.isCompleted) {
       _playbackCompleter!.complete();
     }
-    
+
     // Clean up timers
     _cleanup();
-    
+
     // Pause the player
     try {
       _playerController.pause();
@@ -481,14 +639,22 @@ class VideoPlaybackController {
 
   /// Set playback speed
   Future<void> setPlaybackSpeed(double speed) async {
-    AppLogger.info('Playback speed change to ${speed}x skipped for iOS compatibility');
+    _currentPlaybackSpeed = speed;
+
+    if (_config.enableLogging) {
+      AppLogger.info('Setting playback speed to ${speed.toStringAsFixed(2)}x');
+    }
+
+    _applyPlaybackSpeed(speed);
   }
 
   /// Get current playback time in seconds
-  double get currentTime => _playerController.value.position.inMilliseconds / 1000.0;
+  double get currentTime =>
+      _playerController.value.position.inMilliseconds / 1000.0;
 
   /// Get video duration in seconds
-  double get duration => _playerController.metadata.duration.inMilliseconds / 1000.0;
+  double get duration =>
+      _playerController.metadata.duration.inMilliseconds / 1000.0;
 
   /// Check if currently playing a segment
   bool get isPlayingSegment => _isPlaying;
@@ -501,24 +667,32 @@ class VideoPlaybackController {
     try {
       final playerState = _playerController.value.playerState;
       final isReady = _playerController.value.isReady;
-      final currentTime = _playerController.value.position.inMilliseconds / 1000.0;
-      
-      AppLogger.info('Checking playback failure reason: state=$playerState, ready=$isReady, time=$currentTime');
-      
+      final currentTime =
+          _playerController.value.position.inMilliseconds / 1000.0;
+
+      AppLogger.info(
+        'Checking playback failure reason: state=$playerState, ready=$isReady, time=$currentTime',
+      );
+
       // 关键检测：如果播放器ready但状态一直不是playing，且时间没有进展
       // 但要确保播放器确实ready且有合理的状态
-      if (isReady && 
+      if (isReady &&
           playerState != PlayerState.playing &&
           playerState != PlayerState.paused &&
-          (playerState == PlayerState.unknown || 
-           playerState == PlayerState.unStarted ||
-           playerState == PlayerState.buffering) &&
-          currentTime <= 1.0) { // 时间基本没有进展
-        
-        AppLogger.warning('Detected potential login issue: ready but not playing, time not progressing');
+          (playerState == PlayerState.unknown ||
+              playerState == PlayerState.unStarted ||
+              playerState == PlayerState.buffering) &&
+          currentTime <= 1.0) {
+        // 时间基本没有进展
+
+        AppLogger.warning(
+          'Detected potential login issue: ready but not playing, time not progressing',
+        );
         _onPlaybackFailure?.call('login_required');
       } else {
-        AppLogger.info('Playback failure doesn\'t seem to be login-related (state=$playerState, ready=$isReady, time=$currentTime)');
+        AppLogger.info(
+          'Playback failure doesn\'t seem to be login-related (state=$playerState, ready=$isReady, time=$currentTime)',
+        );
       }
     } catch (e) {
       AppLogger.error('Error checking playback failure reason: $e');
@@ -550,8 +724,9 @@ class VideoPlaybackUtils {
     final minutes = totalMilliseconds ~/ 60000;
     final remainingMilliseconds = totalMilliseconds % 60000;
     final wholeSeconds = remainingMilliseconds ~/ 1000;
-    final centiseconds = (remainingMilliseconds % 1000) ~/ 10; // Get centiseconds (hundredths)
-    
+    final centiseconds =
+        (remainingMilliseconds % 1000) ~/ 10; // Get centiseconds (hundredths)
+
     return '${minutes.toString().padLeft(2, '0')}:${wholeSeconds.toString().padLeft(2, '0')}.${centiseconds.toString().padLeft(2, '0')}';
   }
 
@@ -580,7 +755,7 @@ class VideoPlaybackUtils {
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
-      
+
       if (current == null) {
         current = item;
         continue;
@@ -588,9 +763,10 @@ class VideoPlaybackUtils {
 
       // Check if we should merge
       final wouldMergeDuration = item.end - current.start;
-      final shouldMerge = current.duration < minDuration || 
-                         (wouldMergeDuration <= maxDuration && 
-                          !_isCompleteSentence(current.transcript));
+      final shouldMerge =
+          current.duration < minDuration ||
+          (wouldMergeDuration <= maxDuration &&
+              !_isCompleteSentence(current.transcript));
 
       if (shouldMerge) {
         // Merge with current

@@ -12,13 +12,22 @@ class TextComparisonUtils {
       return ComparisonResult.empty();
     }
 
+    final normalizedUserInput = userInput.replaceAll(RegExp(r"[’‘`´]"), "'");
+    final normalizedTranscript = transcript.replaceAll(RegExp(r"[’‘`´]"), "'");
+
     // Detect language
-    final language = LanguageUtils.detectLanguage(transcript);
-    
+    final language = LanguageUtils.detectLanguage(normalizedTranscript);
+
     // Clean and split text
-    final cleanUserInput = LanguageUtils.cleanString(userInput, language);
-    final cleanTranscript = LanguageUtils.cleanString(transcript, language);
-    
+    final cleanUserInput = LanguageUtils.cleanString(
+      normalizedUserInput,
+      language,
+    );
+    final cleanTranscript = LanguageUtils.cleanString(
+      normalizedTranscript,
+      language,
+    );
+
     final userWords = LanguageUtils.splitWords(cleanUserInput, language);
     final transcriptWords = LanguageUtils.splitWords(cleanTranscript, language);
 
@@ -35,14 +44,14 @@ class TextComparisonUtils {
     }
 
     // Perform matching based on language
-    final matchResult = language.isCJK 
+    final matchResult = language.isCJK
         ? _matchWordsCJK(userWords, transcriptWords, config)
         : _matchWordsEnglish(userWords, transcriptWords, config);
 
     // Generate comparison words for UI display
     final comparisonWords = _generateComparisonWords(
-      userWords, 
-      transcriptWords, 
+      userWords,
+      transcriptWords,
       matchResult.matches,
       language,
     );
@@ -82,19 +91,23 @@ class TextComparisonUtils {
       userWords.length,
       (i) => List.generate(transcriptWords.length, (j) {
         double similarity = LanguageUtils.calculateSimilarity(
-          userWords[i], 
+          userWords[i],
           transcriptWords[j],
         );
-        
+
         // Apply position weight if enabled
         if (config.enablePositionWeight) {
           final positionWeight = LanguageUtils.calculatePositionWeight(
-            i, j, userWords.length, transcriptWords.length,
+            i,
+            j,
+            userWords.length,
+            transcriptWords.length,
           );
-          similarity = similarity * (1 - config.positionWeight) + 
-                      positionWeight * config.positionWeight;
+          similarity =
+              similarity * (1 - config.positionWeight) +
+              positionWeight * config.positionWeight;
         }
-        
+
         return similarity;
       }),
     );
@@ -108,11 +121,11 @@ class TextComparisonUtils {
       // Find the best unmatched pair
       for (int i = 0; i < userWords.length; i++) {
         if (matches[i] != null) continue;
-        
+
         for (int j = 0; j < transcriptWords.length; j++) {
           if (usedTranscriptIndices.contains(j)) continue;
-          
-          if (similarities[i][j] > bestSimilarity && 
+
+          if (similarities[i][j] > bestSimilarity &&
               similarities[i][j] >= config.similarityThreshold) {
             bestSimilarity = similarities[i][j];
             bestUserIndex = i;
@@ -147,11 +160,11 @@ class TextComparisonUtils {
     for (int i = 0; i < userWords.length; i++) {
       for (int j = 0; j < transcriptWords.length; j++) {
         if (usedTranscriptIndices.contains(j)) continue;
-        
+
         if (userWords[i] == transcriptWords[j] ||
             LanguageUtils.areWordsEquivalent(
-              userWords[i], 
-              transcriptWords[j], 
+              userWords[i],
+              transcriptWords[j],
               DetectedLanguage.english,
             )) {
           matches[i] = j;
@@ -165,32 +178,37 @@ class TextComparisonUtils {
     // Second pass: similarity-based matching with position weight
     for (int i = 0; i < userWords.length; i++) {
       if (matches[i] != null) continue;
-      
+
       double bestScore = 0;
       int bestMatch = -1;
-      
+
       for (int j = 0; j < transcriptWords.length; j++) {
         if (usedTranscriptIndices.contains(j)) continue;
-        
+
         double similarity = LanguageUtils.calculateSimilarity(
-          userWords[i], 
+          userWords[i],
           transcriptWords[j],
         );
-        
+
         if (config.enablePositionWeight) {
           final positionWeight = LanguageUtils.calculatePositionWeight(
-            i, j, userWords.length, transcriptWords.length,
+            i,
+            j,
+            userWords.length,
+            transcriptWords.length,
           );
-          similarity = similarity * (1 - config.positionWeight) + 
-                      positionWeight * config.positionWeight;
+          similarity =
+              similarity * (1 - config.positionWeight) +
+              positionWeight * config.positionWeight;
         }
-        
-        if (similarity > bestScore && similarity >= config.similarityThreshold) {
+
+        if (similarity > bestScore &&
+            similarity >= config.similarityThreshold) {
           bestScore = similarity;
           bestMatch = j;
         }
       }
-      
+
       if (bestMatch != -1) {
         matches[i] = bestMatch;
         usedTranscriptIndices.add(bestMatch);
@@ -209,29 +227,33 @@ class TextComparisonUtils {
     DetectedLanguage language,
   ) {
     final comparisonWords = <ComparisonWord>[];
-    
+
     for (int i = 0; i < userWords.length; i++) {
       final matchIndex = matches[i];
-      
+
       if (matchIndex != null) {
         // User word matches transcript word
-        comparisonWords.add(ComparisonWord(
-          text: userWords[i],
-          type: ComparisonType.correct,
-          originalIndex: matchIndex,
-          originalWord: transcriptWords[matchIndex],
-        ));
+        comparisonWords.add(
+          ComparisonWord(
+            text: userWords[i],
+            type: ComparisonType.correct,
+            originalIndex: matchIndex,
+            originalWord: transcriptWords[matchIndex],
+          ),
+        );
       } else {
         // User word doesn't match any transcript word - could be incorrect or extra
-        comparisonWords.add(ComparisonWord(
-          text: userWords[i],
-          type: ComparisonType.extra,
-          originalIndex: -1,
-          originalWord: null,
-        ));
+        comparisonWords.add(
+          ComparisonWord(
+            text: userWords[i],
+            type: ComparisonType.extra,
+            originalIndex: -1,
+            originalWord: null,
+          ),
+        );
       }
     }
-    
+
     return comparisonWords;
   }
 
@@ -247,19 +269,21 @@ class TextComparisonUtils {
         matchedIndices.add(matches[i]!);
       }
     }
-    
+
     final missedWords = <ComparisonWord>[];
     for (int i = 0; i < transcriptWords.length; i++) {
       if (!matchedIndices.contains(i)) {
-        missedWords.add(ComparisonWord(
-          text: transcriptWords[i],
-          type: ComparisonType.missing,
-          originalIndex: i,
-          expectedWord: transcriptWords[i],
-        ));
+        missedWords.add(
+          ComparisonWord(
+            text: transcriptWords[i],
+            type: ComparisonType.missing,
+            originalIndex: i,
+            expectedWord: transcriptWords[i],
+          ),
+        );
       }
     }
-    
+
     return missedWords;
   }
 
@@ -269,12 +293,16 @@ class TextComparisonUtils {
     String transcript, {
     ComparisonConfig config = ComparisonConfig.defaultConfig,
   }) {
-    final result = compareInputWithTranscript(userInput, transcript, config: config);
+    final result = compareInputWithTranscript(
+      userInput,
+      transcript,
+      config: config,
+    );
     final language = LanguageUtils.detectLanguage(transcript);
-    
+
     final cleanTranscript = LanguageUtils.cleanString(transcript, language);
     final transcriptWords = LanguageUtils.splitWords(cleanTranscript, language);
-    
+
     // Find which transcript words weren't matched
     final matchedIndices = <int>{};
     for (final word in result.words) {
@@ -282,43 +310,44 @@ class TextComparisonUtils {
         matchedIndices.add(word.originalIndex);
       }
     }
-    
+
     final missedWords = <String>[];
     for (int i = 0; i < transcriptWords.length; i++) {
       if (!matchedIndices.contains(i)) {
         missedWords.add(transcriptWords[i]);
       }
     }
-    
+
     return missedWords;
   }
 
   /// Calculates overall accuracy for multiple comparisons
   static double calculateOverallAccuracy(List<ComparisonResult> results) {
     if (results.isEmpty) return 0.0;
-    
+
     int totalCorrect = 0;
     int totalWords = 0;
-    
+
     for (final result in results) {
       totalCorrect += result.correctCount;
       totalWords += result.totalCount;
     }
-    
+
     return totalWords > 0 ? (totalCorrect / totalWords * 100) : 0.0;
   }
 
   /// Formats comparison result for display
   static String formatComparisonResult(ComparisonResult result) {
     if (result.isEmpty) return 'No input to compare';
-    
+
     return '${result.correctCount}/${result.totalCount} correct (${result.accuracyString})';
   }
 }
 
 /// Internal class for matching results
 class _MatchResult {
-  final List<int?> matches; // matches[i] = j means userWords[i] matches transcriptWords[j]
+  final List<int?>
+  matches; // matches[i] = j means userWords[i] matches transcriptWords[j]
   final int correctCount;
 
   _MatchResult._(this.matches, this.correctCount);

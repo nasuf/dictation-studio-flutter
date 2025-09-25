@@ -73,6 +73,10 @@ class _DictationScreenState extends State<DictationScreen>
   // Playback task management to prevent concurrent playback
   int _currentPlaybackTaskId = 0;
 
+  void _invalidatePlaybackTasks() {
+    _currentPlaybackTaskId++;
+  }
+
   // Progress tracking
   double _overallCompletion = 0.0;
   double _overallAccuracy = 0.0;
@@ -85,7 +89,8 @@ class _DictationScreenState extends State<DictationScreen>
 
   // Services
   final ApiService _apiService = ApiService();
-  final YouTubeSimpleAuthService _youtubeAuthService = YouTubeSimpleAuthService();
+  final YouTubeSimpleAuthService _youtubeAuthService =
+      YouTubeSimpleAuthService();
 
   // iOS media warm-up flag to bypass first-play user gesture restriction
   bool _iosWarmupDone = false;
@@ -224,7 +229,7 @@ class _DictationScreenState extends State<DictationScreen>
 
     // Force stop all ongoing playback operations
     _isPlaybackInProgress = false;
-    _currentPlaybackTaskId++; // Invalidate any pending tasks
+    _invalidatePlaybackTasks();
 
     // Stop any current playback immediately
     if (_playbackController != null) {
@@ -513,7 +518,7 @@ class _DictationScreenState extends State<DictationScreen>
   /// Check if YouTube login is required and show login dialog
   Future<void> _checkAndPromptYouTubeLogin() async {
     AppLogger.info('Checking YouTube authentication status');
-    
+
     if (!_youtubeAuthService.isAuthenticated) {
       AppLogger.info('YouTube login required - showing login dialog');
 
@@ -532,9 +537,7 @@ class _DictationScreenState extends State<DictationScreen>
                   children: [
                     const Icon(Icons.check_circle, color: Colors.white),
                     const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(l10n.youtubeAuthSuccessMessage),
-                    ),
+                    Expanded(child: Text(l10n.youtubeAuthSuccessMessage)),
                   ],
                 ),
                 backgroundColor: Colors.green,
@@ -606,7 +609,9 @@ class _DictationScreenState extends State<DictationScreen>
         });
       }
     } else {
-      AppLogger.info('YouTube authentication not required - user is already authenticated');
+      AppLogger.info(
+        'YouTube authentication not required - user is already authenticated',
+      );
     }
   }
 
@@ -621,9 +626,7 @@ class _DictationScreenState extends State<DictationScreen>
           children: [
             const Icon(Icons.info_outline, color: Colors.white),
             const SizedBox(width: 8),
-            Expanded(
-              child: Text(l10n.videoPlayerLoginSuggestion),
-            ),
+            Expanded(child: Text(l10n.videoPlayerLoginSuggestion)),
           ],
         ),
         backgroundColor: Colors.blue,
@@ -1034,7 +1037,9 @@ class _DictationScreenState extends State<DictationScreen>
           if (mounted) {
             // Check authentication status
             if (_youtubeAuthService.isAuthenticated) {
-              AppLogger.info('User authenticated, continuing with current session');
+              AppLogger.info(
+                'User authenticated, continuing with current session',
+              );
             }
 
             AppLogger.info(
@@ -1453,8 +1458,9 @@ class _DictationScreenState extends State<DictationScreen>
 
     _isPlaybackInProgress = true;
 
-    // Generate unique task ID - this will invalidate any previous tasks
-    final taskId = ++_currentPlaybackTaskId;
+    // Invalidate previous playback tasks and capture a fresh task ID
+    _invalidatePlaybackTasks();
+    final taskId = _currentPlaybackTaskId;
     AppLogger.info(
       'Starting playback task $taskId for sentence ${_currentSentenceIndex + 1}',
     );
@@ -1650,6 +1656,7 @@ class _DictationScreenState extends State<DictationScreen>
       AppLogger.info(
         'Pausing current playback for sentence ${_currentSentenceIndex + 1}',
       );
+      _invalidatePlaybackTasks();
       await _playbackController!.stop();
 
       if (mounted) {
@@ -1658,6 +1665,7 @@ class _DictationScreenState extends State<DictationScreen>
           _isVideoPlaying = false;
         });
       }
+      _isPlaybackInProgress = false;
     } else {
       // Not playing, so start playing the current sentence
       AppLogger.info(
@@ -1733,6 +1741,7 @@ class _DictationScreenState extends State<DictationScreen>
     if (_currentSentenceIndex < _transcript.length - 1) {
       // Force stop any current playback immediately and reset playback state
       if (_playbackController != null) {
+        _invalidatePlaybackTasks();
         await _playbackController!.stop();
       }
       _isPlaybackInProgress =
@@ -1776,6 +1785,7 @@ class _DictationScreenState extends State<DictationScreen>
     if (_currentSentenceIndex > 0) {
       // Force stop any current playback immediately and reset playback state
       if (_playbackController != null) {
+        _invalidatePlaybackTasks();
         await _playbackController!.stop();
       }
       _isPlaybackInProgress =
@@ -2009,7 +2019,9 @@ class _DictationScreenState extends State<DictationScreen>
                       final l10n = AppLocalizations.of(context)!;
                       return AlertDialog(
                         title: Text(l10n.youtubeAccess),
-                        content: Text('${l10n.disableVideoAccess}\n\n${l10n.currentStatus(_youtubeAuthService.userInfo ?? "Enabled")}'),
+                        content: Text(
+                          '${l10n.disableVideoAccess}\n\n${l10n.currentStatus(_youtubeAuthService.userInfo ?? "Enabled")}',
+                        ),
                         actions: [
                           TextButton(
                             onPressed: () => Navigator.of(context).pop(false),
@@ -2034,7 +2046,9 @@ class _DictationScreenState extends State<DictationScreen>
                       setState(() {}); // Refresh UI
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(AppLocalizations.of(context)!.videoAccessDisabled),
+                          content: Text(
+                            AppLocalizations.of(context)!.videoAccessDisabled,
+                          ),
                           duration: const Duration(seconds: 2),
                         ),
                       );
@@ -2046,7 +2060,9 @@ class _DictationScreenState extends State<DictationScreen>
                 }
               },
               tooltip: _youtubeAuthService.isAuthenticated
-                  ? AppLocalizations.of(context)!.youtubeAccessEnabled(_youtubeAuthService.userInfo ?? "Enabled")
+                  ? AppLocalizations.of(context)!.youtubeAccessEnabled(
+                      _youtubeAuthService.userInfo ?? "Enabled",
+                    )
                   : AppLocalizations.of(context)!.enableYoutubeVideoAccess,
             ),
             IconButton(
@@ -2134,7 +2150,8 @@ class _DictationScreenState extends State<DictationScreen>
                         });
 
                         // Check if YouTube login might be needed (iOS specific)
-                        if (_isIOSDevice && !_youtubeAuthService.isAuthenticated) {
+                        if (_isIOSDevice &&
+                            !_youtubeAuthService.isAuthenticated) {
                           Future.delayed(const Duration(seconds: 2), () {
                             if (mounted && _youtubeController != null) {
                               final playerState =
