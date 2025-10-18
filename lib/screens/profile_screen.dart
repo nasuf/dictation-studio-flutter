@@ -402,7 +402,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       children: [
         // Animated Header
         AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
           height: _headerHeight,
           padding: EdgeInsets.fromLTRB(
             24,
@@ -411,36 +412,38 @@ class _ProfileScreenState extends State<ProfileScreen>
             16,
           ),
           decoration: BoxDecoration(
-            gradient: isDark
-                ? LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      const Color(0xFF1A1A1D).withValues(alpha: _headerOpacity),
-                      const Color(0xFF16161A).withValues(alpha: _headerOpacity * 0.8),
-                    ],
-                  )
-                : LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      theme.colorScheme.primaryContainer.withValues(alpha: 
-                        _headerOpacity * 0.7,
-                      ),
-                      theme.colorScheme.primaryContainer.withValues(alpha: 
-                        _headerOpacity * 0.4,
-                      ),
-                    ],
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              stops: const [0.0, 0.5, 1.0],
+              colors: () {
+                final Color topColor = isDark
+                    ? const Color(0xFF1A1A1D)
+                    : theme.colorScheme.primaryContainer;
+                final Color midBlend = Color.lerp(
+                      topColor,
+                      isDark
+                          ? const Color(0xFF101015)
+                          : theme.colorScheme.surface,
+                      0.35,
+                    ) ??
+                    topColor;
+                final Color bottomBlend = Color.lerp(
+                      topColor,
+                      isDark
+                          ? const Color(0xFF0A0A0B)
+                          : theme.colorScheme.surface,
+                      0.9,
+                    ) ??
+                    theme.colorScheme.surface;
+                return [
+                  topColor.withValues(alpha: _headerOpacity.clamp(0.0, 1.0)),
+                  midBlend.withValues(
+                    alpha: (_headerOpacity + 0.1).clamp(0.0, 1.0),
                   ),
-            border: Border(
-              bottom: BorderSide(
-                color:
-                    (isDark
-                            ? const Color(0xFF2A2A2F)
-                            : theme.colorScheme.outline)
-                        .withValues(alpha: 0.3),
-                width: 0.5,
-              ),
+                  bottomBlend,
+                ];
+              }(),
             ),
           ),
           child: Column(
@@ -456,7 +459,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                   // Username - Large and prominent
                   Flexible(
                     child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 240),
+                      curve: Curves.easeOutCubic,
                       style: TextStyle(
                         fontSize: _titleFontSize,
                         fontWeight: FontWeight.w700,
@@ -477,23 +481,19 @@ class _ProfileScreenState extends State<ProfileScreen>
 
                   // Admin Role Badge - Right next to username with scaling animation
                   if (user.role.toLowerCase() == 'admin')
-                    Container(
-                      margin: const EdgeInsets.only(
-                        left: 8,
-                      ), // Close to username
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      margin: const EdgeInsets.only(left: 8),
                       padding: EdgeInsets.symmetric(
-                        horizontal: _adminTagPadding, // Use animated padding
-                        vertical:
-                            _adminTagPadding *
-                            0.5, // Proportional vertical padding
+                        horizontal: _adminTagPadding,
+                        vertical: _adminTagPadding * 0.5,
                       ),
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF007AFF).withValues(alpha: 0.2)
                             : theme.colorScheme.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(
-                          _adminTagBorderRadius,
-                        ), // Use animated border radius
+                        borderRadius: BorderRadius.circular(_adminTagBorderRadius),
                         border: Border.all(
                           color: isDark
                               ? const Color(0xFF007AFF).withValues(alpha: 0.4)
@@ -501,16 +501,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                           width: 1,
                         ),
                       ),
-                      child: Text(
-                        'ADMIN',
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
                         style: TextStyle(
                           color: isDark
                               ? const Color(0xFF007AFF)
                               : theme.colorScheme.primary,
                           fontWeight: FontWeight.w600,
-                          fontSize: _adminTagFontSize, // Use animated font size
+                          fontSize: _adminTagFontSize,
                           letterSpacing: 0.5,
                         ),
+                        child: const Text('ADMIN'),
                       ),
                     ),
                 ],
