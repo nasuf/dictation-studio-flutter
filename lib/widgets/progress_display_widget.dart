@@ -465,10 +465,10 @@ class CompactProgressWidget extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
           decoration: BoxDecoration(
-            color: _getAccuracyColor(accuracy).withOpacity(0.1),
+            color: _getAccuracyColor(accuracy).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12.0),
             border: Border.all(
-              color: _getAccuracyColor(accuracy).withOpacity(0.3),
+              color: _getAccuracyColor(accuracy).withValues(alpha: 0.3),
             ),
           ),
           child: Row(

@@ -99,7 +99,8 @@ class _LoginScreenState extends State<LoginScreen>
         avatar: _selectedAvatar,
       );
 
-      if (success && mounted) {
+      if (!mounted) return;
+      if (success) {
         _showSuccessDialog(
           AppLocalizations.of(context)!.registrationSuccessful,
           AppLocalizations.of(context)!.pleaseCheckEmail,
@@ -111,15 +112,18 @@ class _LoginScreenState extends State<LoginScreen>
         password: _passwordController.text,
       );
 
-      if (success && mounted) {
+      if (!mounted) return;
+      if (success) {
         // Mark onboarding as completed when user successfully logs in
         await OnboardingService.completeOnboarding();
+        if (!mounted) return;
         // Navigate directly to the main screen to avoid showing splash again
         context.go('/main');
       }
     }
 
-    if (!success && mounted && authProvider.error != null) {
+    if (!mounted) return;
+    if (!success && authProvider.error != null) {
       _showErrorDialog(authProvider.error!);
     }
   }
@@ -139,9 +143,9 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     final success = await authProvider.signInWithGoogle();
+    if (!mounted) return;
 
-    if (mounted) {
-      if (success) {
+    if (success) {
         // For Google OAuth, we need to wait for the auth state to change
         // Set up a listener for auth state changes
         _setupAuthStateListener(authProvider);
@@ -154,14 +158,13 @@ class _LoginScreenState extends State<LoginScreen>
             duration: const Duration(seconds: 3),
           ),
         );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(authProvider.error ?? AppLocalizations.of(context)!.googleLoginFailed),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(authProvider.error ?? AppLocalizations.of(context)!.googleLoginFailed),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -172,6 +175,7 @@ class _LoginScreenState extends State<LoginScreen>
       if (authProvider.isLoggedIn && mounted) {
         // Mark onboarding as completed when user successfully logs in via Google
         await OnboardingService.completeOnboarding();
+        if (!mounted) return;
         // Navigate directly to the main screen to avoid showing splash again
         context.go('/main');
         // Remove the listener after use

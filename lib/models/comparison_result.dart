@@ -30,13 +30,13 @@ class ComparisonWord {
   Color get backgroundColor {
     switch (type) {
       case ComparisonType.correct:
-        return Colors.green.withOpacity(0.3);
+        return Colors.green.withValues(alpha: 0.3);
       case ComparisonType.incorrect:
-        return Colors.orange.withOpacity(0.3);
+        return Colors.orange.withValues(alpha: 0.3);
       case ComparisonType.missing:
-        return Colors.grey.withOpacity(0.3);
+        return Colors.grey.withValues(alpha: 0.3);
       case ComparisonType.extra:
-        return Colors.red.withOpacity(0.3);
+        return Colors.red.withValues(alpha: 0.3);
     }
   }
 

@@ -271,15 +271,3 @@ class _YouTubeWebViewPlayerState extends State<YouTubeWebViewPlayer> {
     );
   }
 }
-
-// WebView YouTube Player Controller for managing playback
-class WebViewYouTubeController {
-  final _YouTubeWebViewPlayerState _playerState;
-  
-  WebViewYouTubeController(this._playerState);
-  
-  Future<void> play() => _playerState.play();
-  Future<void> pause() => _playerState.pause();
-  Future<void> seekTo(double seconds) => _playerState.seekTo(seconds);
-  Future<double> getCurrentTime() => _playerState.getCurrentTime();
-}

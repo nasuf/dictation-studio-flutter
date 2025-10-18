@@ -143,8 +143,8 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
               progressColors: ProgressBarColors(
                 playedColor: theme.colorScheme.primary,
                 handleColor: theme.colorScheme.primary,
-                bufferedColor: theme.colorScheme.primary.withOpacity(0.3),
-                backgroundColor: theme.colorScheme.outline.withOpacity(0.3),
+                bufferedColor: theme.colorScheme.primary.withValues(alpha: 0.3),
+                backgroundColor: theme.colorScheme.outline.withValues(alpha: 0.3),
               ),
               onReady: () {
                 AppLogger.info('YouTube player widget ready');
@@ -192,7 +192,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.secondary.withOpacity(0.2),
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -227,7 +227,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                         decoration: BoxDecoration(
                           color: _currentVideo.isRefined 
                             ? theme.colorScheme.surface
-                            : theme.colorScheme.error.withOpacity(0.2),
+                            : theme.colorScheme.error.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(
                             color: _currentVideo.isRefined 
@@ -266,7 +266,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.2),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
@@ -283,7 +283,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.secondary.withOpacity(0.2),
+                        color: theme.colorScheme.secondary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
@@ -513,6 +513,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
       );
       
       // Clear the saving indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       
       // Show success message
@@ -530,6 +531,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
       AppLogger.error('Error saving transcript: $e');
       
       // Clear the saving indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       
       // Show error message
@@ -606,6 +608,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
       );
       
       // Clear loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       
       // Update local state
@@ -639,6 +642,7 @@ class _VideoTranscriptEditorScreenState extends State<VideoTranscriptEditorScree
       AppLogger.error('Error updating refined status: $e');
       
       // Clear loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       
       // Show error message

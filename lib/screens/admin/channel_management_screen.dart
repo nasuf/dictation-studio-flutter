@@ -234,7 +234,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
         color: theme.colorScheme.surfaceContainerHighest,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.1),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -496,7 +496,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                     channel.displayLanguage.toUpperCase(),
                     style: const TextStyle(fontSize: 10),
                   ),
-                  backgroundColor: theme.colorScheme.primary.withOpacity(0.2),
+                  backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.2),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 const SizedBox(width: 8),
@@ -506,8 +506,8 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                     style: const TextStyle(fontSize: 10),
                   ),
                   backgroundColor: channel.isPublic
-                      ? theme.colorScheme.primary.withOpacity(0.2)
-                      : theme.colorScheme.secondary.withOpacity(0.2),
+                      ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                      : theme.colorScheme.secondary.withValues(alpha: 0.2),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 const SizedBox(width: 8),
@@ -516,7 +516,7 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
                     '${channel.videoCount} videos',
                     style: const TextStyle(fontSize: 10),
                   ),
-                  backgroundColor: theme.colorScheme.surface.withOpacity(0.8),
+                  backgroundColor: theme.colorScheme.surface.withValues(alpha: 0.8),
                   side: BorderSide(color: theme.colorScheme.outline),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
@@ -685,15 +685,14 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
           visibility: _formVisibility,
         );
 
-        if (mounted) {
-          final theme = Theme.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Channel updated successfully'),
-              backgroundColor: theme.colorScheme.primary,
-            ),
-          );
-        }
+        if (!mounted) return;
+        final theme = Theme.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Channel updated successfully'),
+            backgroundColor: theme.colorScheme.primary,
+          ),
+        );
 
         Navigator.of(context).pop();
         _editingChannel = null;
@@ -711,15 +710,14 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
 
         await channelProvider.addChannel(newChannel);
 
-        if (mounted) {
-          final theme = Theme.of(context);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text('Channel added successfully'),
-              backgroundColor: theme.colorScheme.primary,
-            ),
-          );
-        }
+        if (!mounted) return;
+        final theme = Theme.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Channel added successfully'),
+            backgroundColor: theme.colorScheme.primary,
+          ),
+        );
 
         Navigator.of(context).pop();
       }
@@ -728,15 +726,14 @@ class _ChannelManagementScreenState extends State<ChannelManagementScreen>
       await _loadChannels();
     } catch (e) {
       AppLogger.error('Error saving channel: $e');
-      if (mounted) {
-        final theme = Theme.of(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save channel: $e'),
-            backgroundColor: theme.colorScheme.error,
-          ),
-        );
-      }
+      if (!mounted) return;
+      final theme = Theme.of(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save channel: $e'),
+          backgroundColor: theme.colorScheme.error,
+        ),
+      );
     }
   }
 

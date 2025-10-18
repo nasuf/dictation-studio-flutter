@@ -139,7 +139,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         color: theme.colorScheme.surfaceContainerHighest,
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.3),
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -150,7 +150,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primary.withOpacity(0.1),
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Text(
@@ -239,7 +239,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         color: theme.colorScheme.surfaceContainerHighest,
         border: Border(
           bottom: BorderSide(
-            color: theme.colorScheme.outline.withOpacity(0.3),
+            color: theme.colorScheme.outline.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -255,7 +255,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.2),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -276,7 +276,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                   icon: const Icon(Icons.merge_type),
                   tooltip: 'Merge selected segments',
                   style: IconButton.styleFrom(
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                     foregroundColor: theme.colorScheme.primary,
                     padding: const EdgeInsets.all(8),
                   ),
@@ -290,7 +290,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
               icon: const Icon(Icons.close),
               tooltip: 'Clear selection',
               style: IconButton.styleFrom(
-                backgroundColor: theme.colorScheme.error.withOpacity(0.1),
+                backgroundColor: theme.colorScheme.error.withValues(alpha: 0.1),
                 foregroundColor: theme.colorScheme.error,
                 padding: const EdgeInsets.all(8),
               ),
@@ -308,7 +308,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                     vertical: 4,
                   ),
                   textStyle: const TextStyle(fontSize: 12),
-                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                  backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
                   foregroundColor: theme.colorScheme.secondary,
                 ),
                 child: const Text('Restore'),
@@ -357,7 +357,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
               icon: const Icon(Icons.space_bar),
               tooltip: 'Trim all spaces',
               style: IconButton.styleFrom(
-                backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
                 foregroundColor: theme.colorScheme.secondary,
                 padding: const EdgeInsets.all(8),
               ),
@@ -370,7 +370,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
               icon: const Icon(Icons.checklist),
               tooltip: 'Selection mode',
               style: IconButton.styleFrom(
-                backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
+                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
                 foregroundColor: theme.colorScheme.primary,
                 padding: const EdgeInsets.all(8),
               ),
@@ -388,7 +388,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                     vertical: 4,
                   ),
                   textStyle: const TextStyle(fontSize: 12),
-                  backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+                  backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
                   foregroundColor: theme.colorScheme.secondary,
                 ),
                 child: const Text('Restore'),
@@ -530,7 +530,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withOpacity(0.2),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
@@ -549,7 +549,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: theme.colorScheme.secondary.withOpacity(0.2),
+                          color: theme.colorScheme.secondary.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -616,8 +616,8 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
             backgroundColor:
                 (controller.state.currentPlayingIndex == index &&
                     controller.state.isVideoPlaying)
-                ? theme.colorScheme.error.withOpacity(0.1)
-                : theme.colorScheme.primary.withOpacity(0.1),
+                ? theme.colorScheme.error.withValues(alpha: 0.1)
+                : theme.colorScheme.primary.withValues(alpha: 0.1),
             foregroundColor:
                 (controller.state.currentPlayingIndex == index &&
                     controller.state.isVideoPlaying)
@@ -636,7 +636,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
           icon: const Icon(Icons.skip_next),
           tooltip: 'Go to Start',
           style: IconButton.styleFrom(
-            backgroundColor: theme.colorScheme.secondary.withOpacity(0.1),
+            backgroundColor: theme.colorScheme.secondary.withValues(alpha: 0.1),
             foregroundColor: theme.colorScheme.secondary,
           ),
         ),
@@ -760,11 +760,11 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: isModified
-            ? theme.colorScheme.secondary.withOpacity(0.1)
+            ? theme.colorScheme.secondary.withValues(alpha: 0.1)
             : theme.colorScheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(8),
         border: isModified
-            ? Border.all(color: theme.colorScheme.secondary.withOpacity(0.5))
+            ? Border.all(color: theme.colorScheme.secondary.withValues(alpha: 0.5))
             : null,
       ),
       child: Column(
@@ -785,7 +785,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primary.withOpacity(0.2),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Icon(
@@ -825,7 +825,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         decoration: BoxDecoration(
           color: theme.colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: theme.colorScheme.outline.withOpacity(0.3)),
+          border: Border.all(color: theme.colorScheme.outline.withValues(alpha: 0.3)),
         ),
         child: Text(
           item.transcript.isEmpty ? 'Double tap to edit...' : item.transcript,
@@ -930,9 +930,9 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
   /// Get appropriate card color based on state
   Color _getSegmentCardColor(ThemeData theme, bool isPlaying, bool isSelected) {
     if (isPlaying) {
-      return theme.colorScheme.primaryContainer.withOpacity(0.5);
+      return theme.colorScheme.primaryContainer.withValues(alpha: 0.5);
     } else if (isSelected) {
-      return theme.colorScheme.primary.withOpacity(0.1);
+      return theme.colorScheme.primary.withValues(alpha: 0.1);
     } else {
       return theme.colorScheme.surface;
     }
@@ -994,10 +994,12 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       ),
     );
 
+    if (!mounted) return;
     if (confirmed != true) return;
 
     try {
       // Show loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -1023,6 +1025,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       AppLogger.info('Restore transcript API response: $result');
 
       // Clear loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
 
       // Parse and reload transcript data
@@ -1047,6 +1050,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
         await controller.loadTranscript(restoredItems);
 
         // Show success message
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: const Text('Original transcript restored successfully'),
@@ -1061,6 +1065,7 @@ class _TranscriptEditorWidgetState extends State<TranscriptEditorWidget> {
       AppLogger.error('Error restoring original transcript: $e');
 
       // Clear loading indicator
+      if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
 
       // Show error message

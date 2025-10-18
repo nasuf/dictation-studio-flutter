@@ -2011,6 +2011,9 @@ class _DictationScreenState extends State<DictationScreen>
                 color: _youtubeAuthService.isAuthenticated ? Colors.blue : null,
               ),
               onPressed: () async {
+                final messenger = ScaffoldMessenger.of(context);
+                final videoAccessDisabledMessage =
+                    AppLocalizations.of(context)!.videoAccessDisabled;
                 if (_youtubeAuthService.isAuthenticated) {
                   // Show logout confirmation
                   final shouldLogout = await showDialog<bool>(
@@ -2040,23 +2043,23 @@ class _DictationScreenState extends State<DictationScreen>
                     },
                   );
 
+                  if (!mounted) return;
+
                   if (shouldLogout == true) {
                     await _youtubeAuthService.logout();
-                    if (mounted) {
-                      setState(() {}); // Refresh UI
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            AppLocalizations.of(context)!.videoAccessDisabled,
-                          ),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    }
+                    if (!mounted) return;
+                    setState(() {}); // Refresh UI
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(videoAccessDisabledMessage),
+                        duration: const Duration(seconds: 2),
+                      ),
+                    );
                   }
                 } else {
                   // Show login dialog
                   await _checkAndPromptYouTubeLogin();
+                  if (!mounted) return;
                 }
               },
               tooltip: _youtubeAuthService.isAuthenticated

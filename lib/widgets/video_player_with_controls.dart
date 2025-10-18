@@ -83,7 +83,7 @@ class _VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
             end: Alignment.bottomCenter,
             colors: [
               Colors.transparent,
-              Colors.black.withOpacity(0.7),
+              Colors.black.withValues(alpha: 0.7),
             ],
           ),
         ),
@@ -159,7 +159,7 @@ class _VideoPlayerWithControlsState extends State<VideoPlayerWithControls> {
         shape: BoxShape.circle,
         boxShadow: isEnabled ? [
           BoxShadow(
-            color: Colors.black.withOpacity(0.3),
+            color: Colors.black.withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

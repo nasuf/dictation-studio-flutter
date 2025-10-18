@@ -5,6 +5,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import '../services/onboarding_service.dart';
 import '../providers/auth_provider.dart';
 import '../theme/app_colors.dart';
+import '../utils/logger.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -101,46 +102,55 @@ class _SplashScreenState extends State<SplashScreen>
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       
-      print('🔍 [SplashScreen] Starting auth check...');
-      print('🔍 [SplashScreen] Manually initializing AuthProvider...');
+      AppLogger.debug('🔍 [SplashScreen] Starting auth check...');
+      AppLogger.debug('🔍 [SplashScreen] Manually initializing AuthProvider...');
       
       // Manually initialize AuthProvider and wait for completion
       await authProvider.initialize();
       
-      print('🔍 [SplashScreen] AuthProvider initialization completed');
-      print('🔍 [SplashScreen] authProvider.isLoading: ${authProvider.isLoading}');
-      print('🔍 [SplashScreen] authProvider.isLoggedIn: ${authProvider.isLoggedIn}');
-      print('🔍 [SplashScreen] authProvider.currentUser: ${authProvider.currentUser?.email ?? 'null'}');
+      AppLogger.debug('🔍 [SplashScreen] AuthProvider initialization completed');
+      AppLogger.debug('🔍 [SplashScreen] authProvider.isLoading: ${authProvider.isLoading}');
+      AppLogger.debug('🔍 [SplashScreen] authProvider.isLoggedIn: ${authProvider.isLoggedIn}');
+      AppLogger.debug(
+        '🔍 [SplashScreen] authProvider.currentUser: '
+        '${authProvider.currentUser?.email ?? 'null'}',
+      );
       
       if (!mounted) return;
       
       // Check if user is currently logged in
       if (authProvider.isLoggedIn) {
-        print('✅ [SplashScreen] User is logged in, navigating to /main');
+        AppLogger.debug('✅ [SplashScreen] User is logged in, navigating to /main');
         // User is logged in, go to main screen
         context.go('/main');
         return;
       }
       
-      print('❌ [SplashScreen] User is not logged in, checking onboarding status...');
+      AppLogger.debug(
+        '❌ [SplashScreen] User is not logged in, checking onboarding status...',
+      );
       
       // User is not logged in, check onboarding status
       final isOnboardingCompleted = await OnboardingService.isOnboardingCompleted();
-      print('🔍 [SplashScreen] Onboarding completed: $isOnboardingCompleted');
+      AppLogger.debug('🔍 [SplashScreen] Onboarding completed: $isOnboardingCompleted');
       
       if (!mounted) return;
 
       if (isOnboardingCompleted) {
-        print('➡️ [SplashScreen] Navigating to /login (onboarding completed, user not logged in)');
+        AppLogger.debug(
+          '➡️ [SplashScreen] Navigating to /login (onboarding completed, user not logged in)',
+        );
         // User has seen onboarding but is not logged in, go to login
         context.go('/login');
       } else {
-        print('➡️ [SplashScreen] Navigating to /onboarding (first time user)');
+        AppLogger.debug(
+          '➡️ [SplashScreen] Navigating to /onboarding (first time user)',
+        );
         // First time user, show onboarding
         context.go('/onboarding');
       }
     } catch (e) {
-      print('❌ [SplashScreen] Error during navigation check: $e');
+      AppLogger.error('❌ [SplashScreen] Error during navigation check: $e');
       // If there's an error, default to onboarding
       if (mounted) {
         context.go('/onboarding');
@@ -195,7 +205,7 @@ class _SplashScreenState extends State<SplashScreen>
                                 colors: [Color(0xFF007AFF), Color(0xFF0056CC)],
                               )
                             : null,
-                        color: isDark ? null : Colors.white.withOpacity(0.2),
+                        color: isDark ? null : Colors.white.withValues(alpha: 0.2),
                         boxShadow: isDark
                             ? [
                                 const BoxShadow(
@@ -207,7 +217,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ]
                             : [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 20,
                                   offset: const Offset(0, 4),
                                 ),
@@ -302,8 +312,8 @@ class _SplashScreenState extends State<SplashScreen>
               end: Alignment.bottomRight,
               colors: isDark
                   ? [
-                      const Color(0xFFFFFFFF).withOpacity(0.9),
-                      const Color(0xFFE0E0E0).withOpacity(0.8),
+                      const Color(0xFFFFFFFF).withValues(alpha: 0.9),
+                      const Color(0xFFE0E0E0).withValues(alpha: 0.8),
                     ]
                   : [
                       Colors.white,
@@ -313,8 +323,8 @@ class _SplashScreenState extends State<SplashScreen>
             boxShadow: [
               BoxShadow(
                 color: isDark 
-                    ? Colors.black.withOpacity(0.3)
-                    : Colors.black.withOpacity(0.1),
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -353,7 +363,7 @@ class _SplashScreenState extends State<SplashScreen>
                 BoxShadow(
                   color: (isDark 
                       ? const Color(0xFF007AFF) 
-                      : AppColors.techCyan).withOpacity(0.3),
+                      : AppColors.techCyan).withValues(alpha: 0.3),
                   blurRadius: 6,
                   spreadRadius: 1,
                 ),

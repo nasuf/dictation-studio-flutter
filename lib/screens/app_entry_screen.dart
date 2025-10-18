@@ -184,7 +184,7 @@ class _AppEntryScreenState extends State<AppEntryScreen>
                                 colors: [Color(0xFF007AFF), Color(0xFF0056CC)],
                               )
                             : null,
-                        color: isDark ? null : Colors.white.withOpacity(0.2),
+                        color: isDark ? null : Colors.white.withValues(alpha: 0.2),
                         boxShadow: isDark
                             ? [
                                 const BoxShadow(
@@ -196,7 +196,7 @@ class _AppEntryScreenState extends State<AppEntryScreen>
                               ]
                             : [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(0.1),
+                                  color: Colors.black.withValues(alpha: 0.1),
                                   blurRadius: 20,
                                   offset: const Offset(0, 4),
                                 ),
@@ -284,7 +284,7 @@ class _AppEntryScreenState extends State<AppEntryScreen>
                 style: TextStyle(
                   color: isDark
                       ? const Color(0xFF9E9EA3)
-                      : Colors.white.withOpacity(0.9),
+                      : Colors.white.withValues(alpha: 0.9),
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
                   shadows: isDark

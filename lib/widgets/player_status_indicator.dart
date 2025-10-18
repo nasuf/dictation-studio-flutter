@@ -19,7 +19,7 @@ class PlayerStatusIndicator extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
-            color: _getStatusColor(value).withOpacity(0.9),
+            color: _getStatusColor(value).withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(

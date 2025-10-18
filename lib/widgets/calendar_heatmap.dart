@@ -133,8 +133,8 @@ class _CalendarHeatmapState extends State<CalendarHeatmap> {
                     margin: const EdgeInsets.only(right: 2),
                     decoration: BoxDecoration(
                       color: i == 0
-                          ? widget.emptyColor.withOpacity(0.1)
-                          : widget.baseColor.withOpacity(0.2 + i * 0.2),
+                          ? widget.emptyColor.withValues(alpha: 0.1)
+                          : widget.baseColor.withValues(alpha: 0.2 + i * 0.2),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -184,8 +184,8 @@ class _CalendarHeatmapState extends State<CalendarHeatmap> {
 
                 final intensity = maxValue > 0 ? dayData.value / maxValue : 0.0;
                 final color = dayData.value > 0
-                    ? widget.baseColor.withOpacity(0.2 + intensity * 0.8)
-                    : widget.emptyColor.withOpacity(0.1);
+                    ? widget.baseColor.withValues(alpha: 0.2 + intensity * 0.8)
+                    : widget.emptyColor.withValues(alpha: 0.1);
 
                 return GestureDetector(
                   onTap: () =>

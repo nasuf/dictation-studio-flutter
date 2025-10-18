@@ -84,10 +84,10 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.3),
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
         ),
       ),
       child: Wrap(
@@ -108,10 +108,10 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.3),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.3),
+          color: theme.colorScheme.outline.withValues(alpha: 0.3),
         ),
       ),
       child: Wrap(
@@ -136,10 +136,10 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.2),
+          color: Colors.grey.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: Colors.grey.withOpacity(0.5),
+            color: Colors.grey.withValues(alpha: 0.5),
             style: BorderStyle.solid,
             width: 1,
           ),
@@ -172,7 +172,7 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
         color: word.backgroundColor,
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
-          color: word.textColor.withOpacity(0.5),
+          color: word.textColor.withValues(alpha: 0.5),
         ),
       ),
       child: Row(
@@ -200,7 +200,7 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
             Icon(
               Icons.arrow_forward,
               size: 10,
-              color: word.textColor.withOpacity(0.7),
+              color: word.textColor.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 4),
             Text(
@@ -223,7 +223,7 @@ class EnhancedComparisonTextWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.1),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Column(

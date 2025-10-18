@@ -416,18 +416,18 @@ class _ProfileScreenState extends State<ProfileScreen>
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xFF1A1A1D).withOpacity(_headerOpacity),
-                      const Color(0xFF16161A).withOpacity(_headerOpacity * 0.8),
+                      const Color(0xFF1A1A1D).withValues(alpha: _headerOpacity),
+                      const Color(0xFF16161A).withValues(alpha: _headerOpacity * 0.8),
                     ],
                   )
                 : LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      theme.colorScheme.primaryContainer.withOpacity(
+                      theme.colorScheme.primaryContainer.withValues(alpha: 
                         _headerOpacity * 0.7,
                       ),
-                      theme.colorScheme.primaryContainer.withOpacity(
+                      theme.colorScheme.primaryContainer.withValues(alpha: 
                         _headerOpacity * 0.4,
                       ),
                     ],
@@ -438,7 +438,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     (isDark
                             ? const Color(0xFF2A2A2F)
                             : theme.colorScheme.outline)
-                        .withOpacity(0.3),
+                        .withValues(alpha: 0.3),
                 width: 0.5,
               ),
             ),
@@ -489,15 +489,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                       decoration: BoxDecoration(
                         color: isDark
-                            ? const Color(0xFF007AFF).withOpacity(0.2)
-                            : theme.colorScheme.primary.withOpacity(0.15),
+                            ? const Color(0xFF007AFF).withValues(alpha: 0.2)
+                            : theme.colorScheme.primary.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(
                           _adminTagBorderRadius,
                         ), // Use animated border radius
                         border: Border.all(
                           color: isDark
-                              ? const Color(0xFF007AFF).withOpacity(0.4)
-                              : theme.colorScheme.primary.withOpacity(0.3),
+                              ? const Color(0xFF007AFF).withValues(alpha: 0.4)
+                              : theme.colorScheme.primary.withValues(alpha: 0.3),
                           width: 1,
                         ),
                       ),

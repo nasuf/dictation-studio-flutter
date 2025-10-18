@@ -247,9 +247,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+              color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.colorScheme.primary.withOpacity(0.3)),
+              border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -275,9 +275,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: theme.colorScheme.errorContainer.withOpacity(0.3),
+              color: theme.colorScheme.errorContainer.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: theme.colorScheme.error.withOpacity(0.3)),
+              border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.3)),
             ),
             child: Row(
               children: [
@@ -316,7 +316,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
               Text(
                 _uploadStatus!,
                 style: theme.textTheme.bodyMedium?.copyWith(
-                  color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -326,7 +326,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
             Text(
               '${(_uploadProgress * 100).toInt()}% Complete',
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],

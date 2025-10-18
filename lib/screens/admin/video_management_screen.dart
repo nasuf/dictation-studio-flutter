@@ -677,7 +677,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
         color: theme.colorScheme.surfaceContainerHighest,
         boxShadow: [
           BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.1),
+            color: theme.colorScheme.shadow.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1044,8 +1044,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                     style: const TextStyle(fontSize: 10),
                   ),
                   backgroundColor: video.visibility == 'public'
-                      ? theme.colorScheme.primary.withOpacity(0.2)
-                      : theme.colorScheme.secondary.withOpacity(0.2),
+                      ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                      : theme.colorScheme.secondary.withValues(alpha: 0.2),
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 const SizedBox(width: 8),
@@ -1056,8 +1056,8 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                     style: const TextStyle(fontSize: 10),
                   ),
                   backgroundColor: video.isRefined
-                      ? theme.colorScheme.surface.withOpacity(0.8)
-                      : theme.colorScheme.error.withOpacity(0.2),
+                      ? theme.colorScheme.surface.withValues(alpha: 0.8)
+                      : theme.colorScheme.error.withValues(alpha: 0.2),
                   side: video.isRefined
                       ? BorderSide(color: theme.colorScheme.outline)
                       : null,
@@ -1266,7 +1266,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -1359,10 +1359,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withOpacity(0.5),
+        color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: theme.colorScheme.outline.withOpacity(0.2),
+          color: theme.colorScheme.outline.withValues(alpha: 0.2),
         ),
       ),
       child: Column(
@@ -1375,7 +1375,7 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  color: theme.colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -1472,10 +1472,10 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: color.withOpacity(0.3),
+          color: color.withValues(alpha: 0.3),
         ),
       ),
       child: Row(
@@ -1525,9 +1525,9 @@ class _VideoManagementScreenState extends State<VideoManagementScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.primaryContainer.withOpacity(0.3),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
+        border: Border.all(color: theme.colorScheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
