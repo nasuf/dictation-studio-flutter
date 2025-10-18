@@ -2222,8 +2222,26 @@ class _DictationScreenState extends State<DictationScreen>
               timeSpent: _totalTime,
             ),
 
-            // Main content - optimized for mobile keyboard
-            Expanded(child: _buildMainContent()),
+            // Transcript / feedback content
+            Expanded(
+              child: _buildTranscriptContent(),
+            ),
+
+            // Persistent input anchored above keyboard
+            AnimatedPadding(
+              duration: const Duration(milliseconds: 200),
+              curve: Curves.easeOut,
+              padding: EdgeInsets.only(
+                left: 16,
+                right: 16,
+                top: 12,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SafeArea(
+                top: false,
+                child: _buildOptimizedTextInput(),
+              ),
+            ),
           ],
         ),
       ),
@@ -2667,25 +2685,17 @@ class _DictationScreenState extends State<DictationScreen>
   }
 
   /// Build main content with mobile keyboard optimization
-  Widget _buildMainContent() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          // Current sentence display and comparison
-          _buildEnhancedSentenceDisplay(),
-
-          const SizedBox(height: 16),
-
-          // Text input area - positioned to avoid keyboard overlap
-          _buildOptimizedTextInput(),
-
-          // Add extra space for keyboard
-          SizedBox(
-            height: MediaQuery.of(context).viewInsets.bottom > 0 ? 100 : 32,
+  Widget _buildTranscriptContent() {
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+          sliver: SliverToBoxAdapter(
+            child: _buildEnhancedSentenceDisplay(),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
